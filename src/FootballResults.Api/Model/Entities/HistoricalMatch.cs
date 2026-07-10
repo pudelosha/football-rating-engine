@@ -32,5 +32,6 @@ public sealed class HistoricalMatch
 
     public Team? HomeTeam { get; set; }
     public Team? AwayTeam { get; set; }
+    public HistoricalMatchStatistics? Statistics { get; set; }
     public List<MatchEloSnapshot> EloSnapshots { get; set; } = [];
 }

@@ -30,6 +30,8 @@ public static class ServiceExtensions
         services.AddScoped<IMatchQueryService, MatchQueryService>();
         services.AddScoped<ITournamentSyncService, TournamentSyncService>();
         services.AddScoped<IBaseEloRatingService, BaseEloRatingService>();
+        services.AddScoped<IFormRatingService, FormRatingService>();
+        services.AddScoped<IPerformanceRatingService, PerformanceRatingService>();
         services.AddScoped<IApiKeyService, ApiKeyService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IAuthService, AuthService>();

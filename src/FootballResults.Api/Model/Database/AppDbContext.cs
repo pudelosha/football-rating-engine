@@ -15,9 +15,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<MatchStatistics> MatchStatistics => Set<MatchStatistics>();
     public DbSet<TournamentSyncRun> TournamentSyncRuns => Set<TournamentSyncRun>();
     public DbSet<HistoricalMatch> HistoricalMatches => Set<HistoricalMatch>();
+    public DbSet<HistoricalMatchStatistics> HistoricalMatchStatistics => Set<HistoricalMatchStatistics>();
     public DbSet<EloRatingRun> EloRatingRuns => Set<EloRatingRun>();
     public DbSet<TeamEloRating> TeamEloRatings => Set<TeamEloRating>();
     public DbSet<MatchEloSnapshot> MatchEloSnapshots => Set<MatchEloSnapshot>();
+    public DbSet<FormRatingRun> FormRatingRuns => Set<FormRatingRun>();
+    public DbSet<TeamFormRating> TeamFormRatings => Set<TeamFormRating>();
+    public DbSet<TeamFormMatchSnapshot> TeamFormMatchSnapshots => Set<TeamFormMatchSnapshot>();
+    public DbSet<PerformanceRatingRun> PerformanceRatingRuns => Set<PerformanceRatingRun>();
+    public DbSet<TeamPerformanceRating> TeamPerformanceRatings => Set<TeamPerformanceRating>();
+    public DbSet<TeamPerformanceMatchSnapshot> TeamPerformanceMatchSnapshots => Set<TeamPerformanceMatchSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -210,6 +217,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<HistoricalMatchStatistics>(entity =>
+        {
+            entity.HasIndex(statistics => statistics.HistoricalMatchId).IsUnique();
+            entity.HasIndex(statistics => statistics.LiveScoreEventId).IsUnique();
+
+            entity.Property(statistics => statistics.LiveScoreEventId).HasMaxLength(64);
+            entity.Property(statistics => statistics.HomeExpectedGoals).HasPrecision(8, 2);
+            entity.Property(statistics => statistics.AwayExpectedGoals).HasPrecision(8, 2);
+
+            entity.HasOne(statistics => statistics.HistoricalMatch)
+                .WithOne(match => match.Statistics)
+                .HasForeignKey<HistoricalMatchStatistics>(statistics => statistics.HistoricalMatchId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<EloRatingRun>(entity =>
         {
             entity.HasIndex(run => new { run.TournamentId, run.StartedAtUtc });
@@ -286,6 +308,172 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasOne(snapshot => snapshot.AwayTeam)
                 .WithMany()
                 .HasForeignKey(snapshot => snapshot.AwayTeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<FormRatingRun>(entity =>
+        {
+            entity.HasIndex(run => new { run.TournamentId, run.StartedAtUtc });
+            entity.HasIndex(run => run.EloRatingRunId);
+
+            entity.Property(run => run.Scale).HasPrecision(9, 2);
+            entity.Property(run => run.MaxAdjustment).HasPrecision(9, 2);
+            entity.Property(run => run.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(run => run.ErrorMessage).HasMaxLength(2000);
+
+            entity.HasOne(run => run.Tournament)
+                .WithMany()
+                .HasForeignKey(run => run.TournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(run => run.EloRatingRun)
+                .WithMany()
+                .HasForeignKey(run => run.EloRatingRunId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TeamFormRating>(entity =>
+        {
+            entity.HasIndex(rating => new { rating.FormRatingRunId, rating.TeamId }).IsUnique();
+
+            entity.Property(rating => rating.WeightedActual).HasPrecision(9, 4);
+            entity.Property(rating => rating.WeightedExpected).HasPrecision(9, 4);
+            entity.Property(rating => rating.WeightedDelta).HasPrecision(9, 4);
+            entity.Property(rating => rating.AverageDelta).HasPrecision(9, 4);
+            entity.Property(rating => rating.FormAdjustment).HasPrecision(9, 2);
+
+            entity.HasOne(rating => rating.FormRatingRun)
+                .WithMany(run => run.TeamRatings)
+                .HasForeignKey(rating => rating.FormRatingRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(rating => rating.Team)
+                .WithMany()
+                .HasForeignKey(rating => rating.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TeamFormMatchSnapshot>(entity =>
+        {
+            entity.HasIndex(snapshot => new { snapshot.FormRatingRunId, snapshot.TeamId, snapshot.KickoffUtc });
+            entity.HasIndex(snapshot => new { snapshot.FormRatingRunId, snapshot.MatchEloSnapshotId, snapshot.TeamId }).IsUnique();
+
+            entity.Property(snapshot => snapshot.LiveScoreEventId).HasMaxLength(64);
+            entity.Property(snapshot => snapshot.Actual).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.Expected).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.Delta).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.Weight).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.WeightedDelta).HasPrecision(9, 4);
+
+            entity.HasOne(snapshot => snapshot.FormRatingRun)
+                .WithMany(run => run.MatchSnapshots)
+                .HasForeignKey(snapshot => snapshot.FormRatingRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(snapshot => snapshot.Team)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.TeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(snapshot => snapshot.OpponentTeam)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.OpponentTeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(snapshot => snapshot.MatchEloSnapshot)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.MatchEloSnapshotId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PerformanceRatingRun>(entity =>
+        {
+            entity.HasIndex(run => new { run.TournamentId, run.StartedAtUtc });
+            entity.HasIndex(run => run.EloRatingRunId);
+
+            entity.Property(run => run.Scale).HasPrecision(9, 2);
+            entity.Property(run => run.MaxAdjustment).HasPrecision(9, 2);
+            entity.Property(run => run.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(run => run.ErrorMessage).HasMaxLength(2000);
+
+            entity.HasOne(run => run.Tournament)
+                .WithMany()
+                .HasForeignKey(run => run.TournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(run => run.EloRatingRun)
+                .WithMany()
+                .HasForeignKey(run => run.EloRatingRunId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TeamPerformanceRating>(entity =>
+        {
+            entity.HasIndex(rating => new { rating.PerformanceRatingRunId, rating.TeamId }).IsUnique();
+
+            entity.Property(rating => rating.DataCoverage).HasPrecision(9, 4);
+            entity.Property(rating => rating.RawPerformanceScore).HasPrecision(9, 4);
+            entity.Property(rating => rating.PerformanceAdjustment).HasPrecision(9, 2);
+
+            entity.HasOne(rating => rating.PerformanceRatingRun)
+                .WithMany(run => run.TeamRatings)
+                .HasForeignKey(rating => rating.PerformanceRatingRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(rating => rating.Team)
+                .WithMany()
+                .HasForeignKey(rating => rating.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TeamPerformanceMatchSnapshot>(entity =>
+        {
+            entity.HasIndex(snapshot => new { snapshot.PerformanceRatingRunId, snapshot.TeamId, snapshot.KickoffUtc });
+            entity.HasIndex(snapshot => new { snapshot.PerformanceRatingRunId, snapshot.MatchEloSnapshotId, snapshot.TeamId }).IsUnique();
+
+            entity.Property(snapshot => snapshot.LiveScoreEventId).HasMaxLength(64);
+            entity.Property(snapshot => snapshot.DataCoverage).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.XgScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.ShotScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.ShotsOnTargetScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.ShotQualityScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.PossessionScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.TerritoryScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.OffsidesScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.FoulStressScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.GoalkeeperStressScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.RawPerformanceScore).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.Weight).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.WeightedPerformanceScore).HasPrecision(9, 4);
+
+            entity.HasOne(snapshot => snapshot.PerformanceRatingRun)
+                .WithMany(run => run.MatchSnapshots)
+                .HasForeignKey(snapshot => snapshot.PerformanceRatingRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(snapshot => snapshot.Team)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.TeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(snapshot => snapshot.OpponentTeam)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.OpponentTeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(snapshot => snapshot.MatchEloSnapshot)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.MatchEloSnapshotId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(snapshot => snapshot.MatchStatistics)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.MatchStatisticsId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(snapshot => snapshot.HistoricalMatchStatistics)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.HistoricalMatchStatisticsId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

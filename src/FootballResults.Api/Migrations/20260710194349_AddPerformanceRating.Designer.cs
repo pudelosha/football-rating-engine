@@ -4,6 +4,7 @@ using FootballResults.Api.Model.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballResults.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710194349_AddPerformanceRating")]
+    partial class AddPerformanceRating
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -361,137 +364,6 @@ namespace FootballResults.Api.Migrations
                     b.HasIndex("LiveScoreCompetitionId", "KickoffUtc");
 
                     b.ToTable("HistoricalMatches");
-                });
-
-            modelBuilder.Entity("FootballResults.Api.Model.Entities.HistoricalMatchStatistics", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("AwayBlockedShots")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayCorners")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayCounterAttacks")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayCrosses")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("AwayExpectedGoals")
-                        .HasPrecision(8, 2)
-                        .HasColumnType("decimal(8,2)");
-
-                    b.Property<int?>("AwayFouls")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayGoalKicks")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayGoalkeeperSaves")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayOffsides")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayPossession")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayRedCards")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayShotsOffTarget")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayShotsOnTarget")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayThrowIns")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayYellowCards")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AwayYellowRedCards")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset>("FetchedAtUtc")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<int>("HistoricalMatchId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeBlockedShots")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeCorners")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeCounterAttacks")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeCrosses")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("HomeExpectedGoals")
-                        .HasPrecision(8, 2)
-                        .HasColumnType("decimal(8,2)");
-
-                    b.Property<int?>("HomeFouls")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeGoalKicks")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeGoalkeeperSaves")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeOffsides")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomePossession")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeRedCards")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeShotsOffTarget")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeShotsOnTarget")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeThrowIns")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeYellowCards")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("HomeYellowRedCards")
-                        .HasColumnType("int");
-
-                    b.Property<string>("LiveScoreEventId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<DateTimeOffset>("UpdatedAtUtc")
-                        .HasColumnType("datetimeoffset");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HistoricalMatchId")
-                        .IsUnique();
-
-                    b.HasIndex("LiveScoreEventId")
-                        .IsUnique();
-
-                    b.ToTable("HistoricalMatchStatistics");
                 });
 
             modelBuilder.Entity("FootballResults.Api.Model.Entities.Match", b =>
@@ -1154,9 +1026,6 @@ namespace FootballResults.Api.Migrations
                         .HasPrecision(9, 4)
                         .HasColumnType("decimal(9,4)");
 
-                    b.Property<int?>("HistoricalMatchStatisticsId")
-                        .HasColumnType("int");
-
                     b.Property<bool>("IsHome")
                         .HasColumnType("bit");
 
@@ -1171,7 +1040,7 @@ namespace FootballResults.Api.Migrations
                     b.Property<int>("MatchEloSnapshotId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("MatchStatisticsId")
+                    b.Property<int>("MatchStatisticsId")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("OffsidesScore")
@@ -1224,8 +1093,6 @@ namespace FootballResults.Api.Migrations
                         .HasColumnType("decimal(9,4)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("HistoricalMatchStatisticsId");
 
                     b.HasIndex("MatchEloSnapshotId");
 
@@ -1678,17 +1545,6 @@ namespace FootballResults.Api.Migrations
                     b.Navigation("HomeTeam");
                 });
 
-            modelBuilder.Entity("FootballResults.Api.Model.Entities.HistoricalMatchStatistics", b =>
-                {
-                    b.HasOne("FootballResults.Api.Model.Entities.HistoricalMatch", "HistoricalMatch")
-                        .WithOne("Statistics")
-                        .HasForeignKey("FootballResults.Api.Model.Entities.HistoricalMatchStatistics", "HistoricalMatchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("HistoricalMatch");
-                });
-
             modelBuilder.Entity("FootballResults.Api.Model.Entities.Match", b =>
                 {
                     b.HasOne("FootballResults.Api.Model.Entities.Team", "AwayTeam")
@@ -1861,11 +1717,6 @@ namespace FootballResults.Api.Migrations
 
             modelBuilder.Entity("FootballResults.Api.Model.Entities.TeamPerformanceMatchSnapshot", b =>
                 {
-                    b.HasOne("FootballResults.Api.Model.Entities.HistoricalMatchStatistics", "HistoricalMatchStatistics")
-                        .WithMany()
-                        .HasForeignKey("HistoricalMatchStatisticsId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("FootballResults.Api.Model.Entities.MatchEloSnapshot", "MatchEloSnapshot")
                         .WithMany()
                         .HasForeignKey("MatchEloSnapshotId")
@@ -1875,7 +1726,8 @@ namespace FootballResults.Api.Migrations
                     b.HasOne("FootballResults.Api.Model.Entities.MatchStatistics", "MatchStatistics")
                         .WithMany()
                         .HasForeignKey("MatchStatisticsId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("FootballResults.Api.Model.Entities.Team", "OpponentTeam")
                         .WithMany()
@@ -1894,8 +1746,6 @@ namespace FootballResults.Api.Migrations
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("HistoricalMatchStatistics");
 
                     b.Navigation("MatchEloSnapshot");
 
@@ -2036,8 +1886,6 @@ namespace FootballResults.Api.Migrations
             modelBuilder.Entity("FootballResults.Api.Model.Entities.HistoricalMatch", b =>
                 {
                     b.Navigation("EloSnapshots");
-
-                    b.Navigation("Statistics");
                 });
 
             modelBuilder.Entity("FootballResults.Api.Model.Entities.Match", b =>

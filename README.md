@@ -12,7 +12,7 @@ Repository: `pudelosha/football-rating-engine`
 
 The backend syncs football competition data from LiveScore, stores it in SQL Server, tracks fixture/result changes over time, enriches finished matches with statistics, and calculates Premier League Base Elo ratings from historical match data.
 
-The first rating module focuses on **FTSR v1: Base Elo**. It uses historical Premier League matches, starts teams from configurable baseline values, handles promoted or returning teams, and stores match-by-match Elo snapshots so every rating can be audited.
+The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Rating**, and **FTSR v2: Performance Rating**. Base Elo uses historical Premier League matches, starts teams from configurable baseline values, handles promoted or returning teams, and stores match-by-match Elo snapshots. Form Rating adds a short-term adjustment based on recent overperformance or underperformance against Elo expectation. Performance Rating evaluates match quality from xG, shots, possession, attacking territory, offsides, fouls, and goalkeeper pressure.
 
 ---
 
@@ -24,6 +24,8 @@ The first rating module focuses on **FTSR v1: Base Elo**. It uses historical Pre
 - Match statistics enrichment with xG, shots, possession, corners, fouls, cards, and related metrics
 - Tournament, team, stage, match, and sync-run persistence
 - Base Elo rebuild endpoint for tournament teams
+- Form Rating rebuild endpoint based on the latest successful Base Elo run
+- Performance Rating rebuild endpoint based on match statistics
 - Historical Premier League match import from LiveScore team details
 - Match-by-match Elo snapshots for explainable rating changes
 - JWT authentication, API key access, and role-based authorization
@@ -66,8 +68,15 @@ Base Elo entities:
 - `EloRatingRun`
 - `TeamEloRating`
 - `MatchEloSnapshot`
+- `HistoricalMatchStatistics`
+- `FormRatingRun`
+- `TeamFormRating`
+- `TeamFormMatchSnapshot`
+- `PerformanceRatingRun`
+- `TeamPerformanceRating`
+- `TeamPerformanceMatchSnapshot`
 
-`Match` stores current competition data. `HistoricalMatch` stores deduplicated historical match input for rating calculations. `MatchEloSnapshot` stores the rating state before and after each processed match.
+`Match` stores current competition data. `HistoricalMatch` stores deduplicated historical match input for rating calculations. `MatchEloSnapshot` stores the rating state before and after each processed match. Form Rating reads those Elo snapshots and stores recent-match form details separately. Performance Rating combines Elo snapshots with current `MatchStatistics` and cached `HistoricalMatchStatistics`.
 
 ---
 
@@ -127,6 +136,83 @@ Promoted or returning Premier League teams are inferred by comparing the current
 
 ---
 
+## Form Rating Model
+
+Form Rating is calculated from recent matches in the latest successful Base Elo run. It does not mutate Base Elo.
+
+Default rebuild parameters:
+
+```json
+{
+  "matchCount": 5,
+  "scale": 100,
+  "maxAdjustment": 35
+}
+```
+
+For each team match:
+
+```text
+delta = actual_result - expected_result
+weighted_delta = delta * recency_weight
+```
+
+Default recency weights:
+
+```text
+latest match: 1.00
+2nd latest:   0.85
+3rd latest:   0.70
+4th latest:   0.55
+5th latest:   0.40
+```
+
+Final adjustment:
+
+```text
+form_adjustment = clamp(weighted_average_delta * scale, -maxAdjustment, +maxAdjustment)
+form_rating = base_elo + form_adjustment
+```
+
+---
+
+## Performance Rating Model
+
+Performance Rating measures statistical dominance in recent matches. It is separate from Base Elo and Form Rating.
+
+Default rebuild parameters:
+
+```json
+{
+  "matchCount": 5,
+  "scale": 45,
+  "maxAdjustment": 45
+}
+```
+
+Per-match components are normalized to `-1..+1` and weighted:
+
+```text
+xG dominance:             35.0%
+shot volume dominance:    15.0%
+shots on target:          15.0%
+shot quality:             10.0%
+possession/control:        5.0%
+corners/crosses territory: 7.5%
+offsides pressure:         2.5%
+foul stress:               5.0%
+goalkeeper save stress:    5.0%
+```
+
+Missing stats are not treated as zero. Missing components are skipped and the available component weights are renormalized. Each match and team result stores `dataCoverage` so low-information ratings can be identified. During rebuild, the service can fetch missing historical match statistics from LiveScore and cache them in `HistoricalMatchStatistics`.
+
+```text
+performance_adjustment = clamp(weighted_recent_performance * scale, -maxAdjustment, +maxAdjustment)
+performance_rating = base_elo + performance_adjustment
+```
+
+---
+
 ## Important Endpoints
 
 Create a tournament from a LiveScore URL:
@@ -159,6 +245,24 @@ GET /api/tournaments/{tournamentId}/ratings/base-elo/teams
 GET /api/rating-runs/{runId}/base-elo/snapshots
 ```
 
+Rebuild and read Form Rating:
+
+```http
+POST /api/tournaments/{tournamentId}/ratings/form/rebuild
+GET /api/tournaments/{tournamentId}/ratings/form/latest-run
+GET /api/tournaments/{tournamentId}/ratings/form/teams
+GET /api/rating-runs/{runId}/form/snapshots
+```
+
+Rebuild and read Performance Rating:
+
+```http
+POST /api/tournaments/{tournamentId}/ratings/performance/rebuild
+GET /api/tournaments/{tournamentId}/ratings/performance/latest-run
+GET /api/tournaments/{tournamentId}/ratings/performance/teams
+GET /api/rating-runs/{runId}/performance/snapshots
+```
+
 Authentication:
 
 ```http
@@ -188,7 +292,7 @@ The API includes hosted services for automated synchronization:
 | Finalize Sync | 1 minute | Move finished matches into finalized state and enrich details |
 | Results Reconciliation | 24 hours | Safety-net reconciliation against the results endpoint |
 
-Base Elo recalculation is currently manual. This is intentional while the rating model is being tuned. It can later become a hosted service or scheduled job.
+Base Elo, Form Rating, and Performance Rating recalculation are currently manual. This is intentional while the rating model is being tuned. They can later become hosted services or scheduled jobs.
 
 ---
 
@@ -285,13 +389,19 @@ dotnet ef migrations add MigrationName --project src/FootballResults.Api --start
 2. Run schedule or full sync to populate teams, stages, and matches.
 3. Let hosted services keep fixtures, live matches, and results updated.
 4. Rebuild Base Elo after a completed round or on demand.
-5. Read team ratings and match-by-match snapshots through the rating endpoints.
+5. Rebuild Form Rating from the latest Base Elo run.
+6. Rebuild Performance Rating after match statistics are available.
+7. Read team ratings and match-by-match snapshots through the rating endpoints.
 
 Premier League example:
 
 ```http
 POST /api/tournaments/1/ratings/base-elo/rebuild
 GET /api/tournaments/1/ratings/base-elo/teams
+POST /api/tournaments/1/ratings/form/rebuild
+GET /api/tournaments/1/ratings/form/teams
+POST /api/tournaments/1/ratings/performance/rebuild
+GET /api/tournaments/1/ratings/performance/teams
 ```
 
 ---
@@ -318,7 +428,8 @@ For production:
 ## Roadmap
 
 - Incremental Elo recalculation after finalized matches
-- Form Rating based on recent performance against Elo expectation
+- Tune Form Rating against historical prediction accuracy
+- Tune Performance Rating weights against historical prediction accuracy
 - Performance Rating using xG, shots, and match statistics
 - League Strength calculation from European competitions
 - Squad Quality and Availability modules from external player data sources
