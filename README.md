@@ -10,9 +10,9 @@ Repository: `pudelosha/football-rating-engine`
 
 ## Overview
 
-The backend syncs football competition data from LiveScore, stores it in SQL Server, tracks fixture/result changes over time, enriches finished matches with statistics, and calculates Premier League Base Elo ratings from historical match data.
+The backend syncs football competition data from LiveScore, stores it in SQL Server, tracks fixture/result changes over time, enriches finished matches with statistics, imports squad market-value data, and calculates Premier League Base Elo ratings from historical match data.
 
-The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Rating**, and **FTSR v2: Performance Rating**. Base Elo uses historical Premier League matches, starts teams from configurable baseline values, handles promoted or returning teams, and stores match-by-match Elo snapshots. Form Rating adds a short-term adjustment based on recent overperformance or underperformance against Elo expectation. Performance Rating evaluates match quality from xG, shots, possession, attacking territory, offsides, fouls, and goalkeeper pressure.
+The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Rating**, **FTSR v2: Performance Rating**, and **Squad Quality**. Base Elo uses historical Premier League matches, starts teams from configurable baseline values, handles promoted or returning teams, and stores match-by-match Elo snapshots. Form Rating adds a short-term adjustment based on recent overperformance or underperformance against Elo expectation. Performance Rating evaluates match quality from xG, shots, possession, attacking territory, offsides, fouls, and goalkeeper pressure. Squad Quality imports Transfermarkt squad snapshots and estimates squad strength from market value distribution and roster metadata.
 
 ---
 
@@ -26,6 +26,7 @@ The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Ratin
 - Base Elo rebuild endpoint for tournament teams
 - Form Rating rebuild endpoint based on the latest successful Base Elo run
 - Performance Rating rebuild endpoint based on match statistics
+- Transfermarkt team mapping and Squad Quality snapshot import
 - Historical Premier League match import from LiveScore team details
 - Match-by-match Elo snapshots for explainable rating changes
 - JWT authentication, API key access, and role-based authorization
@@ -45,7 +46,7 @@ The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Ratin
 | ORM | Entity Framework Core |
 | Auth | ASP.NET Core Identity, JWT, API keys |
 | Background Jobs | Hosted Services |
-| External Data | LiveScore public APIs |
+| External Data | LiveScore public APIs, Transfermarkt HTML pages |
 | Tests | xUnit |
 
 ---
@@ -75,8 +76,11 @@ Base Elo entities:
 - `PerformanceRatingRun`
 - `TeamPerformanceRating`
 - `TeamPerformanceMatchSnapshot`
+- `ExternalTeamMapping`
+- `SquadQualitySnapshot`
+- `SquadPlayerSnapshot`
 
-`Match` stores current competition data. `HistoricalMatch` stores deduplicated historical match input for rating calculations. `MatchEloSnapshot` stores the rating state before and after each processed match. Form Rating reads those Elo snapshots and stores recent-match form details separately. Performance Rating combines Elo snapshots with current `MatchStatistics` and cached `HistoricalMatchStatistics`.
+`Match` stores current competition data. `HistoricalMatch` stores deduplicated historical match input for rating calculations. `MatchEloSnapshot` stores the rating state before and after each processed match. Form Rating reads those Elo snapshots and stores recent-match form details separately. Performance Rating combines Elo snapshots with current `MatchStatistics` and cached `HistoricalMatchStatistics`. Squad Quality stores manual external provider mappings and immutable Transfermarkt squad snapshots, including player-level market values.
 
 ---
 
@@ -213,6 +217,61 @@ performance_rating = base_elo + performance_adjustment
 
 ---
 
+## Squad Quality Model
+
+Squad Quality starts from an admin-controlled mapping between an internal `Team` and a Transfermarkt club page. Importing a page stores a new snapshot rather than overwriting previous values. When a season is provided, the importer uses the detailed squad source:
+
+```text
+https://www.transfermarkt.com/{slug}/kader/verein/{externalTeamId}/saison_id/{seasonYear}/plus/1
+```
+
+Stored club-level values include:
+
+- total market value
+- squad size and average age
+- foreigner count and percentage
+- national team players
+- league level and in-league-since text
+- stadium details and transfer record
+- computed average, Top 11, and Top 15 market values
+- value-weighted average age
+- value-weighted remaining contract years
+
+Stored player-level values include:
+
+- Transfermarkt player id
+- profile URL
+- player name
+- position group and detailed position
+- shirt number
+- date of birth and age
+- nationalities
+- height
+- preferred foot
+- joined date
+- signed-from club name and Transfermarkt id
+- transfer movement and fee text
+- contract end date
+- market value text and normalized EUR value
+
+The tournament Squad Quality endpoint compares each team's latest snapshot against the tournament snapshot baseline. The current adjustment uses:
+
+```text
+Top XI market value:        40%
+Top 15 market value:        20%
+Total squad value:          12%
+National team players:      10%
+Value-weighted prime age:    8%
+Contract stability:          5%
+Positional balance:          5%
+```
+
+```text
+squad_quality_adjustment = clamp(relative_squad_quality_score * 70, -70, +70)
+```
+
+---
+
 ## Important Endpoints
 
 Create a tournament from a LiveScore URL:
@@ -261,6 +320,16 @@ POST /api/tournaments/{tournamentId}/ratings/performance/rebuild
 GET /api/tournaments/{tournamentId}/ratings/performance/latest-run
 GET /api/tournaments/{tournamentId}/ratings/performance/teams
 GET /api/rating-runs/{runId}/performance/snapshots
+```
+
+Import and read Squad Quality:
+
+```http
+POST /api/admin/teams/{teamId}/transfermarkt/import
+GET /api/teams/{teamId}/external-mappings
+GET /api/teams/{teamId}/squad-quality/latest
+GET /api/squad-quality/snapshots/{snapshotId}/players
+GET /api/tournaments/{tournamentId}/ratings/squad-quality/teams
 ```
 
 Authentication:
@@ -348,7 +417,7 @@ Example local configuration:
   },
   "Auth": {
     "AdminEmail": "admin@example.com",
-    "AdminPassword": "AdminPassword123!"
+    "AdminPassword": "replace-with-local-admin-password"
   },
   "EmailSettings": {
     "EnableSending": false,
@@ -430,9 +499,9 @@ For production:
 - Incremental Elo recalculation after finalized matches
 - Tune Form Rating against historical prediction accuracy
 - Tune Performance Rating weights against historical prediction accuracy
-- Performance Rating using xG, shots, and match statistics
+- Tune Squad Quality weights against historical prediction accuracy
 - League Strength calculation from European competitions
-- Squad Quality and Availability modules from external player data sources
+- Availability module from injuries and suspensions
 - Public rating history charts and API filters
 - Scheduled rating rebuild hosted service
 

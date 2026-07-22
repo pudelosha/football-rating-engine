@@ -14,6 +14,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<MatchStatistics> MatchStatistics => Set<MatchStatistics>();
     public DbSet<TournamentSyncRun> TournamentSyncRuns => Set<TournamentSyncRun>();
+    public DbSet<ExternalTeamMapping> ExternalTeamMappings => Set<ExternalTeamMapping>();
+    public DbSet<SquadQualitySnapshot> SquadQualitySnapshots => Set<SquadQualitySnapshot>();
+    public DbSet<SquadPlayerSnapshot> SquadPlayerSnapshots => Set<SquadPlayerSnapshot>();
     public DbSet<HistoricalMatch> HistoricalMatches => Set<HistoricalMatch>();
     public DbSet<HistoricalMatchStatistics> HistoricalMatchStatistics => Set<HistoricalMatchStatistics>();
     public DbSet<EloRatingRun> EloRatingRuns => Set<EloRatingRun>();
@@ -177,6 +180,87 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasOne(syncRun => syncRun.Tournament)
                 .WithMany(tournament => tournament.SyncRuns)
                 .HasForeignKey(syncRun => syncRun.TournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ExternalTeamMapping>(entity =>
+        {
+            entity.HasIndex(mapping => new { mapping.Provider, mapping.ExternalTeamId }).IsUnique();
+            entity.HasIndex(mapping => new { mapping.TeamId, mapping.Provider }).IsUnique();
+
+            entity.Property(mapping => mapping.Provider).HasMaxLength(64);
+            entity.Property(mapping => mapping.ExternalTeamId).HasMaxLength(64);
+            entity.Property(mapping => mapping.ExternalSlug).HasMaxLength(160);
+            entity.Property(mapping => mapping.SourceUrl).HasMaxLength(500);
+
+            entity.HasOne(mapping => mapping.Team)
+                .WithMany(team => team.ExternalMappings)
+                .HasForeignKey(mapping => mapping.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SquadQualitySnapshot>(entity =>
+        {
+            entity.HasIndex(snapshot => new { snapshot.TeamId, snapshot.Provider, snapshot.FetchedAtUtc });
+            entity.HasIndex(snapshot => new { snapshot.ExternalTeamMappingId, snapshot.FetchedAtUtc });
+
+            entity.Property(snapshot => snapshot.Provider).HasMaxLength(64);
+            entity.Property(snapshot => snapshot.ExternalTeamId).HasMaxLength(64);
+            entity.Property(snapshot => snapshot.ExternalSlug).HasMaxLength(160);
+            entity.Property(snapshot => snapshot.SourceUrl).HasMaxLength(500);
+            entity.Property(snapshot => snapshot.Season).HasMaxLength(32);
+            entity.Property(snapshot => snapshot.ClubName).HasMaxLength(200);
+            entity.Property(snapshot => snapshot.LeagueName).HasMaxLength(200);
+            entity.Property(snapshot => snapshot.LeagueLevel).HasMaxLength(80);
+            entity.Property(snapshot => snapshot.InLeagueSince).HasMaxLength(80);
+            entity.Property(snapshot => snapshot.StadiumName).HasMaxLength(200);
+            entity.Property(snapshot => snapshot.TransferRecordText).HasMaxLength(80);
+            entity.Property(snapshot => snapshot.TransferRecordValueEur).HasPrecision(18, 2);
+            entity.Property(snapshot => snapshot.AverageAge).HasPrecision(5, 2);
+            entity.Property(snapshot => snapshot.ForeignersPercentage).HasPrecision(5, 2);
+            entity.Property(snapshot => snapshot.TotalMarketValueEur).HasPrecision(18, 2);
+            entity.Property(snapshot => snapshot.AverageMarketValueEur).HasPrecision(18, 2);
+            entity.Property(snapshot => snapshot.TopElevenMarketValueEur).HasPrecision(18, 2);
+            entity.Property(snapshot => snapshot.TopFifteenMarketValueEur).HasPrecision(18, 2);
+            entity.Property(snapshot => snapshot.ValueWeightedAverageAge).HasPrecision(5, 2);
+            entity.Property(snapshot => snapshot.ValueWeightedContractYears).HasPrecision(5, 2);
+
+            entity.HasOne(snapshot => snapshot.Team)
+                .WithMany(team => team.SquadQualitySnapshots)
+                .HasForeignKey(snapshot => snapshot.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(snapshot => snapshot.ExternalTeamMapping)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.ExternalTeamMappingId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SquadPlayerSnapshot>(entity =>
+        {
+            entity.HasIndex(player => new { player.SquadQualitySnapshotId, player.ExternalPlayerId });
+
+            entity.Property(player => player.ExternalPlayerId).HasMaxLength(64);
+            entity.Property(player => player.ProfileUrl).HasMaxLength(500);
+            entity.Property(player => player.PlayerName).HasMaxLength(200);
+            entity.Property(player => player.PositionGroup).HasMaxLength(80);
+            entity.Property(player => player.Position).HasMaxLength(80);
+            entity.Property(player => player.ShirtNumber).HasMaxLength(16);
+            entity.Property(player => player.Nationalities).HasMaxLength(400);
+            entity.Property(player => player.HeightCm).HasPrecision(6, 2);
+            entity.Property(player => player.Foot).HasMaxLength(32);
+            entity.Property(player => player.SignedFromClubName).HasMaxLength(200);
+            entity.Property(player => player.SignedFromExternalClubId).HasMaxLength(64);
+            entity.Property(player => player.SignedFromSeasonId).HasMaxLength(16);
+            entity.Property(player => player.TransferMovementText).HasMaxLength(300);
+            entity.Property(player => player.TransferFeeText).HasMaxLength(80);
+            entity.Property(player => player.TransferFeeEur).HasPrecision(18, 2);
+            entity.Property(player => player.MarketValueText).HasMaxLength(80);
+            entity.Property(player => player.MarketValueEur).HasPrecision(18, 2);
+
+            entity.HasOne(player => player.SquadQualitySnapshot)
+                .WithMany(snapshot => snapshot.Players)
+                .HasForeignKey(player => player.SquadQualitySnapshotId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

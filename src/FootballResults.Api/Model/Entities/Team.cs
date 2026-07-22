@@ -13,4 +13,6 @@ public sealed class Team
     public List<TournamentTeam> TournamentTeams { get; set; } = [];
     public List<Match> HomeMatches { get; set; } = [];
     public List<Match> AwayMatches { get; set; } = [];
+    public List<ExternalTeamMapping> ExternalMappings { get; set; } = [];
+    public List<SquadQualitySnapshot> SquadQualitySnapshots { get; set; } = [];
 }

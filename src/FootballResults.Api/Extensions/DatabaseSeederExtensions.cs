@@ -23,7 +23,7 @@ public static class DatabaseSeederExtensions
             }
         }
 
-        var adminEmail = configuration["Auth:AdminEmail"] ?? "pudel1985@gmail.com";
+        var adminEmail = configuration["Auth:AdminEmail"] ?? "admin@example.com";
         var adminPassword = configuration["Auth:AdminPassword"];
         if (string.IsNullOrWhiteSpace(adminPassword))
         {

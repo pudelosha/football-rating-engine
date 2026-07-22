@@ -25,6 +25,13 @@ public static class ServiceExtensions
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari/537.36");
             client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
         });
+        services.AddHttpClient<ITransfermarktClient, TransfermarktClient>(client =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari/537.36");
+            client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
+            client.DefaultRequestHeaders.Referrer = new Uri("https://www.transfermarkt.com/");
+        });
         services.AddScoped<ITournamentCreationService, TournamentCreationService>();
         services.AddScoped<ITournamentQueryService, TournamentQueryService>();
         services.AddScoped<IMatchQueryService, MatchQueryService>();
@@ -32,6 +39,7 @@ public static class ServiceExtensions
         services.AddScoped<IBaseEloRatingService, BaseEloRatingService>();
         services.AddScoped<IFormRatingService, FormRatingService>();
         services.AddScoped<IPerformanceRatingService, PerformanceRatingService>();
+        services.AddScoped<ISquadQualityService, SquadQualityService>();
         services.AddScoped<IApiKeyService, ApiKeyService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IAuthService, AuthService>();

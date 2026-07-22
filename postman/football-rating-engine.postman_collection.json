@@ -1,0 +1,494 @@
+{
+  "info": {
+    "_postman_id": "9d2c1f01-3b0c-4c6e-8ec3-f0b2b0cb2b32",
+    "name": "Football Rating Engine",
+    "description": "Manual test requests for local Football Rating Engine API development.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:7260"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com"
+    },
+    {
+      "key": "adminPassword",
+      "value": "replace-with-local-admin-password"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "apiKey",
+      "value": ""
+    },
+    {
+      "key": "tournamentId",
+      "value": "1"
+    },
+    {
+      "key": "teamId",
+      "value": "4"
+    },
+    {
+      "key": "snapshotId",
+      "value": "3"
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "transfermarktUrl",
+      "value": "https://www.transfermarkt.com/manchester-united/startseite/verein/985"
+    },
+    {
+      "key": "season",
+      "value": "2026/2027"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.apiKey) {",
+                  "  pm.collectionVariables.set('apiKey', json.apiKey);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manual-test-{{$timestamp}}@example.com\",\n  \"password\": \"replace-with-local-user-password\",\n  \"displayName\": \"Manual Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Request Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/request-password-reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "request-password-reset"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Squad Quality - Transfermarkt",
+      "item": [
+        {
+          "name": "Import Transfermarkt Squad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Import succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.snapshotId) {",
+                  "  pm.collectionVariables.set('snapshotId', json.snapshotId);",
+                  "}",
+                  "if (json.teamId) {",
+                  "  pm.collectionVariables.set('teamId', json.teamId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transfermarktUrl\": \"{{transfermarktUrl}}\",\n  \"season\": \"{{season}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams/{{teamId}}/transfermarkt/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "teams",
+                "{{teamId}}",
+                "transfermarkt",
+                "import"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Team External Mappings",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/external-mappings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "external-mappings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Latest Squad Quality Snapshot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "  pm.collectionVariables.set('snapshotId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/{{teamId}}/squad-quality/latest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "{{teamId}}",
+                "squad-quality",
+                "latest"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Squad Snapshot Players",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/squad-quality/snapshots/{{snapshotId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "squad-quality",
+                "snapshots",
+                "{{snapshotId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Tournament Squad Quality Ratings",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tournaments/{{tournamentId}}/ratings/squad-quality/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tournaments",
+                "{{tournamentId}}",
+                "ratings",
+                "squad-quality",
+                "teams"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ratings",
+      "item": [
+        {
+          "name": "Get Base Elo Teams",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tournaments/{{tournamentId}}/ratings/base-elo/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tournaments",
+                "{{tournamentId}}",
+                "ratings",
+                "base-elo",
+                "teams"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Form Rating Teams",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tournaments/{{tournamentId}}/ratings/form/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tournaments",
+                "{{tournamentId}}",
+                "ratings",
+                "form",
+                "teams"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Performance Rating Teams",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tournaments/{{tournamentId}}/ratings/performance/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tournaments",
+                "{{tournamentId}}",
+                "ratings",
+                "performance",
+                "teams"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

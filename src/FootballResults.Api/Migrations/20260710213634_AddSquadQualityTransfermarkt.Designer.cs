@@ -4,6 +4,7 @@ using FootballResults.Api.Model.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballResults.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710213634_AddSquadQualityTransfermarkt")]
+    partial class AddSquadQualityTransfermarkt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -992,9 +995,6 @@ namespace FootballResults.Api.Migrations
                     b.Property<int?>("Age")
                         .HasColumnType("int");
 
-                    b.Property<DateOnly?>("ContractUntil")
-                        .HasColumnType("date");
-
                     b.Property<DateOnly?>("DateOfBirth")
                         .HasColumnType("date");
 
@@ -1002,18 +1002,6 @@ namespace FootballResults.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("Foot")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<decimal?>("HeightCm")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
-
-                    b.Property<DateOnly?>("JoinedDate")
-                        .HasColumnType("date");
 
                     b.Property<decimal?>("MarketValueEur")
                         .HasPrecision(18, 2)
@@ -1039,52 +1027,13 @@ namespace FootballResults.Api.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
 
-                    b.Property<string>("PositionGroup")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
-
-                    b.Property<string>("ProfileUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("ShirtNumber")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<string>("SignedFromClubName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("SignedFromExternalClubId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("SignedFromSeasonId")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
 
                     b.Property<int>("SquadQualitySnapshotId")
                         .HasColumnType("int");
-
-                    b.Property<decimal?>("TransferFeeEur")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("TransferFeeText")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
-
-                    b.Property<string>("TransferMovementText")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
 
                     b.HasKey("Id");
 
@@ -1206,14 +1155,6 @@ namespace FootballResults.Api.Migrations
                     b.Property<decimal?>("TransferRecordValueEur")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("ValueWeightedAverageAge")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<decimal?>("ValueWeightedContractYears")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
 
                     b.HasKey("Id");
 
