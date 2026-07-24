@@ -487,6 +487,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "Get Combined Rating Teams",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tournaments/{{tournamentId}}/ratings/combined/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tournaments",
+                "{{tournamentId}}",
+                "ratings",
+                "combined",
+                "teams"
+              ]
+            }
+          }
         }
       ]
     }

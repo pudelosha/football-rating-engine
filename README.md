@@ -1,6 +1,6 @@
 # Football Rating Engine
 
-Football Rating Engine is a .NET backend for collecting football fixtures, results, match statistics, and building team strength ratings with a transparent Base Elo model.
+Football Rating Engine is a football analytics workspace with a .NET backend and a fresh React frontend scaffold. The backend collects football fixtures, results, match statistics, and builds team strength ratings with a transparent Base Elo model.
 
 The project started as a Python LiveScore data sync experiment and is now being rebuilt as a structured ASP.NET Core API that can support a larger Football Team Strength Rating system.
 
@@ -8,11 +8,22 @@ Repository: `pudelosha/football-rating-engine`
 
 ---
 
+## Repository Layout
+
+```text
+backend/   ASP.NET Core API, EF Core migrations, tests, Postman collection
+frontend/  React + TypeScript + Vite starter workspace
+```
+
+The frontend is intentionally only scaffolded for now. Product screens, routing, authentication, and API integration will be added in a later frontend phase.
+
+---
+
 ## Overview
 
 The backend syncs football competition data from LiveScore, stores it in SQL Server, tracks fixture/result changes over time, enriches finished matches with statistics, imports squad market-value data, and calculates Premier League Base Elo ratings from historical match data.
 
-The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Rating**, **FTSR v2: Performance Rating**, and **Squad Quality**. Base Elo uses historical Premier League matches, starts teams from configurable baseline values, handles promoted or returning teams, and stores match-by-match Elo snapshots. Form Rating adds a short-term adjustment based on recent overperformance or underperformance against Elo expectation. Performance Rating evaluates match quality from xG, shots, possession, attacking territory, offsides, fouls, and goalkeeper pressure. Squad Quality imports Transfermarkt squad snapshots and estimates squad strength from market value distribution and roster metadata.
+The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Rating**, **FTSR v2: Performance Rating**, **Squad Quality**, and **FTSR v3.5: Combined Team Rating**. Base Elo uses historical Premier League matches, starts teams from configurable baseline values, handles promoted or returning teams, and stores match-by-match Elo snapshots. Form Rating adds a short-term adjustment based on recent overperformance or underperformance against Elo expectation. Performance Rating evaluates match quality from xG, shots, possession, attacking territory, offsides, fouls, and goalkeeper pressure. Squad Quality imports Transfermarkt squad snapshots and estimates squad strength from market value distribution and roster metadata. Combined Team Rating exposes a read model that brings the latest compatible components together.
 
 ---
 
@@ -27,6 +38,7 @@ The first rating modules focus on **FTSR v1: Base Elo**, **FTSR v1.5: Form Ratin
 - Form Rating rebuild endpoint based on the latest successful Base Elo run
 - Performance Rating rebuild endpoint based on match statistics
 - Transfermarkt team mapping and Squad Quality snapshot import
+- Combined Team Rating endpoint for final FTSR ranking
 - Historical Premier League match import from LiveScore team details
 - Match-by-match Elo snapshots for explainable rating changes
 - JWT authentication, API key access, and role-based authorization
@@ -272,6 +284,22 @@ squad_quality_adjustment = clamp(relative_squad_quality_score * 70, -70, +70)
 
 ---
 
+## Combined Rating Model
+
+Combined Team Rating is a read model that uses the latest successful Base Elo run and only combines Form and Performance adjustments that were calculated from that same Elo run. Squad Quality uses each team's latest Transfermarkt snapshot.
+
+```text
+final_rating =
+base_elo
++ form_adjustment
++ performance_adjustment
++ squad_quality_adjustment
+```
+
+The endpoint also returns `ratingConfidence`, based on whether recent form, performance-stat coverage, and squad data are present.
+
+---
+
 ## Important Endpoints
 
 Create a tournament from a LiveScore URL:
@@ -332,6 +360,12 @@ GET /api/squad-quality/snapshots/{snapshotId}/players
 GET /api/tournaments/{tournamentId}/ratings/squad-quality/teams
 ```
 
+Read Combined Rating:
+
+```http
+GET /api/tournaments/{tournamentId}/ratings/combined/teams
+```
+
 Authentication:
 
 ```http
@@ -370,6 +404,7 @@ Base Elo, Form Rating, and Performance Rating recalculation are currently manual
 ### Prerequisites
 
 - .NET 10 SDK
+- Node.js 22+ for the frontend workspace
 - SQL Server for persistent hosted/local storage
 - Optional: `dotnet-ef` for manual migration management
 
@@ -380,6 +415,7 @@ The project can run in development without a connection string by using an in-me
 ```powershell
 git clone https://github.com/pudelosha/football-rating-engine.git
 cd football-rating-engine
+cd backend
 dotnet restore
 dotnet run --project src/FootballResults.Api
 ```
@@ -394,8 +430,19 @@ http://localhost:5165
 ### Run Tests
 
 ```powershell
+cd backend
 dotnet test
 ```
+
+### Frontend Scaffold
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The current frontend is a clean React starter and does not call the backend yet.
 
 ---
 
@@ -441,12 +488,14 @@ The application applies EF Core migrations automatically on startup when using a
 Manual migration command:
 
 ```powershell
+cd backend
 dotnet ef database update --project src/FootballResults.Api --startup-project src/FootballResults.Api
 ```
 
 Create a migration:
 
 ```powershell
+cd backend
 dotnet ef migrations add MigrationName --project src/FootballResults.Api --startup-project src/FootballResults.Api
 ```
 

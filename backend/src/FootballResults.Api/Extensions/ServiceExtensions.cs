@@ -40,6 +40,7 @@ public static class ServiceExtensions
         services.AddScoped<IFormRatingService, FormRatingService>();
         services.AddScoped<IPerformanceRatingService, PerformanceRatingService>();
         services.AddScoped<ISquadQualityService, SquadQualityService>();
+        services.AddScoped<ICombinedRatingService, CombinedRatingService>();
         services.AddScoped<IApiKeyService, ApiKeyService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IAuthService, AuthService>();
