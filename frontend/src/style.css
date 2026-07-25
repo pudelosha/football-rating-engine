@@ -62,8 +62,7 @@ button {
   gap: 24px;
   padding: 10px max(24px, calc((100vw - 1160px) / 2));
   color: #f7f2e7;
-  background: rgba(18, 24, 20, 0.78);
-  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.18);
+  background: rgba(35, 43, 37, 0.72);
   backdrop-filter: blur(24px) saturate(150%);
   -webkit-backdrop-filter: blur(24px) saturate(150%);
 }
@@ -99,11 +98,11 @@ button {
   height: 34px;
   flex: 0 0 auto;
   place-items: center;
-  color: #d8ff76;
-  border: 1px solid rgba(216, 255, 118, 0.44);
+  color: #b0d86b;
+  border: 1px solid rgba(176, 216, 107, 0.44);
   border-radius: 50%;
-  background: rgba(216, 255, 118, 0.08);
-  box-shadow: 0 0 0 5px rgba(216, 255, 118, 0.1);
+  background: rgba(176, 216, 107, 0.08);
+  box-shadow: 0 0 0 5px rgba(176, 216, 107, 0.1);
 }
 
 .brand-icon svg {
@@ -127,7 +126,7 @@ button {
   padding: 0 15px;
   color: #101915;
   border-radius: 8px;
-  background: #f0c15d;
+  background: #b0d86b;
   font-size: 14px;
   font-weight: 800;
   transition:
@@ -162,8 +161,8 @@ button {
 .language-options button:hover,
 .language-options button.active {
   color: #101915;
-  border-color: rgba(216, 255, 118, 0.7);
-  background: #d8ff76;
+  border-color: rgba(176, 216, 107, 0.7);
+  background: #b0d86b;
 }
 
 .language-options {
@@ -308,8 +307,8 @@ p {
 
 .primary-action {
   color: #132018;
-  background: #d8ff76;
-  box-shadow: 0 16px 34px rgba(216, 255, 118, 0.18);
+  background: #b0d86b;
+  box-shadow: 0 16px 34px rgba(176, 216, 107, 0.18);
 }
 
 .secondary-action {
@@ -427,7 +426,7 @@ p {
   place-items: center;
   color: #102019;
   border-radius: 8px;
-  background: #d8ff76;
+  background: #b0d86b;
   font-size: 14px;
 }
 
@@ -515,7 +514,7 @@ p {
 }
 
 .rating-row strong {
-  color: #d8ff76;
+  color: #b0d86b;
   font-size: 32px;
 }
 
@@ -751,7 +750,7 @@ p {
 .back-link,
 .auth-switch button {
   padding: 0;
-  color: #d8ff76;
+  color: #b0d86b;
   background: transparent;
   font-size: 14px;
   font-weight: 850;
@@ -773,7 +772,13 @@ p {
   gap: 8px;
 }
 
-.form-field > span,
+.form-field > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+}
+
 .terms-row {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -813,7 +818,7 @@ p {
 
 .form-field input:focus {
   background: rgba(255, 255, 255, 0.11);
-  box-shadow: 0 0 0 4px rgba(216, 255, 118, 0.12);
+  box-shadow: 0 0 0 4px rgba(176, 216, 107, 0.14);
 }
 
 .form-field input[aria-invalid="true"] {
@@ -831,11 +836,11 @@ p {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
-  accent-color: #d8ff76;
+  accent-color: #b0d86b;
 }
 
 .terms-control a {
-  color: #d8ff76;
+  color: #b0d86b;
   font-weight: 900;
 }
 
@@ -843,7 +848,7 @@ p {
   min-height: 52px;
   color: #132018;
   border-radius: 8px;
-  background: #d8ff76;
+  background: #b0d86b;
   font-size: 15px;
   font-weight: 900;
   transition:
@@ -886,7 +891,7 @@ p {
 .auth-links button {
   justify-self: start;
   padding: 0;
-  color: rgba(216, 255, 118, 0.92);
+  color: #b0d86b;
   background: transparent;
   font-size: 14px;
   font-weight: 850;
@@ -912,9 +917,9 @@ p {
   display: inline-flex;
   margin-top: 18px;
   padding: 12px 14px;
-  color: #d8ff76;
+  color: #b0d86b;
   border-radius: 8px;
-  background: rgba(216, 255, 118, 0.1);
+  background: rgba(176, 216, 107, 0.1);
   font-size: 14px;
   font-weight: 850;
 }
