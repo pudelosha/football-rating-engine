@@ -14,6 +14,7 @@ type View =
   | 'terms'
   | 'home'
   | 'dashboard'
+  | 'admin'
   | 'profile'
 type ToastTone = 'success' | 'error' | 'info'
 
@@ -69,6 +70,7 @@ const routes: Record<View, string> = {
   terms: '/terms',
   home: '/home',
   dashboard: '/dashboard',
+  admin: '/admin',
   profile: '/profile',
 }
 
@@ -97,6 +99,27 @@ const translations = {
     menuPredictions: 'Predictions',
     menuAdmin: 'Admin',
     menuSoon: 'Soon',
+    adminPanelEyebrow: 'Admin panel',
+    adminPanelTitle: 'Operational control room.',
+    adminPanelCopy:
+      'A structured workspace for sync jobs, rating rebuilds, squad imports, and data quality checks. The controls are placeholders for now, ready to be wired to backend endpoints.',
+    adminOverview: 'Overview',
+    adminTournamentOps: 'Tournaments',
+    adminTournamentOpsCopy: 'Create new competitions, browse existing tournaments, and open the dedicated tournament administration panel for deeper setup and maintenance.',
+    adminCreateTournament: 'Create new tournament',
+    adminListTournaments: 'List tournaments',
+    adminTournamentsPanel: 'Tournaments panel',
+    adminRatingOps: 'Ratings',
+    adminRatingOpsCopy: 'Manage rating runs and rebuild Base Elo, form, performance, squad quality, and combined FTSR outputs for selected tournaments.',
+    adminSquadOps: 'Squads',
+    adminSquadOpsCopy: 'Manage squad sources, map teams to Transfermarkt, import player lists, and maintain squad quality snapshots for rating calculations.',
+    adminQualityOps: 'Data quality',
+    adminQualityOpsCopy: 'Review missing match statistics, stale squad snapshots, unfinished fixtures, and other data gaps before rating rebuilds run.',
+    adminUsersOps: 'Users and access',
+    adminUsersOpsCopy: 'Review users, account status, access level, lockouts, and future role-based visibility controls.',
+    adminSystemJobsOps: 'System jobs',
+    adminSystemJobsOpsCopy: 'Monitor scheduled sync services, intervals, recent runs, failures, and background processing health.',
+    adminPlaceholder: 'Not wired yet',
     backHome: 'Back to home',
     heroEyebrow: 'Football intelligence platform',
     heroTitle: 'Team ratings that explain themselves before kickoff.',
@@ -237,6 +260,27 @@ const translations = {
     menuPredictions: 'Predykcje',
     menuAdmin: 'Admin',
     menuSoon: 'Wkrótce',
+    adminPanelEyebrow: 'Panel administratora',
+    adminPanelTitle: 'Centrum operacyjne.',
+    adminPanelCopy:
+      'Strukturalny workspace dla sync jobów, rebuildów ratingów, importów kadr i kontroli jakości danych. Kontrolki są na razie placeholderami gotowymi do podpięcia pod backend.',
+    adminOverview: 'Przegląd',
+    adminTournamentOps: 'Turnieje',
+    adminTournamentOpsCopy: 'Twórz nowe rozgrywki, przeglądaj istniejące turnieje i otwieraj dedykowany panel administracji turniejami do konfiguracji oraz utrzymania.',
+    adminCreateTournament: 'Utwórz nowy turniej',
+    adminListTournaments: 'Lista turniejów',
+    adminTournamentsPanel: 'Panel turniejów',
+    adminRatingOps: 'Ratingi',
+    adminRatingOpsCopy: 'Zarządzaj rating runami i przeliczaj Base Elo, formę, performance, jakość kadry oraz łączny FTSR dla wybranych turniejów.',
+    adminSquadOps: 'Kadry',
+    adminSquadOpsCopy: 'Zarządzaj źródłami kadr, mapuj drużyny do Transfermarkt, importuj listy zawodników i utrzymuj snapshoty jakości kadr dla ratingów.',
+    adminQualityOps: 'Jakość danych',
+    adminQualityOpsCopy: 'Sprawdzaj brakujące statystyki meczowe, stare snapshoty kadr, niezakończone fixtures i inne luki danych przed rebuildami ratingów.',
+    adminUsersOps: 'Użytkownicy i dostęp',
+    adminUsersOpsCopy: 'Przeglądaj użytkowników, status kont, poziom dostępu, blokady i przyszłe ustawienia widoczności według ról.',
+    adminSystemJobsOps: 'System jobs',
+    adminSystemJobsOpsCopy: 'Monitoruj zaplanowane sync serwisy, interwały, ostatnie uruchomienia, błędy i zdrowie procesów w tle.',
+    adminPlaceholder: 'Jeszcze nie podpięte',
     backHome: 'Wroć na stronę główną',
     heroEyebrow: 'Platforma analityki piłkarskiej',
     heroTitle: 'Rating drużyn, który tłumaczy się przed pierwszym gwizdkiem.',
@@ -675,7 +719,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -873,6 +917,10 @@ function App() {
         />
       )}
 
+      {view === 'admin' && user && (
+        <AdminDashboard t={t} />
+      )}
+
       {view === 'profile' && user && (
         <SignedInPreview
           t={t}
@@ -944,7 +992,6 @@ function AppMenu({
     ['matches', t.menuMatches],
     ['tournaments', t.menuTournaments],
     ['predictions', t.menuPredictions],
-    ['admin', t.menuAdmin],
   ]
 
   return (
@@ -973,6 +1020,12 @@ function AppMenu({
               <small>{t.menuSoon}</small>
             </button>
           ))}
+          <button type="button" onClick={() => onNavigate('admin')}>
+            <span className="menu-label">
+              <MenuIcon name="admin" />
+              <span>{t.menuAdmin}</span>
+            </span>
+          </button>
         </nav>
         <div className="app-menu-bottom">
           <button type="button" onClick={() => onNavigate('profile')}>
@@ -1700,6 +1753,108 @@ function LoggedInDashboard({
               <span key={signal}>{signal}</span>
             ))}
           </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AdminDashboard({ t }: { t: (typeof translations)[Language] }) {
+  const [expandedPanel, setExpandedPanel] = useState<'tournaments' | null>(null)
+  const isTournamentsExpanded = expandedPanel === 'tournaments'
+  const overviewCards: Array<{
+    icon: MenuIconName
+    title: string
+    description: string
+    action?: () => void
+    active?: boolean
+  }> = [
+    {
+      icon: 'tournaments',
+      title: t.adminTournamentOps,
+      description: t.adminTournamentOpsCopy,
+      action: () => setExpandedPanel((current) => current === 'tournaments' ? null : 'tournaments'),
+      active: isTournamentsExpanded,
+    },
+    {
+      icon: 'ratings',
+      title: t.adminRatingOps,
+      description: t.adminRatingOpsCopy,
+    },
+    {
+      icon: 'teams',
+      title: t.adminSquadOps,
+      description: t.adminSquadOpsCopy,
+    },
+    {
+      icon: 'admin',
+      title: t.adminQualityOps,
+      description: t.adminQualityOpsCopy,
+    },
+    {
+      icon: 'profile',
+      title: t.adminUsersOps,
+      description: t.adminUsersOpsCopy,
+    },
+    {
+      icon: 'matches',
+      title: t.adminSystemJobsOps,
+      description: t.adminSystemJobsOpsCopy,
+    },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.adminPanelEyebrow}</p>
+          <h1>{t.adminPanelTitle}</h1>
+          <p>{t.adminPanelCopy}</p>
+        </div>
+
+        {isTournamentsExpanded && (
+          <div className="admin-expansion-panel">
+            <button type="button">
+              <MenuIcon name="tournaments" />
+              <span>{t.adminCreateTournament}</span>
+            </button>
+            <button type="button">
+              <MenuIcon name="matches" />
+              <span>{t.adminListTournaments}</span>
+            </button>
+            <button type="button">
+              <MenuIcon name="admin" />
+              <span>{t.adminTournamentsPanel}</span>
+            </button>
+          </div>
+        )}
+
+        <div className="admin-overview-grid">
+          {overviewCards.map((card) => {
+            const content = (
+              <>
+                <MenuIcon name={card.icon} />
+                <strong>{card.title}</strong>
+                <p>{card.description}</p>
+              </>
+            )
+
+            return card.action ? (
+              <button
+                className={`admin-overview-card action ${card.active ? 'active' : ''}`}
+                type="button"
+                aria-expanded={card.active}
+                key={card.title}
+                onClick={card.action}
+              >
+                {content}
+              </button>
+            ) : (
+              <article className="admin-overview-card clean" key={card.title}>
+                {content}
+              </article>
+            )
+          })}
         </div>
       </div>
     </section>

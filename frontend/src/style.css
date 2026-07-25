@@ -41,6 +41,10 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
 .app {
   min-height: 100vh;
   overflow: hidden;
@@ -1200,6 +1204,167 @@ p {
   font-weight: 820;
 }
 
+.admin-dashboard {
+  min-height: 100vh;
+  padding: 118px 32px 70px;
+  color: #fff9ea;
+  background:
+    linear-gradient(135deg, rgba(11, 18, 15, 0.96), rgba(18, 31, 24, 0.92) 52%, rgba(41, 22, 19, 0.94)),
+    #101915;
+}
+
+.admin-dashboard-content {
+  display: grid;
+  width: min(1160px, 100%);
+  gap: 22px;
+  margin: 0 auto;
+}
+
+.admin-dashboard-hero {
+  display: grid;
+  max-width: 760px;
+  gap: 14px;
+  padding-bottom: 8px;
+}
+
+.admin-dashboard-hero h1 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: clamp(44px, 6vw, 76px);
+  line-height: 0.96;
+}
+
+.admin-dashboard-hero p:not(.eyebrow) {
+  max-width: 700px;
+  margin: 0;
+  color: rgba(255, 249, 234, 0.7);
+  font-size: 17px;
+  line-height: 1.62;
+}
+
+.admin-overview-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-overview-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-overview-card {
+  display: grid;
+  gap: 12px;
+  min-height: 150px;
+  align-content: start;
+  padding: 20px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(35, 43, 37, 0.72);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.14);
+  text-align: left;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.admin-overview-card .menu-icon {
+  width: 28px;
+  height: 28px;
+  color: #b0d86b;
+  stroke-width: 1.7;
+}
+
+.admin-overview-card strong {
+  color: #fff9ea;
+  font-size: 17px;
+  line-height: 1.16;
+}
+
+.admin-overview-card p {
+  margin: 0;
+  color: rgba(255, 249, 234, 0.64);
+  font-size: 13px;
+  line-height: 1.48;
+}
+
+.admin-overview-card.action {
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.admin-overview-card.action:hover,
+.admin-overview-card.action.active {
+  background: rgba(45, 55, 48, 0.82);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+  transform: translateY(-2px);
+}
+
+.admin-overview-card small,
+.admin-expansion-panel small {
+  color: rgba(255, 249, 234, 0.48);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.admin-expansion-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: min(760px, 100%);
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(19, 30, 24, 0.9);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.18),
+    inset 0 0 0 1px rgba(176, 216, 107, 0.12);
+  animation: toast-in 180ms ease both;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.admin-expansion-panel::after {
+  position: absolute;
+  bottom: -8px;
+  left: 34px;
+  width: 16px;
+  height: 16px;
+  content: "";
+  background: rgba(19, 30, 24, 0.9);
+  transform: rotate(45deg);
+}
+
+.admin-expansion-panel button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  color: #fff9ea;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+  font-weight: 900;
+  text-align: left;
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.admin-expansion-panel button:hover {
+  color: #101915;
+  background: #b0d86b;
+  transform: translateY(-2px);
+}
+
 .dashboard-panel {
   width: min(820px, 100%);
   text-align: left;
@@ -1427,7 +1592,8 @@ p {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dashboard-signal-panel div {
+  .dashboard-signal-panel div,
+  .admin-expansion-panel {
     grid-template-columns: 1fr;
   }
 
@@ -1494,6 +1660,14 @@ p {
     padding: 104px 14px 46px;
   }
 
+  .admin-dashboard {
+    padding: 104px 14px 48px;
+  }
+
+  .admin-dashboard-hero h1 {
+    font-size: 40px;
+  }
+
   .dashboard-hero {
     padding-top: 18px;
   }
@@ -1524,6 +1698,7 @@ p {
   .module-grid,
   .view-grid,
   .dashboard-card-grid,
+  .admin-overview-grid,
   .pipeline {
     grid-template-columns: 1fr;
   }
