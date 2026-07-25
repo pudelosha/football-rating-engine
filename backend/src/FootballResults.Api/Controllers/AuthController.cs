@@ -31,18 +31,18 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     [HttpPost("confirm-email")]
     [ProducesResponseType(typeof(AuthActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AuthActionResponse), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AuthActionResponse>> ConfirmEmail(string userId, string token)
+    public async Task<ActionResult<AuthActionResponse>> ConfirmEmail(string userId, string token, string? language = null)
     {
-        var response = await authService.ConfirmEmailAsync(userId, token);
+        var response = await authService.ConfirmEmailAsync(userId, token, language);
         return response.Success ? Ok(response) : BadRequest(response);
     }
 
     [HttpGet("confirm-email")]
     [ProducesResponseType(typeof(AuthActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AuthActionResponse), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AuthActionResponse>> ConfirmEmailFromLink(string userId, string token)
+    public async Task<ActionResult<AuthActionResponse>> ConfirmEmailFromLink(string userId, string token, string? language = null)
     {
-        var response = await authService.ConfirmEmailAsync(userId, token);
+        var response = await authService.ConfirmEmailAsync(userId, token, language);
         return response.Success ? Ok(response) : BadRequest(response);
     }
 

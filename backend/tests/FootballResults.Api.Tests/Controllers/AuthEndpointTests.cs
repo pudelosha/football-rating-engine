@@ -23,6 +23,7 @@ public sealed class AuthEndpointTests
         Assert.True(registerResponse!.Success);
         Assert.StartsWith("fr_", registerResponse.ApiKey);
 
+        await factory.ConfirmUserEmailAsync(email);
         var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, FootballResultsApiFactory.UserPassword));
         var loginResponse = await login.Content.ReadFromJsonAsync<LoginResponse>();
 
@@ -45,6 +46,21 @@ public sealed class AuthEndpointTests
     }
 
     [Fact]
+    public async Task Register_WithPolishLanguage_ReturnsPolishValidationMessage()
+    {
+        await using var factory = new FootballResultsApiFactory();
+        var client = factory.CreateClient();
+        var email = $"duplicate-pl-{Guid.NewGuid():N}@example.com";
+
+        await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(email, FootballResultsApiFactory.UserPassword, Language: "pl"));
+        var duplicate = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(email, FootballResultsApiFactory.UserPassword, Language: "pl"));
+        var body = await duplicate.Content.ReadFromJsonAsync<RegisterResponse>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, duplicate.StatusCode);
+        Assert.Contains("Użytkownik", body!.Message);
+    }
+
+    [Fact]
     public async Task Login_WithBadPassword_ReturnsUnauthorized()
     {
         await using var factory = new FootballResultsApiFactory();
@@ -52,6 +68,7 @@ public sealed class AuthEndpointTests
         var email = $"bad-login-{Guid.NewGuid():N}@example.com";
 
         await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(email, FootballResultsApiFactory.UserPassword));
+        await factory.ConfirmUserEmailAsync(email);
         var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, "wrong-password"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
@@ -69,7 +86,9 @@ public sealed class AuthEndpointTests
         Assert.Equal("Test User", profile!.DisplayName);
 
         var update = await client.PutAsJsonAsync("/api/users/me", new UpdateUserProfileRequest("Updated User"));
-        Assert.Equal(HttpStatusCode.NoContent, update.StatusCode);
+        var updateResponse = await update.Content.ReadFromJsonAsync<AuthActionResponse>();
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        Assert.True(updateResponse!.Success);
 
         var rotate = await client.PostAsync("/api/users/me/rotate-api-key", null);
         var rotated = await rotate.Content.ReadFromJsonAsync<RotateApiKeyResponse>();
@@ -86,7 +105,9 @@ public sealed class AuthEndpointTests
         var (client, _) = await factory.CreateUserClientAsync(email);
 
         var change = await client.PostAsJsonAsync("/api/users/me/change-password", new ChangePasswordRequest(FootballResultsApiFactory.UserPassword, "NewPassword123!"));
-        Assert.Equal(HttpStatusCode.NoContent, change.StatusCode);
+        var changeResponse = await change.Content.ReadFromJsonAsync<AuthActionResponse>();
+        Assert.Equal(HttpStatusCode.OK, change.StatusCode);
+        Assert.True(changeResponse!.Success);
 
         var login = await factory.CreateClient().PostAsJsonAsync("/api/auth/login", new LoginRequest(email, "NewPassword123!"));
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
@@ -99,6 +120,7 @@ public sealed class AuthEndpointTests
         var client = factory.CreateClient();
         var email = $"reset-{Guid.NewGuid():N}@example.com";
         await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(email, FootballResultsApiFactory.UserPassword));
+        await factory.ConfirmUserEmailAsync(email);
 
         var forgot = await client.PostAsJsonAsync("/api/auth/forgot-password", new ForgotPasswordRequest(email));
         var forgotResponse = await forgot.Content.ReadFromJsonAsync<ForgotPasswordResponse>();

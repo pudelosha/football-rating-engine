@@ -11,46 +11,56 @@ public sealed class EmailService(
     ILogger<EmailService> logger,
     UserManager<ApplicationUser> userManager) : IEmailService
 {
-    public async Task SendConfirmationEmailAsync(ApplicationUser user)
+    public async Task SendConfirmationEmailAsync(ApplicationUser user, string? language)
     {
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             return;
         }
 
+        var lang = AuthText.Language(language);
+        var copy = ConfirmationCopy(lang);
         var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
         var encodedToken = IdentityTokenUrlDecoder.Encode(token);
-        var confirmationLink = BuildBackendUrl($"/api/auth/confirm-email?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(encodedToken)}");
+        var confirmationLink = BuildFrontendUrl(
+            $"/confirm-email?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(encodedToken)}&language={lang}");
 
         await SendEmailAsync(
             user.Email,
-            "Confirm your account",
+            copy.Subject,
             BuildEmailBody(
-                "Confirm your account",
-                "Thanks for registering. Confirm your email address to activate your account.",
-                "Confirm Account",
+                copy.Title,
+                copy.Body,
+                copy.ActionText,
                 confirmationLink,
-                "If you did not register, you can ignore this email."));
+                copy.SecondaryText,
+                copy.FallbackText,
+                lang));
     }
 
-    public async Task SendPasswordResetEmailAsync(ApplicationUser user, string encodedToken)
+    public async Task SendPasswordResetEmailAsync(ApplicationUser user, string encodedToken, string? language)
     {
         if (string.IsNullOrWhiteSpace(user.Email))
         {
             return;
         }
 
-        var resetLink = BuildFrontendUrl($"/reset-password?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(encodedToken)}");
+        var lang = AuthText.Language(language);
+        var copy = PasswordResetCopy(lang);
+        var resetLink = BuildFrontendUrl(
+            $"/reset-password?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(encodedToken)}&language={lang}");
 
         await SendEmailAsync(
             user.Email,
-            "Reset your password",
+            copy.Subject,
             BuildEmailBody(
-                "Reset your password",
-                "Use the button below to set a new password for your account.",
-                "Reset Password",
+                copy.Title,
+                copy.Body,
+                copy.ActionText,
                 resetLink,
-                "If you did not request a password reset, you can ignore this email."));
+                copy.SecondaryText,
+                copy.FallbackText,
+                lang));
     }
 
     private async Task SendEmailAsync(string to, string subject, string body)
@@ -112,28 +122,10 @@ public sealed class EmailService(
 
         if (string.IsNullOrWhiteSpace(frontendBaseUrl))
         {
-            frontendBaseUrl = "https://app.betsoffriends.com";
+            frontendBaseUrl = "https://football-rating-engine.com";
         }
 
         return $"{frontendBaseUrl.TrimEnd('/')}/{route.TrimStart('/')}";
-    }
-
-    private string BuildBackendUrl(string route)
-    {
-        var backendBaseUrl = configuration["App:BackendBaseUrl"];
-        if (string.IsNullOrWhiteSpace(backendBaseUrl))
-        {
-            backendBaseUrl = configuration["ASPNETCORE_ENVIRONMENT"] == "Development"
-                ? configuration["App:BackendBaseUrlDev"]
-                : configuration["App:BackendBaseUrlProd"];
-        }
-
-        if (string.IsNullOrWhiteSpace(backendBaseUrl))
-        {
-            backendBaseUrl = "https://api.betsoffriends.com";
-        }
-
-        return $"{backendBaseUrl.TrimEnd('/')}/{route.TrimStart('/')}";
     }
 
     private static string BuildEmailBody(
@@ -141,17 +133,21 @@ public sealed class EmailService(
         string body,
         string actionText,
         string actionLink,
-        string secondaryText)
+        string secondaryText,
+        string fallbackText,
+        string language)
     {
         var encodedTitle = WebUtility.HtmlEncode(title);
         var encodedBody = WebUtility.HtmlEncode(body);
         var encodedActionText = WebUtility.HtmlEncode(actionText);
         var encodedActionLink = WebUtility.HtmlEncode(actionLink);
         var encodedSecondaryText = WebUtility.HtmlEncode(secondaryText);
+        var encodedFallbackText = WebUtility.HtmlEncode(fallbackText);
+        var encodedLanguage = WebUtility.HtmlEncode(language);
 
         return $$"""
             <!doctype html>
-            <html lang="en">
+            <html lang="{{encodedLanguage}}">
             <body style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,sans-serif;color:#172033;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f7fb;padding:32px 12px;">
                 <tr>
@@ -164,7 +160,7 @@ public sealed class EmailService(
                           <a href="{{encodedActionLink}}" style="display:inline-block;background:#172033;color:#ffffff;text-decoration:none;border-radius:6px;padding:12px 18px;font-weight:bold;">{{encodedActionText}}</a>
                         </p>
                         <p style="font-size:13px;line-height:1.55;color:#5d6678;margin:0 0 12px;">{{encodedSecondaryText}}</p>
-                        <p style="font-size:12px;line-height:1.55;color:#6f7788;margin:0;">If the button does not work, open this link:<br><a href="{{encodedActionLink}}" style="color:#335cff;">{{encodedActionLink}}</a></p>
+                        <p style="font-size:12px;line-height:1.55;color:#6f7788;margin:0;">{{encodedFallbackText}}<br><a href="{{encodedActionLink}}" style="color:#335cff;">{{encodedActionLink}}</a></p>
                       </td></tr>
                     </table>
                   </td>
@@ -174,4 +170,50 @@ public sealed class EmailService(
             </html>
             """;
     }
+
+    private static EmailCopy ConfirmationCopy(string language)
+    {
+        return language == "pl"
+            ? new EmailCopy(
+                "Potwierdź konto",
+                "Potwierdź konto",
+                "Dziękujemy za rejestrację. Potwierdź adres email, aby aktywować konto.",
+                "Potwierdź konto",
+                "Jeśli to nie Ty zakładałeś konto, możesz zignorować tę wiadomość.",
+                "Jeśli przycisk nie działa, otwórz ten link:")
+            : new EmailCopy(
+                "Confirm your account",
+                "Confirm your account",
+                "Thanks for registering. Confirm your email address to activate your account.",
+                "Confirm Account",
+                "If you did not register, you can ignore this email.",
+                "If the button does not work, open this link:");
+    }
+
+    private static EmailCopy PasswordResetCopy(string language)
+    {
+        return language == "pl"
+            ? new EmailCopy(
+                "Zresetuj hasło",
+                "Zresetuj hasło",
+                "Użyj przycisku poniżej, aby ustawić nowe hasło do konta.",
+                "Resetuj hasło",
+                "Jeśli nie prosiłeś o reset hasła, możesz zignorować tę wiadomość.",
+                "Jeśli przycisk nie działa, otwórz ten link:")
+            : new EmailCopy(
+                "Reset your password",
+                "Reset your password",
+                "Use the button below to set a new password for your account.",
+                "Reset Password",
+                "If you did not request a password reset, you can ignore this email.",
+                "If the button does not work, open this link:");
+    }
+
+    private sealed record EmailCopy(
+        string Subject,
+        string Title,
+        string Body,
+        string ActionText,
+        string SecondaryText,
+        string FallbackText);
 }

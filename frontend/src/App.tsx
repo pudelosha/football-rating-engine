@@ -2,6 +2,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 type Language = 'en' | 'pl'
+type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'tournaments' | 'predictions' | 'admin' | 'profile' | 'logout'
 type View =
   | 'landing'
   | 'login'
@@ -11,7 +12,9 @@ type View =
   | 'confirm-email'
   | 'reset-password'
   | 'terms'
+  | 'home'
   | 'dashboard'
+  | 'profile'
 type ToastTone = 'success' | 'error' | 'info'
 
 type Toast = {
@@ -26,13 +29,29 @@ type AuthUser = {
   token: string
 }
 
-type FieldErrors = Partial<Record<'email' | 'password' | 'confirmPassword' | 'termsAccepted', string>>
+type FieldErrors = Partial<Record<'email' | 'password' | 'currentPassword' | 'confirmPassword' | 'termsAccepted', string>>
 
 type AuthResponse = {
   success: boolean
   message: string
   token?: string
   apiKey?: string
+}
+
+type AuthActionResponse = {
+  success: boolean
+  message: string
+}
+
+type UserProfile = {
+  email: string
+  displayName?: string | null
+  memberSinceUtc: string
+}
+
+type RotateApiKeyResponse = {
+  apiKey: string
+  message?: string
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -48,10 +67,16 @@ const routes: Record<View, string> = {
   'confirm-email': '/confirm-email',
   'reset-password': '/reset-password',
   terms: '/terms',
+  home: '/home',
   dashboard: '/dashboard',
+  profile: '/profile',
 }
 
 function getViewFromPath(pathname: string): View {
+  if (pathname === routes.dashboard) {
+    return 'home'
+  }
+
   const match = Object.entries(routes).find(([, route]) => route === pathname)
   return (match?.[0] as View | undefined) ?? 'landing'
 }
@@ -61,6 +86,17 @@ const translations = {
     brand: 'Football Rating Engine',
     loginRegister: 'Login / Register',
     logout: 'Logout',
+    profile: 'Profile',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
+    menuHome: 'Home',
+    menuRatings: 'Ratings',
+    menuTeams: 'Teams',
+    menuMatches: 'Matches',
+    menuTournaments: 'Tournaments',
+    menuPredictions: 'Predictions',
+    menuAdmin: 'Admin',
+    menuSoon: 'Soon',
     backHome: 'Back to home',
     heroEyebrow: 'Football intelligence platform',
     heroTitle: 'Team ratings that explain themselves before kickoff.',
@@ -126,6 +162,7 @@ const translations = {
     resetRequested: 'Password reset request sent',
     activationRequested: 'Activation email request sent',
     email: 'Email',
+    displayName: 'Display name',
     password: 'Password',
     confirmPassword: 'Confirm password',
     acceptTermsPrefix: 'I accept the',
@@ -145,18 +182,61 @@ const translations = {
     passwordMismatch: 'Passwords do not match',
     validationFailed: 'Please correct the highlighted fields',
     loginSuccess: 'Login successful.',
-    registerSuccess: 'Registration successful. You can log in now.',
+    registerSuccess: 'Registration successful. Check your email to activate the account.',
     logoutSuccess: 'You have been logged out.',
     genericError: 'Something went wrong. Please try again.',
     dashboardTitle: 'You are signed in.',
     dashboardCopy:
-      'This is the first logged-in state. Ratings dashboards, admin pages, and profile tools can now be added on top of the authenticated shell.',
+      'Manage your account and verify that authenticated backend calls are working.',
+    dashboardEyebrow: 'Command center',
+    dashboardHomeTitle: 'Good to have you back.',
+    dashboardHomeCopy:
+      'Your rating workspace is ready. Live data widgets will land here next; for now this dashboard frames the key areas of the product.',
+    dashboardProfileAction: 'Open profile',
+    dashboardCards: [
+      ['Combined Rating', 'FTSR', 'Base Elo, form, performance, and squad quality prepared as separate explainable layers.'],
+      ['Live Sync', 'Ready', 'Schedule, live, finalize, and results jobs can feed the match database behind this workspace.'],
+      ['Admin Flow', 'Next', 'Tournament sync, Transfermarkt mapping, rating rebuilds, and data checks will sit in the operator panel.'],
+    ],
+    dashboardSignalsTitle: 'Today at a glance',
+    dashboardSignals: ['Premier League model: active', 'Latest rating run: waiting for live data', 'Squad snapshots: mapped manually by admin'],
     authHint: 'Auth token stored locally for API calls.',
+    profileEyebrow: 'Account',
+    profileTitle: 'Account settings.',
+    profileCopy: 'Your profile, password, email, and API key actions are live against the backend.',
+    memberSince: 'Member since',
+    saveProfile: 'Save profile',
+    profileSaved: 'Profile updated',
+    changePasswordTitle: 'Change password',
+    currentPassword: 'Current password',
+    changePassword: 'Change password',
+    passwordChanged: 'Password changed',
+    changeEmailTitle: 'Change email',
+    newEmail: 'New email',
+    changeEmail: 'Change email',
+    emailChanged: 'Email changed',
+    rotateApiKeyTitle: 'API key',
+    rotateApiKey: 'Rotate API key',
+    newApiKey: 'New API key',
+    apiKeyRotated: 'API key rotated. Store it now; it will not be shown again.',
+    profileLoadFailed: 'Could not load profile.',
+    sessionExpired: 'Session expired. Please log in again.',
   },
   pl: {
     brand: 'Football Rating Engine',
     loginRegister: 'Logowanie / Rejestracja',
     logout: 'Wyloguj',
+    profile: 'Profil',
+    openMenu: 'Otwórz menu',
+    closeMenu: 'Zamknij menu',
+    menuHome: 'Home',
+    menuRatings: 'Ratingi',
+    menuTeams: 'Drużyny',
+    menuMatches: 'Mecze',
+    menuTournaments: 'Turnieje',
+    menuPredictions: 'Predykcje',
+    menuAdmin: 'Admin',
+    menuSoon: 'Wkrótce',
     backHome: 'Wroć na stronę główną',
     heroEyebrow: 'Platforma analityki piłkarskiej',
     heroTitle: 'Rating drużyn, który tłumaczy się przed pierwszym gwizdkiem.',
@@ -220,6 +300,7 @@ const translations = {
     resetRequested: 'Wysłano prośbę o reset hasła',
     activationRequested: 'Wysłano prośbę o email aktywacyjny',
     email: 'Email',
+    displayName: 'Nazwa wyświetlana',
     password: 'Hasło',
     confirmPassword: 'Powtórz hasło',
     acceptTermsPrefix: 'Akceptuję',
@@ -239,13 +320,45 @@ const translations = {
     passwordMismatch: 'Hasła nie są takie same',
     validationFailed: 'Popraw zaznaczone pola',
     loginSuccess: 'Logowanie zakończone sukcesem.',
-    registerSuccess: 'Rejestracja zakończona. Możesz się zalogować.',
+    registerSuccess: 'Rejestracja zakończona. Sprawdź email, aby aktywować konto.',
     logoutSuccess: 'Wylogowano.',
     genericError: 'Coś poszło nie tak. Spróbuj ponownie.',
     dashboardTitle: 'Jesteś zalogowany.',
     dashboardCopy:
-      'To pierwszy stan po zalogowaniu. Dashboardy ratingowe, panel admina i profil użytkownika można teraz budować na gotowej autoryzowanej powłoce.',
+      'Zarządzaj kontem i sprawdź, że autoryzowane zapytania do backendu działają.',
+    dashboardEyebrow: 'Centrum dowodzenia',
+    dashboardHomeTitle: 'Dobrze Cię widzieć.',
+    dashboardHomeCopy:
+      'Workspace ratingowy jest gotowy. Docelowe widgety z live data trafią tutaj później; na razie dashboard pokazuje główne obszary aplikacji.',
+    dashboardProfileAction: 'Otwórz profil',
+    dashboardCards: [
+      ['Rating łączny', 'FTSR', 'Base Elo, forma, performance i jakość kadry jako osobne, wyjaśnialne warstwy.'],
+      ['Live Sync', 'Gotowe', 'Schedule, live, finalize i results mogą zasilać bazę meczów za tym workspace.'],
+      ['Admin Flow', 'Next', 'Sync turniejów, mapowanie Transfermarkt, rebuild ratingów i kontrola danych trafią do panelu operatora.'],
+    ],
+    dashboardSignalsTitle: 'Szybki podgląd',
+    dashboardSignals: ['Model Premier League: aktywny', 'Ostatni rating run: oczekuje na live data', 'Snapshoty kadr: mapowane ręcznie przez admina'],
     authHint: 'Token autoryzacji zapisany lokalnie dla zapytań API.',
+    profileEyebrow: 'Konto',
+    profileTitle: 'Ustawienia konta.',
+    profileCopy: 'Profil, hasło, email i akcje API key działają bezpośrednio z backendem.',
+    memberSince: 'Data dołączenia',
+    saveProfile: 'Zapisz profil',
+    profileSaved: 'Profil zaktualizowany',
+    changePasswordTitle: 'Zmień hasło',
+    currentPassword: 'Aktualne hasło',
+    changePassword: 'Zmień hasło',
+    passwordChanged: 'Hasło zmienione',
+    changeEmailTitle: 'Zmień email',
+    newEmail: 'Nowy email',
+    changeEmail: 'Zmień email',
+    emailChanged: 'Email zmieniony',
+    rotateApiKeyTitle: 'API key',
+    rotateApiKey: 'Wygeneruj nowy API key',
+    newApiKey: 'Nowy API key',
+    apiKeyRotated: 'API key został zmieniony. Zapisz go teraz; nie będzie ponownie pokazany.',
+    profileLoadFailed: 'Nie udało się pobrać profilu.',
+    sessionExpired: 'Sesja wygasła. Zaloguj się ponownie.',
   },
 } as const
 
@@ -445,8 +558,8 @@ async function postAuth(path: string, body: object): Promise<AuthResponse> {
   }
 }
 
-async function confirmEmail(userId: string, token: string): Promise<AuthResponse> {
-  const params = new URLSearchParams({ userId, token })
+async function confirmEmail(userId: string, token: string, language: Language): Promise<AuthResponse> {
+  const params = new URLSearchParams({ userId, token, language })
   const requestKey = params.toString()
   const existingRequest = confirmEmailRequests.get(requestKey)
   if (existingRequest) {
@@ -474,12 +587,45 @@ async function confirmEmail(userId: string, token: string): Promise<AuthResponse
   return request
 }
 
-async function resetPassword(userId: string, token: string, newPassword: string): Promise<AuthResponse> {
+async function resetPassword(userId: string, token: string, newPassword: string, language: Language): Promise<AuthResponse> {
   return postAuth('/api/auth/reset-password', {
     userId,
     token,
     newPassword,
+    language,
   })
+}
+
+async function authorizedRequest<T>(
+  token: string,
+  path: string,
+  options: RequestInit = {},
+): Promise<{ ok: boolean; status: number; data?: T; message?: string }> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const hasBody = response.status !== 204
+  const data = hasBody ? await response.json().catch(() => null) : null
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      message: typeof data?.message === 'string' ? data.message : response.statusText,
+    }
+  }
+
+  return {
+    ok: true,
+    status: response.status,
+    data: data as T,
+  }
 }
 
 function validateEmail(email: string, t: (typeof translations)[Language]): string | undefined {
@@ -501,6 +647,7 @@ function validatePassword(password: string, t: (typeof translations)[Language]):
 function App() {
   const [language, setLanguage] = useState<Language>('en')
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
+  const [isAppMenuOpen, setIsAppMenuOpen] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [user, setUser] = useState<AuthUser | null>(() => {
     const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
@@ -512,18 +659,29 @@ function App() {
   const t = translations[language]
   const lists = useMemo(() => getLists(language), [language])
   const modules = useMemo(() => getModules(language), [language])
+  const queryLanguage = new URLSearchParams(location.search).get('language')
+  const requestLanguage: Language = queryLanguage === 'en' || queryLanguage === 'pl' ? queryLanguage : language
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    setIsAppMenuOpen(false)
   }, [location.pathname])
 
   useEffect(() => {
-    if (view === 'dashboard' && !user) {
+    const routeLanguage = new URLSearchParams(location.search).get('language')
+    if (routeLanguage === 'en' || routeLanguage === 'pl') {
+      setLanguage(routeLanguage)
+    }
+  }, [location.search])
+
+  useEffect(() => {
+    if ((view === 'home' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
 
   const navigate = (nextView: View) => {
+    setIsAppMenuOpen(false)
     navigateTo(routes[nextView])
   }
 
@@ -538,30 +696,44 @@ function App() {
   const handleLogout = () => {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     setUser(null)
-    navigate('landing')
+    setIsAppMenuOpen(false)
+    navigate('home')
     showToast(t.logoutSuccess, 'info')
   }
 
   const handleLoginSuccess = (nextUser: AuthUser) => {
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
     setUser(nextUser)
-    navigate('dashboard')
+    navigate('landing')
     showToast(t.loginSuccess, 'success')
   }
 
   return (
     <main className="app">
       <header className="site-header">
-        <button className="brand" type="button" onClick={() => navigate('landing')} aria-label={t.backHome}>
-          <FootballIcon />
-          <span>{t.brand}</span>
-        </button>
+        <div className="brand-shell">
+          <button
+            className="brand-menu-trigger"
+            type="button"
+            aria-label={user ? t.openMenu : t.backHome}
+            aria-expanded={user ? isAppMenuOpen : undefined}
+            onClick={() => {
+              if (!user) {
+                navigate('landing')
+                return
+              }
+
+              setIsAppMenuOpen((current) => !current)
+            }}
+          >
+            <FootballIcon />
+          </button>
+          <button className="brand-name" type="button" onClick={() => navigate('landing')}>
+            {t.brand}
+          </button>
+        </div>
         <div className="header-controls">
-          {user ? (
-            <button className="header-action" type="button" onClick={handleLogout}>
-              {t.logout}
-            </button>
-          ) : (
+          {!user && (
             <button className="header-action" type="button" onClick={() => navigate('login')}>
               {t.loginRegister}
             </button>
@@ -597,7 +769,17 @@ function App() {
         </div>
       </header>
 
-      {view === 'landing' && (
+      {user && (
+        <AppMenu
+          isOpen={isAppMenuOpen}
+          t={t}
+          onClose={() => setIsAppMenuOpen(false)}
+          onLogout={handleLogout}
+          onNavigate={navigate}
+        />
+      )}
+
+      {view === 'landing' && !user && (
         <LandingPage
           t={t}
           modules={modules}
@@ -606,10 +788,19 @@ function App() {
         />
       )}
 
+      {view === 'landing' && user && (
+        <LoggedInDashboard
+          t={t}
+          user={user}
+          onOpenProfile={() => navigate('profile')}
+        />
+      )}
+
       {view === 'login' && (
         <AuthPage
           key="login"
           mode="login"
+          language={requestLanguage}
           t={t}
           onSwitch={() => navigate('register')}
           onToast={showToast}
@@ -623,6 +814,7 @@ function App() {
         <AuthPage
           key="register"
           mode="register"
+          language={requestLanguage}
           t={t}
           onSwitch={() => navigate('login')}
           onToast={showToast}
@@ -634,6 +826,7 @@ function App() {
         <EmailActionPage
           key="forgot-password"
           mode="forgot-password"
+          language={language}
           t={t}
           onBackLogin={() => navigate('login')}
           onToast={showToast}
@@ -644,6 +837,7 @@ function App() {
         <EmailActionPage
           key="resend-activation"
           mode="resend-activation"
+          language={language}
           t={t}
           onBackLogin={() => navigate('login')}
           onToast={showToast}
@@ -653,6 +847,7 @@ function App() {
       {view === 'confirm-email' && (
         <ConfirmEmailPage
           t={t}
+          language={requestLanguage}
           search={location.search}
           onBackLogin={() => navigate('login')}
           onResendActivation={() => navigate('resend-activation')}
@@ -663,13 +858,30 @@ function App() {
       {view === 'reset-password' && (
         <ResetPasswordPage
           t={t}
+          language={requestLanguage}
           search={location.search}
           onBackLogin={() => navigate('login')}
           onToast={showToast}
         />
       )}
 
-      {view === 'dashboard' && user && <SignedInPreview t={t} user={user} />}
+      {view === 'home' && user && (
+        <LoggedInDashboard
+          t={t}
+          user={user}
+          onOpenProfile={() => navigate('profile')}
+        />
+      )}
+
+      {view === 'profile' && user && (
+        <SignedInPreview
+          t={t}
+          language={language}
+          user={user}
+          onSessionExpired={handleLogout}
+          onToast={showToast}
+        />
+      )}
 
       {view === 'terms' && <TermsPage t={t} />}
 
@@ -688,6 +900,96 @@ function FootballIcon() {
         <path d="m12 7.2.3-4.1M16.1 10l4-1.3M14.5 14.8l2.4 3.4M9.5 14.8l-2.4 3.4M7.9 10l-4-1.3" />
       </svg>
     </span>
+  )
+}
+
+function MenuIcon({ name }: { name: MenuIconName }) {
+  const paths: Record<MenuIconName, string[]> = {
+    home: ['M4 11.2 12 4l8 7.2', 'M6.8 10.2V20h10.4v-9.8', 'M10 20v-5h4v5'],
+    ratings: ['M5 19V9', 'M12 19V5', 'M19 19v-7', 'M4 19h16'],
+    teams: ['M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M3.8 19a4.2 4.2 0 0 1 8.4 0', 'M11.8 19a4.2 4.2 0 0 1 8.4 0'],
+    matches: ['M7 3v4', 'M17 3v4', 'M4 8h16', 'M5 5h14v15H5Z', 'M8 12h3', 'M13 12h3', 'M8 16h3'],
+    tournaments: ['M7 4h10v3a5 5 0 0 1-10 0Z', 'M9 19h6', 'M12 12v7', 'M5 5H3v2a3 3 0 0 0 4 2.8', 'M19 5h2v2a3 3 0 0 1-4 2.8'],
+    predictions: ['M4 17c4-8 12-8 16 0', 'M8 17c2.7-4.4 5.3-4.4 8 0', 'M12 17v-4', 'M12 4v3', 'M18 6l-2 2', 'M6 6l2 2'],
+    admin: ['M12 3l7 3v5c0 4.5-2.8 7.6-7 9-4.2-1.4-7-4.5-7-9V6Z', 'M9.5 12.2l1.7 1.7 3.4-4'],
+    profile: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M4.5 20a7.5 7.5 0 0 1 15 0'],
+    logout: ['M10 5H5v14h5', 'M14 8l4 4-4 4', 'M8 12h10'],
+  }
+
+  return (
+    <svg className="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name].map((path) => (
+        <path d={path} key={path} />
+      ))}
+    </svg>
+  )
+}
+
+function AppMenu({
+  isOpen,
+  t,
+  onClose,
+  onLogout,
+  onNavigate,
+}: {
+  isOpen: boolean
+  t: (typeof translations)[Language]
+  onClose: () => void
+  onLogout: () => void
+  onNavigate: (view: View) => void
+}) {
+  const futureItems: Array<[MenuIconName, string]> = [
+    ['ratings', t.menuRatings],
+    ['teams', t.menuTeams],
+    ['matches', t.menuMatches],
+    ['tournaments', t.menuTournaments],
+    ['predictions', t.menuPredictions],
+    ['admin', t.menuAdmin],
+  ]
+
+  return (
+    <>
+      <button
+        className={`app-menu-backdrop ${isOpen ? 'open' : ''}`}
+        type="button"
+        aria-label={t.closeMenu}
+        tabIndex={isOpen ? 0 : -1}
+        onClick={onClose}
+      />
+      <aside className={`app-menu ${isOpen ? 'open' : ''}`} aria-hidden={!isOpen}>
+        <nav className="app-menu-nav" aria-label={t.openMenu}>
+          <button type="button" onClick={() => onNavigate('home')}>
+            <span className="menu-label">
+              <MenuIcon name="home" />
+              <span>{t.menuHome}</span>
+            </span>
+          </button>
+          {futureItems.map(([icon, item]) => (
+            <button className="muted" type="button" disabled key={item}>
+              <span className="menu-label">
+                <MenuIcon name={icon} />
+                <span>{item}</span>
+              </span>
+              <small>{t.menuSoon}</small>
+            </button>
+          ))}
+        </nav>
+        <div className="app-menu-bottom">
+          <button type="button" onClick={() => onNavigate('profile')}>
+            <span className="menu-label">
+              <MenuIcon name="profile" />
+              <span>{t.profile}</span>
+            </span>
+          </button>
+          <button className="logout" type="button" onClick={onLogout}>
+            <span className="menu-label">
+              <MenuIcon name="logout" />
+              <span>{t.logout}</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }
 
@@ -860,6 +1162,7 @@ function LandingPage({
 
 function AuthPage({
   mode,
+  language,
   t,
   onSwitch,
   onToast,
@@ -868,6 +1171,7 @@ function AuthPage({
   onResendActivation,
 }: {
   mode: 'login' | 'register'
+  language: Language
   t: (typeof translations)[Language]
   onSwitch: () => void
   onToast: (message: string, tone: ToastTone) => void
@@ -924,7 +1228,7 @@ function AuthPage({
     setIsSubmitting(true)
     try {
       if (mode === 'login') {
-        const result = await postAuth('/api/auth/login', { email, password })
+        const result = await postAuth('/api/auth/login', { email, password, language })
         if (!result.success || !result.token) {
           onToast(result.message || t.genericError, 'error')
           return
@@ -938,6 +1242,7 @@ function AuthPage({
         email,
         password,
         displayName: null,
+        language,
       })
       if (!result.success) {
         onToast(result.message || t.genericError, 'error')
@@ -1029,11 +1334,13 @@ function AuthPage({
 
 function EmailActionPage({
   mode,
+  language,
   t,
   onBackLogin,
   onToast,
 }: {
   mode: 'forgot-password' | 'resend-activation'
+  language: Language
   t: (typeof translations)[Language]
   onBackLogin: () => void
   onToast: (message: string, tone: ToastTone) => void
@@ -1057,7 +1364,7 @@ function EmailActionPage({
     try {
       const result = await postAuth(
         isForgotPassword ? '/api/auth/request-password-reset' : '/api/auth/resend-confirmation-email',
-        { email },
+        { email, language },
       )
 
       if (!result.success) {
@@ -1109,12 +1416,14 @@ function EmailActionPage({
 
 function ConfirmEmailPage({
   t,
+  language,
   search,
   onBackLogin,
   onResendActivation,
   onToast,
 }: {
   t: (typeof translations)[Language]
+  language: Language
   search: string
   onBackLogin: () => void
   onResendActivation: () => void
@@ -1141,7 +1450,7 @@ function ConfirmEmailPage({
       return
     }
 
-    confirmEmail(userId, token)
+    confirmEmail(userId, token, language)
       .then((result) => {
         if (result.success) {
           setStatus('success')
@@ -1159,7 +1468,7 @@ function ConfirmEmailPage({
         setMessage(t.genericError)
         onToast(t.genericError, 'error')
       })
-  }, [onToast, search, t])
+  }, [language, onToast, search, t])
 
   const isLoading = status === 'loading'
   const isSuccess = status === 'success'
@@ -1203,11 +1512,13 @@ function ConfirmEmailPage({
 
 function ResetPasswordPage({
   t,
+  language,
   search,
   onBackLogin,
   onToast,
 }: {
   t: (typeof translations)[Language]
+  language: Language
   search: string
   onBackLogin: () => void
   onToast: (message: string, tone: ToastTone) => void
@@ -1262,7 +1573,7 @@ function ResetPasswordPage({
 
     setIsSubmitting(true)
     try {
-      const result = await resetPassword(userId, token, password)
+      const result = await resetPassword(userId, token, password, language)
 
       if (!result.success) {
         onToast(result.message || t.genericError, 'error')
@@ -1344,14 +1655,355 @@ function FormField({
   )
 }
 
-function SignedInPreview({ t, user }: { t: (typeof translations)[Language]; user: AuthUser }) {
+function LoggedInDashboard({
+  t,
+  user,
+  onOpenProfile,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onOpenProfile: () => void
+}) {
+  const displayName = user.displayName || user.email.split('@')[0]
+
+  return (
+    <section className="home-dashboard">
+      <HeroField />
+      <div className="hero-shade" />
+      <div className="home-dashboard-content">
+        <div className="dashboard-hero">
+          <p className="eyebrow">{t.dashboardEyebrow}</p>
+          <h1>{t.dashboardHomeTitle}</h1>
+          <p>{t.dashboardHomeCopy}</p>
+          <div className="dashboard-user-strip">
+            <span>{displayName}</span>
+            <button className="form-submit compact" type="button" onClick={onOpenProfile}>
+              {t.dashboardProfileAction}
+            </button>
+          </div>
+        </div>
+
+        <div className="dashboard-card-grid">
+          {t.dashboardCards.map(([title, value, description]) => (
+            <article className="dashboard-card" key={title}>
+              <span>{value}</span>
+              <h2>{title}</h2>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="dashboard-signal-panel">
+          <h2>{t.dashboardSignalsTitle}</h2>
+          <div>
+            {t.dashboardSignals.map((signal) => (
+              <span key={signal}>{signal}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SignedInPreview({
+  t,
+  language,
+  user,
+  onSessionExpired,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  language: Language
+  user: AuthUser
+  onSessionExpired: () => void
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [displayName, setDisplayName] = useState(user.displayName ?? '')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [newEmail, setNewEmail] = useState(user.email)
+  const [emailPassword, setEmailPassword] = useState('')
+  const [newApiKey, setNewApiKey] = useState('')
+  const [errors, setErrors] = useState<FieldErrors>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    authorizedRequest<UserProfile>(user.token, '/api/users/me')
+      .then((result) => {
+        if (!isMounted) {
+          return
+        }
+
+        if (result.status === 401) {
+          onToast(t.sessionExpired, 'error')
+          onSessionExpired()
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.profileLoadFailed, 'error')
+          return
+        }
+
+        setProfile(result.data)
+        setDisplayName(result.data.displayName ?? '')
+        setNewEmail(result.data.email)
+      })
+      .catch(() => {
+        if (isMounted) {
+          onToast(t.profileLoadFailed, 'error')
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [onSessionExpired, onToast, t, user.token])
+
+  const handleUnauthorized = (status: number) => {
+    if (status === 401) {
+      onToast(t.sessionExpired, 'error')
+      onSessionExpired()
+      return true
+    }
+
+    return false
+  }
+
+  const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsSubmitting('profile')
+    try {
+      const result = await authorizedRequest<AuthActionResponse>(user.token, '/api/users/me', {
+        method: 'PUT',
+        body: JSON.stringify({ displayName: displayName.trim() || null, language }),
+      })
+
+      if (handleUnauthorized(result.status)) {
+        return
+      }
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setProfile((current) => current ? { ...current, displayName: displayName.trim() || null } : current)
+      onToast(result.data?.message || t.profileSaved, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSubmitting(null)
+    }
+  }
+
+  const changePassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nextErrors: FieldErrors = {
+      password: validatePassword(newPassword, t),
+    }
+
+    if (!currentPassword) {
+      nextErrors.currentPassword = t.required
+    } else if (!confirmNewPassword) {
+      nextErrors.confirmPassword = t.required
+    } else if (newPassword !== confirmNewPassword) {
+      nextErrors.confirmPassword = t.passwordMismatch
+    }
+
+    Object.keys(nextErrors).forEach((key) => {
+      if (!nextErrors[key as keyof FieldErrors]) {
+        delete nextErrors[key as keyof FieldErrors]
+      }
+    })
+
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsSubmitting('password')
+    try {
+      const result = await authorizedRequest<AuthActionResponse>(user.token, '/api/users/me/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword, language }),
+      })
+
+      if (handleUnauthorized(result.status)) {
+        return
+      }
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+      setErrors({})
+      onToast(result.data?.message || t.passwordChanged, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSubmitting(null)
+    }
+  }
+
+  const changeEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const emailError = validateEmail(newEmail, t)
+    if (emailError || !emailPassword) {
+      setErrors({ email: emailError, password: emailPassword ? undefined : t.required })
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsSubmitting('email')
+    try {
+      const result = await authorizedRequest<AuthActionResponse>(user.token, '/api/users/me/change-email', {
+        method: 'POST',
+        body: JSON.stringify({ newEmail, password: emailPassword, language }),
+      })
+
+      if (handleUnauthorized(result.status)) {
+        return
+      }
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setProfile((current) => current ? { ...current, email: newEmail } : current)
+      setEmailPassword('')
+      setErrors({})
+      onToast(result.data?.message || t.emailChanged, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSubmitting(null)
+    }
+  }
+
+  const rotateApiKey = async () => {
+    setIsSubmitting('apiKey')
+    try {
+      const params = new URLSearchParams({ language })
+      const result = await authorizedRequest<RotateApiKeyResponse>(user.token, `/api/users/me/rotate-api-key?${params}`, {
+        method: 'POST',
+      })
+
+      if (handleUnauthorized(result.status)) {
+        return
+      }
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setNewApiKey(result.data.apiKey)
+      onToast(result.data.message || t.apiKeyRotated, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSubmitting(null)
+    }
+  }
+
   return (
     <section className="dashboard-section">
       <div className="dashboard-panel">
-        <p className="eyebrow">{user.email}</p>
-        <h1>{t.dashboardTitle}</h1>
-        <p>{t.dashboardCopy}</p>
-        <div className="auth-token-note">{t.authHint}</div>
+        <p className="eyebrow">{t.profileEyebrow}</p>
+        <h1>{t.profileTitle}</h1>
+        <p>{t.profileCopy}</p>
+        <div className="profile-summary">
+          <span>{profile?.email ?? user.email}</span>
+          <small>{isLoading ? '...' : `${t.memberSince}: ${profile ? new Date(profile.memberSinceUtc).toLocaleDateString() : '-'}`}</small>
+        </div>
+        <form className="auth-form account-form" noValidate onSubmit={saveProfile}>
+          <FormField
+            label={t.displayName ?? 'Display name'}
+            type="text"
+            value={displayName}
+            onChange={setDisplayName}
+          />
+          <button className="form-submit" type="submit" disabled={isSubmitting === 'profile'}>
+            {isSubmitting === 'profile' ? '...' : t.saveProfile}
+          </button>
+        </form>
+        <form className="auth-form account-form" noValidate onSubmit={changePassword}>
+          <h2>{t.changePasswordTitle}</h2>
+          <FormField
+            error={errors.currentPassword}
+            label={t.currentPassword}
+            type="password"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+          />
+          <FormField
+            error={errors.password}
+            label={t.newPassword}
+            type="password"
+            value={newPassword}
+            onChange={setNewPassword}
+          />
+          <FormField
+            error={errors.confirmPassword}
+            label={t.confirmNewPassword}
+            type="password"
+            value={confirmNewPassword}
+            onChange={setConfirmNewPassword}
+          />
+          <button className="form-submit" type="submit" disabled={isSubmitting === 'password'}>
+            {isSubmitting === 'password' ? '...' : t.changePassword}
+          </button>
+        </form>
+        <form className="auth-form account-form" noValidate onSubmit={changeEmail}>
+          <h2>{t.changeEmailTitle}</h2>
+          <FormField
+            error={errors.email}
+            label={t.newEmail}
+            type="email"
+            value={newEmail}
+            onChange={setNewEmail}
+          />
+          <FormField
+            error={errors.password}
+            label={t.password}
+            type="password"
+            value={emailPassword}
+            onChange={setEmailPassword}
+          />
+          <button className="form-submit" type="submit" disabled={isSubmitting === 'email'}>
+            {isSubmitting === 'email' ? '...' : t.changeEmail}
+          </button>
+        </form>
+        <div className="account-form api-key-panel">
+          <h2>{t.rotateApiKeyTitle}</h2>
+          <button className="form-submit" type="button" disabled={isSubmitting === 'apiKey'} onClick={rotateApiKey}>
+            {isSubmitting === 'apiKey' ? '...' : t.rotateApiKey}
+          </button>
+          {newApiKey && (
+            <div className="auth-token-note">
+              <span>{t.newApiKey}</span>
+              <code>{newApiKey}</code>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   )

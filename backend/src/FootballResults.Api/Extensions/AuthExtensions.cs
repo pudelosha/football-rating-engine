@@ -19,6 +19,7 @@ public static class AuthExtensions
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
             options.User.RequireUniqueEmail = true;
+            options.SignIn.RequireConfirmedEmail = true;
             options.Password.RequiredLength = 8;
             options.Password.RequireDigit = false;
             options.Password.RequireLowercase = false;

@@ -23,7 +23,7 @@ public sealed class AuthService(
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
         {
-            return new RegisterResponse(false, "User with this email already exists.");
+            return new RegisterResponse(false, AuthText.Message("RegisterDuplicate", request.Language));
         }
 
         var apiKey = apiKeyService.GenerateApiKey();
@@ -40,13 +40,13 @@ public sealed class AuthService(
         var created = await userManager.CreateAsync(user, request.Password);
         if (!created.Succeeded)
         {
-            return new RegisterResponse(false, FormatIdentityErrors(created));
+            return new RegisterResponse(false, AuthText.IdentityErrors(created, request.Language));
         }
 
         await userManager.AddToRoleAsync(user, "User");
-        await TrySendConfirmationEmailAsync(user);
+        await TrySendConfirmationEmailAsync(user, request.Language);
 
-        return new RegisterResponse(true, "Registered successfully. Store this API key now because it will not be shown again.", apiKey);
+        return new RegisterResponse(true, AuthText.Message("RegisterSuccess", request.Language), apiKey);
     }
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
@@ -54,24 +54,29 @@ public sealed class AuthService(
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
         {
-            return new LoginResponse(false, "Invalid email or password.");
+            return new LoginResponse(false, AuthText.Message("LoginInvalid", request.Language));
         }
 
         var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-        if (!result.Succeeded)
+        if (result.IsNotAllowed)
         {
-            return new LoginResponse(false, "Invalid email or password.");
+            return new LoginResponse(false, AuthText.Message("LoginUnconfirmed", request.Language));
         }
 
-        return new LoginResponse(true, "Logged in successfully.", await CreateJwtAsync(user));
+        if (!result.Succeeded)
+        {
+            return new LoginResponse(false, AuthText.Message("LoginInvalid", request.Language));
+        }
+
+        return new LoginResponse(true, AuthText.Message("LoginSuccess", request.Language), await CreateJwtAsync(user));
     }
 
-    public async Task<AuthActionResponse> ConfirmEmailAsync(string userId, string token)
+    public async Task<AuthActionResponse> ConfirmEmailAsync(string userId, string token, string? language = null)
     {
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
         {
-            return new AuthActionResponse(false, "User was not found.");
+            return new AuthActionResponse(false, AuthText.Message("UserNotFound", language));
         }
 
         string decodedToken;
@@ -82,13 +87,13 @@ public sealed class AuthService(
         catch (FormatException exception)
         {
             logger.LogWarning(exception, "Invalid email confirmation token for user {UserId}.", userId);
-            return new AuthActionResponse(false, "Invalid confirmation token. Request a new confirmation email.");
+            return new AuthActionResponse(false, AuthText.Message("InvalidConfirmationToken", language));
         }
 
         var result = await userManager.ConfirmEmailAsync(user, decodedToken);
         return result.Succeeded
-            ? new AuthActionResponse(true, "Email confirmed.")
-            : new AuthActionResponse(false, FormatIdentityErrors(result));
+            ? new AuthActionResponse(true, AuthText.Message("EmailConfirmed", language))
+            : new AuthActionResponse(false, AuthText.IdentityErrors(result, language));
     }
 
     public async Task<AuthActionResponse> ResendConfirmationEmailAsync(ResendConfirmationEmailRequest request)
@@ -96,16 +101,16 @@ public sealed class AuthService(
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
         {
-            return new AuthActionResponse(true, "If the account exists and is not confirmed, a confirmation email will be sent.");
+            return new AuthActionResponse(true, AuthText.Message("ResendConfirmationSafe", request.Language));
         }
 
         if (await userManager.IsEmailConfirmedAsync(user))
         {
-            return new AuthActionResponse(true, "If the account exists and is not confirmed, a confirmation email will be sent.");
+            return new AuthActionResponse(true, AuthText.Message("ResendConfirmationSafe", request.Language));
         }
 
-        await TrySendConfirmationEmailAsync(user);
-        return new AuthActionResponse(true, "If the account exists and is not confirmed, a confirmation email will be sent.");
+        await TrySendConfirmationEmailAsync(user, request.Language);
+        return new AuthActionResponse(true, AuthText.Message("ResendConfirmationSafe", request.Language));
     }
 
     public async Task<ForgotPasswordResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
@@ -113,16 +118,16 @@ public sealed class AuthService(
         var user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
         {
-            return new ForgotPasswordResponse(true, "If the account exists, a reset token will be sent.");
+            return new ForgotPasswordResponse(true, AuthText.Message("ForgotPasswordSafe", request.Language));
         }
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
         var encodedToken = IdentityTokenUrlDecoder.Encode(token);
-        await TrySendPasswordResetEmailAsync(user, encodedToken);
+        await TrySendPasswordResetEmailAsync(user, encodedToken, request.Language);
 
         return environment.IsDevelopment()
-            ? new ForgotPasswordResponse(true, "Development reset token generated.", user.Id, encodedToken)
-            : new ForgotPasswordResponse(true, "If the account exists, a reset token will be sent.");
+            ? new ForgotPasswordResponse(true, AuthText.Message("DevelopmentResetToken", request.Language), user.Id, encodedToken)
+            : new ForgotPasswordResponse(true, AuthText.Message("ForgotPasswordSafe", request.Language));
     }
 
     public async Task<AuthActionResponse> ResetPasswordAsync(ResetPasswordRequest request)
@@ -130,7 +135,7 @@ public sealed class AuthService(
         var user = await userManager.FindByIdAsync(request.UserId);
         if (user is null)
         {
-            return new AuthActionResponse(false, "User was not found.");
+            return new AuthActionResponse(false, AuthText.Message("UserNotFound", request.Language));
         }
 
         string decodedToken;
@@ -141,13 +146,13 @@ public sealed class AuthService(
         catch (FormatException exception)
         {
             logger.LogWarning(exception, "Invalid password reset token for user {UserId}.", request.UserId);
-            return new AuthActionResponse(false, "Invalid password reset token. Request a new password reset email.");
+            return new AuthActionResponse(false, AuthText.Message("InvalidPasswordResetToken", request.Language));
         }
 
         var result = await userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
         return result.Succeeded
-            ? new AuthActionResponse(true, "Password reset successfully.")
-            : new AuthActionResponse(false, FormatIdentityErrors(result));
+            ? new AuthActionResponse(true, AuthText.Message("PasswordResetSuccess", request.Language))
+            : new AuthActionResponse(false, AuthText.IdentityErrors(result, request.Language));
     }
 
     private async Task<string> CreateJwtAsync(ApplicationUser user)
@@ -182,16 +187,11 @@ public sealed class AuthService(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static string FormatIdentityErrors(IdentityResult result)
-    {
-        return string.Join(" ", result.Errors.Select(error => error.Description));
-    }
-
-    private async Task TrySendConfirmationEmailAsync(ApplicationUser user)
+    private async Task TrySendConfirmationEmailAsync(ApplicationUser user, string? language)
     {
         try
         {
-            await emailService.SendConfirmationEmailAsync(user);
+            await emailService.SendConfirmationEmailAsync(user, language);
         }
         catch (Exception ex)
         {
@@ -199,11 +199,11 @@ public sealed class AuthService(
         }
     }
 
-    private async Task TrySendPasswordResetEmailAsync(ApplicationUser user, string encodedToken)
+    private async Task TrySendPasswordResetEmailAsync(ApplicationUser user, string encodedToken, string? language)
     {
         try
         {
-            await emailService.SendPasswordResetEmailAsync(user, encodedToken);
+            await emailService.SendPasswordResetEmailAsync(user, encodedToken, language);
         }
         catch (Exception ex)
         {

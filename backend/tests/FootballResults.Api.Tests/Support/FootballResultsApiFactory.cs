@@ -93,6 +93,7 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
         var client = CreateClient();
         var register = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(email, UserPassword, "Test User"));
         register.EnsureSuccessStatusCode();
+        await ConfirmUserEmailAsync(email);
 
         var registerResponse = await register.Content.ReadFromJsonAsync<RegisterResponse>();
         var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, UserPassword));
@@ -112,6 +113,15 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
 
         var response = await register.Content.ReadFromJsonAsync<RegisterResponse>();
         return response!.ApiKey!;
+    }
+
+    public async Task ConfirmUserEmailAsync(string email)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await dbContext.Users.FirstAsync(user => user.Email == email);
+        user.EmailConfirmed = true;
+        await dbContext.SaveChangesAsync();
     }
 
     public async Task<int> SeedTournamentAsync()

@@ -18,6 +18,20 @@ builder.Configuration.AddEnvironmentVariables();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendClient", policy =>
+    {
+        var origins = builder.Configuration.GetSection("App:AllowedOrigins").Get<string[]>()
+            ?? ["http://localhost:5173", "https://localhost:5173"];
+
+        policy
+            .WithOrigins(origins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services
     .AddDatabase(connectionString, builder.Environment, builder.Configuration)
     .AddFootballResultsAuth(builder.Configuration)
@@ -29,6 +43,8 @@ await app.ApplyDatabaseMigrationsAsync();
 await app.SeedIdentityAsync();
 
 app.UseHttpsRedirection();
+
+app.UseCors("FrontendClient");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -4,6 +4,6 @@ namespace FootballResults.Api.Repository.Interfaces;
 
 public interface IEmailService
 {
-    Task SendConfirmationEmailAsync(ApplicationUser user);
-    Task SendPasswordResetEmailAsync(ApplicationUser user, string encodedToken);
+    Task SendConfirmationEmailAsync(ApplicationUser user, string? language);
+    Task SendPasswordResetEmailAsync(ApplicationUser user, string encodedToken, string? language);
 }
