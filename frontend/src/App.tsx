@@ -15,6 +15,7 @@ type View =
   | 'home'
   | 'dashboard'
   | 'admin'
+  | 'admin-tournaments'
   | 'profile'
 type ToastTone = 'success' | 'error' | 'info'
 
@@ -55,6 +56,19 @@ type RotateApiKeyResponse = {
   message?: string
 }
 
+type TournamentSummary = {
+  id: number
+  name: string
+  competitionName: string
+  competitionCountry: string
+  createdAtUtc: string
+  updatedAtUtc: string
+  lastSyncedAtUtc?: string | null
+  stageCount: number
+  teamCount: number
+  matchCount: number
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const AUTH_STORAGE_KEY = 'football-rating-engine.auth'
 const confirmEmailRequests = new Map<string, Promise<AuthResponse>>()
@@ -71,6 +85,7 @@ const routes: Record<View, string> = {
   home: '/home',
   dashboard: '/dashboard',
   admin: '/admin',
+  'admin-tournaments': '/admin/tournaments',
   profile: '/profile',
 }
 
@@ -109,6 +124,33 @@ const translations = {
     adminCreateTournament: 'Create new tournament',
     adminListTournaments: 'List tournaments',
     adminTournamentsPanel: 'Tournaments panel',
+    tournamentsPanelEyebrow: 'Tournament administration',
+    tournamentsPanelTitle: 'Tournaments panel.',
+    tournamentsPanelCopy:
+      'Manage competitions defined in the app. Search the current tournament database, review sync coverage, and open edit or delete actions for each tournament.',
+    addTournament: 'Add new tournament',
+    tournamentSearch: 'Search tournaments',
+    tournamentSearchPlaceholder: 'Search by name, country, or competition',
+    tournamentFilterAll: 'All',
+    tournamentFilterSynced: 'Synced',
+    tournamentFilterNotSynced: 'Not synced',
+    tournamentName: 'Tournament',
+    tournamentSeason: 'Season',
+    tournamentCountry: 'Country',
+    tournamentTeams: 'Teams',
+    tournamentMatches: 'Matches',
+    tournamentLastSync: 'Last sync',
+    tournamentActions: 'Actions',
+    edit: 'Edit',
+    delete: 'Delete',
+    open: 'Open',
+    noTournaments: 'No tournaments found.',
+    neverSynced: 'Never synced',
+    tournamentLoadFailed: 'Could not load tournaments.',
+    tournamentDeleteSuccess: 'Tournament deleted.',
+    tournamentDeleteConfirm: 'Delete this tournament?',
+    addTournamentComingSoon: 'Create tournament flow will be connected next.',
+    editTournamentComingSoon: 'Edit tournament flow will be connected next.',
     adminRatingOps: 'Ratings',
     adminRatingOpsCopy: 'Manage rating runs and rebuild Base Elo, form, performance, squad quality, and combined FTSR outputs for selected tournaments.',
     adminSquadOps: 'Squads',
@@ -270,6 +312,33 @@ const translations = {
     adminCreateTournament: 'Utwórz nowy turniej',
     adminListTournaments: 'Lista turniejów',
     adminTournamentsPanel: 'Panel turniejów',
+    tournamentsPanelEyebrow: 'Administracja turniejami',
+    tournamentsPanelTitle: 'Panel turniejów.',
+    tournamentsPanelCopy:
+      'Zarządzaj rozgrywkami zdefiniowanymi w aplikacji. Przeszukuj bazę turniejów, sprawdzaj pokrycie sync i otwieraj akcje edycji lub usuwania dla każdego turnieju.',
+    addTournament: 'Dodaj nowy turniej',
+    tournamentSearch: 'Szukaj turniejów',
+    tournamentSearchPlaceholder: 'Szukaj po nazwie, kraju lub rozgrywkach',
+    tournamentFilterAll: 'Wszystkie',
+    tournamentFilterSynced: 'Zsynchronizowane',
+    tournamentFilterNotSynced: 'Bez synchronizacji',
+    tournamentName: 'Turniej',
+    tournamentSeason: 'Sezon',
+    tournamentCountry: 'Kraj',
+    tournamentTeams: 'Drużyny',
+    tournamentMatches: 'Mecze',
+    tournamentLastSync: 'Ostatni sync',
+    tournamentActions: 'Akcje',
+    edit: 'Edytuj',
+    delete: 'Usuń',
+    open: 'Otwórz',
+    noTournaments: 'Nie znaleziono turniejów.',
+    neverSynced: 'Nigdy',
+    tournamentLoadFailed: 'Nie udało się pobrać turniejów.',
+    tournamentDeleteSuccess: 'Turniej usunięty.',
+    tournamentDeleteConfirm: 'Usunąć ten turniej?',
+    addTournamentComingSoon: 'Flow tworzenia turnieju zostanie podpięty w kolejnym kroku.',
+    editTournamentComingSoon: 'Flow edycji turnieju zostanie podpięty w kolejnym kroku.',
     adminRatingOps: 'Ratingi',
     adminRatingOpsCopy: 'Zarządzaj rating runami i przeliczaj Base Elo, formę, performance, jakość kadry oraz łączny FTSR dla wybranych turniejów.',
     adminSquadOps: 'Kadry',
@@ -688,6 +757,18 @@ function validatePassword(password: string, t: (typeof translations)[Language]):
   return password.length >= 6 ? undefined : t.passwordShort
 }
 
+function formatDate(value: string | null | undefined, fallback: string) {
+  if (!value) {
+    return fallback
+  }
+
+  return new Date(value).toLocaleString()
+}
+
+function extractSeason(value: string) {
+  return value.match(/\b\d{4}(?:[/-]\d{2,4})?\b/)?.[0]
+}
+
 function App() {
   const [language, setLanguage] = useState<Language>('en')
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
@@ -719,7 +800,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'admin-tournaments' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -918,7 +999,18 @@ function App() {
       )}
 
       {view === 'admin' && user && (
-        <AdminDashboard t={t} />
+        <AdminDashboard
+          t={t}
+          onNavigate={navigate}
+        />
+      )}
+
+      {view === 'admin-tournaments' && user && (
+        <TournamentsPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+        />
       )}
 
       {view === 'profile' && user && (
@@ -1759,9 +1851,13 @@ function LoggedInDashboard({
   )
 }
 
-function AdminDashboard({ t }: { t: (typeof translations)[Language] }) {
-  const [expandedPanel, setExpandedPanel] = useState<'tournaments' | null>(null)
-  const isTournamentsExpanded = expandedPanel === 'tournaments'
+function AdminDashboard({
+  t,
+  onNavigate,
+}: {
+  t: (typeof translations)[Language]
+  onNavigate: (view: View) => void
+}) {
   const overviewCards: Array<{
     icon: MenuIconName
     title: string
@@ -1773,8 +1869,7 @@ function AdminDashboard({ t }: { t: (typeof translations)[Language] }) {
       icon: 'tournaments',
       title: t.adminTournamentOps,
       description: t.adminTournamentOpsCopy,
-      action: () => setExpandedPanel((current) => current === 'tournaments' ? null : 'tournaments'),
-      active: isTournamentsExpanded,
+      action: () => onNavigate('admin-tournaments'),
     },
     {
       icon: 'ratings',
@@ -1812,23 +1907,6 @@ function AdminDashboard({ t }: { t: (typeof translations)[Language] }) {
           <p>{t.adminPanelCopy}</p>
         </div>
 
-        {isTournamentsExpanded && (
-          <div className="admin-expansion-panel">
-            <button type="button">
-              <MenuIcon name="tournaments" />
-              <span>{t.adminCreateTournament}</span>
-            </button>
-            <button type="button">
-              <MenuIcon name="matches" />
-              <span>{t.adminListTournaments}</span>
-            </button>
-            <button type="button">
-              <MenuIcon name="admin" />
-              <span>{t.adminTournamentsPanel}</span>
-            </button>
-          </div>
-        )}
-
         <div className="admin-overview-grid">
           {overviewCards.map((card) => {
             const content = (
@@ -1855,6 +1933,205 @@ function AdminDashboard({ t }: { t: (typeof translations)[Language] }) {
               </article>
             )
           })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function TournamentsPanel({
+  t,
+  user,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
+  const [search, setSearch] = useState('')
+  const [syncFilter, setSyncFilter] = useState<'all' | 'synced' | 'not-synced'>('all')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments')
+      .then((result) => {
+        if (!isMounted) {
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.tournamentLoadFailed, 'error')
+          return
+        }
+
+        setTournaments(result.data)
+      })
+      .catch(() => {
+        if (isMounted) {
+          onToast(t.tournamentLoadFailed, 'error')
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t, user.token])
+
+  const filteredTournaments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+
+    return tournaments.filter((tournament) => {
+      const matchesSearch = !normalizedSearch ||
+        [
+          tournament.name,
+          tournament.competitionName,
+          tournament.competitionCountry,
+        ].some((value) => value.toLowerCase().includes(normalizedSearch))
+
+      const matchesSync =
+        syncFilter === 'all' ||
+        (syncFilter === 'synced' && Boolean(tournament.lastSyncedAtUtc)) ||
+        (syncFilter === 'not-synced' && !tournament.lastSyncedAtUtc)
+
+      return matchesSearch && matchesSync
+    })
+  }, [search, syncFilter, tournaments])
+
+  const deleteTournament = async (tournament: TournamentSummary) => {
+    if (!window.confirm(`${t.tournamentDeleteConfirm} ${tournament.name}`)) {
+      return
+    }
+
+    setIsDeletingId(tournament.id)
+    try {
+      const result = await authorizedRequest<void>(user.token, `/api/tournaments/${tournament.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setTournaments((current) => current.filter((item) => item.id !== tournament.id))
+      onToast(t.tournamentDeleteSuccess, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsDeletingId(null)
+    }
+  }
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content tournaments-panel">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.tournamentsPanelEyebrow}</p>
+          <h1>{t.tournamentsPanelTitle}</h1>
+          <p>{t.tournamentsPanelCopy}</p>
+        </div>
+
+        <div className="tournament-toolbar">
+          <button
+            className="form-submit compact"
+            type="button"
+            onClick={() => onToast(t.addTournamentComingSoon, 'info')}
+          >
+            {t.addTournament}
+          </button>
+          <label className="tournament-search">
+            <span>{t.tournamentSearch}</span>
+            <input
+              placeholder={t.tournamentSearchPlaceholder}
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <div className="tournament-filter" aria-label={t.tournamentLastSync}>
+            {[
+              ['all', t.tournamentFilterAll],
+              ['synced', t.tournamentFilterSynced],
+              ['not-synced', t.tournamentFilterNotSynced],
+            ].map(([value, label]) => (
+              <button
+                className={syncFilter === value ? 'active' : ''}
+                type="button"
+                key={value}
+                onClick={() => setSyncFilter(value as 'all' | 'synced' | 'not-synced')}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tournament-table-shell">
+          <table className="tournament-table">
+            <thead>
+              <tr>
+                <th>{t.tournamentName}</th>
+                <th>{t.tournamentSeason}</th>
+                <th>{t.tournamentCountry}</th>
+                <th>{t.tournamentTeams}</th>
+                <th>{t.tournamentMatches}</th>
+                <th>{t.tournamentLastSync}</th>
+                <th>{t.tournamentActions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTournaments.map((tournament) => (
+                <tr key={tournament.id}>
+                  <td>
+                    <strong>{tournament.name}</strong>
+                    <small>{tournament.competitionName}</small>
+                  </td>
+                  <td>{extractSeason(tournament.name) ?? '-'}</td>
+                  <td>{tournament.competitionCountry || '-'}</td>
+                  <td>{tournament.teamCount}</td>
+                  <td>{tournament.matchCount}</td>
+                  <td>{formatDate(tournament.lastSyncedAtUtc, t.neverSynced)}</td>
+                  <td>
+                    <div className="table-actions">
+                      <button type="button">{t.open}</button>
+                      <button type="button" onClick={() => onToast(t.editTournamentComingSoon, 'info')}>
+                        {t.edit}
+                      </button>
+                      <button
+                        className="danger"
+                        type="button"
+                        disabled={isDeletingId === tournament.id}
+                        onClick={() => deleteTournament(tournament)}
+                      >
+                        {isDeletingId === tournament.id ? '...' : t.delete}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!isLoading && filteredTournaments.length === 0 && (
+                <tr>
+                  <td className="empty-table" colSpan={7}>{t.noTournaments}</td>
+                </tr>
+              )}
+              {isLoading && (
+                <tr>
+                  <td className="empty-table" colSpan={7}>
+                    <LoadingSpinner />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -2201,6 +2478,14 @@ function ToastStack({ toasts }: { toasts: Toast[] }) {
           {toast.message}
         </div>
       ))}
+    </div>
+  )
+}
+
+function LoadingSpinner() {
+  return (
+    <div className="loading-spinner" aria-label="Loading" role="status">
+      <span />
     </div>
   )
 }

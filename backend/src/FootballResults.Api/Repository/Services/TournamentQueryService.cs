@@ -9,14 +9,21 @@ public sealed class TournamentQueryService(AppDbContext dbContext) : ITournament
 {
     public async Task<IReadOnlyList<TournamentSummaryDto>> GetAllAsync(CancellationToken cancellationToken)
     {
-        var tournaments = await dbContext.Tournaments
-            .Include(tournament => tournament.Stages)
-            .Include(tournament => tournament.TournamentTeams)
-            .Include(tournament => tournament.Matches)
+        return await dbContext.Tournaments
+            .AsNoTracking()
             .OrderBy(tournament => tournament.Name)
+            .Select(tournament => new TournamentSummaryDto(
+                tournament.Id,
+                tournament.Name,
+                tournament.CompetitionName,
+                tournament.CompetitionCountry,
+                tournament.CreatedAtUtc,
+                tournament.UpdatedAtUtc,
+                tournament.LastSyncedAtUtc,
+                tournament.Stages.Count,
+                tournament.TournamentTeams.Count,
+                tournament.Matches.Count))
             .ToListAsync(cancellationToken);
-
-        return tournaments.Select(DtoMapper.ToSummaryDto).ToList();
     }
 
     public async Task<TournamentDetailsDto?> GetByIdAsync(int tournamentId, CancellationToken cancellationToken)
