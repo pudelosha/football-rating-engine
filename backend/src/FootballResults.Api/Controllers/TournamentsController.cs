@@ -67,7 +67,16 @@ public sealed class TournamentsController(
         UpdateTournamentRequest request,
         CancellationToken cancellationToken)
     {
-        var tournament = await tournamentQueryService.UpdateAsync(id, request, cancellationToken);
+        TournamentDetailsDto? tournament;
+        try
+        {
+            tournament = await tournamentQueryService.UpdateAsync(id, request, cancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+
         return tournament is null ? NotFound() : Ok(tournament);
     }
 

@@ -10,6 +10,7 @@ internal static class DtoMapper
         return new TournamentSummaryDto(
             tournament.Id,
             tournament.IsActive,
+            tournament.ApplyHomeAdvantage,
             tournament.Name,
             tournament.Season,
             tournament.CompetitionName,
@@ -27,6 +28,7 @@ internal static class DtoMapper
         return new TournamentDetailsDto(
             tournament.Id,
             tournament.IsActive,
+            tournament.ApplyHomeAdvantage,
             tournament.LiveScoreCompetitionId,
             tournament.Name,
             tournament.Season,

@@ -6,6 +6,7 @@ public sealed record CreateTournamentRequest(
     string LiveScoreUrl,
     string? Name = null,
     string? Season = null,
+    bool ApplyHomeAdvantage = true,
     string Locale = "en",
     string TimezoneOffset = "0");
 
@@ -13,6 +14,8 @@ public sealed record UpdateTournamentRequest(
     string? Name,
     string? Season,
     bool? IsActive,
+    bool? ApplyHomeAdvantage,
+    string? LiveScoreUrl,
     string? Locale,
     string? TimezoneOffset);
 
@@ -30,6 +33,7 @@ public sealed record TournamentPreviewDto(
 public sealed record TournamentSummaryDto(
     int Id,
     bool IsActive,
+    bool ApplyHomeAdvantage,
     string Name,
     string Season,
     string CompetitionName,
@@ -44,6 +48,7 @@ public sealed record TournamentSummaryDto(
 public sealed record TournamentDetailsDto(
     int Id,
     bool IsActive,
+    bool ApplyHomeAdvantage,
     string LiveScoreCompetitionId,
     string Name,
     string Season,

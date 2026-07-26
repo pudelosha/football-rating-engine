@@ -54,6 +54,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasIndex(tournament => tournament.BaseUrl).IsUnique();
 
             entity.Property(tournament => tournament.LiveScoreCompetitionId).HasMaxLength(64);
+            entity.Property(tournament => tournament.ApplyHomeAdvantage).HasDefaultValue(true);
             entity.Property(tournament => tournament.Name).HasMaxLength(200);
             entity.Property(tournament => tournament.Season).HasMaxLength(32);
             entity.Property(tournament => tournament.CompetitionName).HasMaxLength(200);

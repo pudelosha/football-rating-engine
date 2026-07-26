@@ -62,6 +62,7 @@ type RotateApiKeyResponse = {
 type TournamentSummary = {
   id: number
   isActive: boolean
+  applyHomeAdvantage: boolean
   name: string
   season: string
   competitionName: string
@@ -77,6 +78,7 @@ type TournamentSummary = {
 type TournamentDetails = {
   id: number
   isActive: boolean
+  applyHomeAdvantage: boolean
   liveScoreCompetitionId: string
   name: string
   season: string
@@ -265,7 +267,7 @@ const translations = {
     tournamentEditEyebrow: 'Tournament setup',
     tournamentEditTitle: 'Edit tournament.',
     tournamentEditCopy:
-      'Update the admin-facing name and request settings. LiveScore identity is locked after creation to protect synced data.',
+      'Update the admin-facing name, source URL, and request settings. Source URL changes are allowed only when they still point to the same LiveScore competition.',
     liveScoreUrl: 'LiveScore URL',
     liveScoreUrlPlaceholder: 'https://www.livescore.com/en/football/england/premier-league/',
     tournamentDisplayName: 'Display name',
@@ -332,6 +334,9 @@ const translations = {
     backToTournaments: 'Back to tournaments',
     activeTournament: 'Active tournament',
     inactiveTournament: 'Inactive tournament',
+    homeAdvantage: 'Home advantage',
+    homeAdvantageEnabled: 'Home advantage applies',
+    homeAdvantageDisabled: 'Neutral ground',
     tournamentActivated: 'Tournament activated.',
     tournamentDeactivated: 'Tournament paused.',
     activateTournamentTitle: 'Activate tournament.',
@@ -570,7 +575,7 @@ const translations = {
     tournamentEditEyebrow: 'Konfiguracja turnieju',
     tournamentEditTitle: 'Edytuj turniej.',
     tournamentEditCopy:
-      'Zmień nazwę widoczną w panelu i ustawienia zapytań. Tożsamość LiveScore jest blokowana po utworzeniu, żeby chronić zsynchronizowane dane.',
+      'Zmień nazwę widoczną w panelu, URL źródłowy i ustawienia zapytań. Zmiana URL jest dozwolona tylko wtedy, gdy nadal wskazuje te same rozgrywki LiveScore.',
     liveScoreUrl: 'URL LiveScore',
     liveScoreUrlPlaceholder: 'https://www.livescore.com/en/football/england/premier-league/',
     tournamentDisplayName: 'Nazwa wyświetlana',
@@ -637,6 +642,9 @@ const translations = {
     backToTournaments: 'Wróć do turniejów',
     activeTournament: 'Turniej aktywny',
     inactiveTournament: 'Turniej nieaktywny',
+    homeAdvantage: 'Przewaga gospodarza',
+    homeAdvantageEnabled: 'Przewaga gospodarza działa',
+    homeAdvantageDisabled: 'Neutralny teren',
     tournamentActivated: 'Turniej aktywowany.',
     tournamentDeactivated: 'Turniej wstrzymany.',
     activateTournamentTitle: 'Aktywuj turniej.',
@@ -2619,6 +2627,7 @@ function TournamentFormPage({
   const [name, setName] = useState('')
   const [season, setSeason] = useState('')
   const [isActive, setIsActive] = useState(true)
+  const [applyHomeAdvantage, setApplyHomeAdvantage] = useState(true)
   const [locale, setLocale] = useState('en')
   const [timezoneOffset, setTimezoneOffset] = useState('0')
   const [preview, setPreview] = useState<TournamentPreview | null>(null)
@@ -2653,9 +2662,11 @@ function TournamentFormPage({
         }
 
         setLoadedTournament(result.data)
+        setLiveScoreUrl(result.data.baseUrl)
         setName(result.data.name)
         setSeason(result.data.season)
         setIsActive(result.data.isActive)
+        setApplyHomeAdvantage(result.data.applyHomeAdvantage)
         setLocale(result.data.locale)
         setTimezoneOffset(result.data.timezoneOffset)
       })
@@ -2741,7 +2752,7 @@ function TournamentFormPage({
 
   const saveTournament = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nextErrors = validate(!isEditMode)
+    const nextErrors = validate(true)
     if (Object.keys(nextErrors).length > 0) {
       onToast(t.validationFailed, 'error')
       return
@@ -2756,6 +2767,8 @@ function TournamentFormPage({
               name: name.trim() || null,
               season: season.trim() || null,
               isActive,
+              applyHomeAdvantage,
+              liveScoreUrl: liveScoreUrl.trim(),
               locale: locale.trim(),
               timezoneOffset: timezoneOffset.trim(),
             }),
@@ -2766,6 +2779,7 @@ function TournamentFormPage({
               liveScoreUrl: liveScoreUrl.trim(),
               name: name.trim() || null,
               season: season.trim() || null,
+              applyHomeAdvantage,
               locale: locale.trim(),
               timezoneOffset: timezoneOffset.trim(),
             }),
@@ -2823,6 +2837,16 @@ function TournamentFormPage({
                 </button>
               </div>
             )}
+            {isEditMode && (
+              <FormField
+                error={errors.liveScoreUrl}
+                label={t.liveScoreUrl}
+                placeholder={t.liveScoreUrlPlaceholder}
+                type="url"
+                value={liveScoreUrl}
+                onChange={setLiveScoreUrl}
+              />
+            )}
 
             <FormField
               error={errors.name}
@@ -2841,6 +2865,21 @@ function TournamentFormPage({
               value={season}
               onChange={setSeason}
             />
+
+            <label className="tournament-active-field">
+              <span>
+                <span>{t.homeAdvantage}</span>
+                <small>{applyHomeAdvantage ? t.homeAdvantageEnabled : t.homeAdvantageDisabled}</small>
+              </span>
+              <button
+                className={applyHomeAdvantage ? 'active-toggle on' : 'active-toggle off'}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => setApplyHomeAdvantage((current) => !current)}
+              >
+                {applyHomeAdvantage ? t.homeAdvantageEnabled : t.homeAdvantageDisabled}
+              </button>
+            </label>
 
             {isEditMode && (
               <label className="tournament-active-field">
@@ -3173,7 +3212,7 @@ function TournamentDetailsPage({
                     <div><dt>{t.competition}</dt><dd>{tournament.competitionName}</dd></div>
                     <div><dt>{t.tournamentCountry}</dt><dd>{tournament.competitionCountry || '-'}</dd></div>
                     <div><dt>{t.liveScoreCompetitionId}</dt><dd>{tournament.liveScoreCompetitionId || '-'}</dd></div>
-                    <div><dt>{t.resultsUrl}</dt><dd><a href={tournament.resultsUrl} target="_blank" rel="noreferrer">{tournament.resultsUrl}</a></dd></div>
+                    <div><dt>{t.homeAdvantage}</dt><dd>{tournament.applyHomeAdvantage ? t.homeAdvantageEnabled : t.homeAdvantageDisabled}</dd></div>
                     <div><dt>{t.locale}</dt><dd>{tournament.locale}</dd></div>
                     <div><dt>{t.timezoneOffset}</dt><dd>{tournament.timezoneOffset}</dd></div>
                     <div><dt>{t.created}</dt><dd>{formatDate(tournament.createdAtUtc, '-')}</dd></div>

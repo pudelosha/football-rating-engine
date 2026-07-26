@@ -299,6 +299,7 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
             return Task.FromResult(new TournamentDetailsDto(
                 123,
                 true,
+                request.ApplyHomeAdvantage,
                 "734",
                 request.Name ?? "World Cup 2026",
                 request.Season ?? "2026",

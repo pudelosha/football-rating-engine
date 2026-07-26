@@ -5,7 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FootballResults.Api.Repository.Services;
 
-public sealed class TournamentQueryService(AppDbContext dbContext) : ITournamentQueryService
+public sealed class TournamentQueryService(
+    AppDbContext dbContext,
+    ILiveScoreTournamentDiscoveryService discoveryService) : ITournamentQueryService
 {
     public async Task<IReadOnlyList<TournamentSummaryDto>> GetAllAsync(CancellationToken cancellationToken)
     {
@@ -15,6 +17,7 @@ public sealed class TournamentQueryService(AppDbContext dbContext) : ITournament
             .Select(tournament => new TournamentSummaryDto(
                 tournament.Id,
                 tournament.IsActive,
+                tournament.ApplyHomeAdvantage,
                 tournament.Name,
                 tournament.Season,
                 tournament.CompetitionName,
@@ -62,6 +65,36 @@ public sealed class TournamentQueryService(AppDbContext dbContext) : ITournament
         if (request.IsActive.HasValue)
         {
             tournament.IsActive = request.IsActive.Value;
+        }
+
+        if (request.ApplyHomeAdvantage.HasValue)
+        {
+            tournament.ApplyHomeAdvantage = request.ApplyHomeAdvantage.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.LiveScoreUrl))
+        {
+            var discovery = await discoveryService.DiscoverAsync(
+                request.LiveScoreUrl,
+                request.Locale ?? tournament.Locale,
+                request.TimezoneOffset ?? tournament.TimezoneOffset,
+                cancellationToken);
+
+            if (!string.Equals(discovery.LiveScoreCompetitionId, tournament.LiveScoreCompetitionId, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The LiveScore URL points to a different competition.");
+            }
+
+            tournament.CompetitionName = discovery.CompetitionName;
+            tournament.CompetitionCountry = discovery.CompetitionCountry;
+            tournament.CompetitionUrlName = discovery.CompetitionUrlName;
+            tournament.CategoryCode = discovery.CategoryCode;
+            tournament.CategoryName = discovery.CategoryName;
+            tournament.CategoryTransliteratedName = discovery.CategoryTransliteratedName;
+            tournament.BaseUrl = discovery.BaseUrl;
+            tournament.FixturesUrl = discovery.FixturesUrl;
+            tournament.ResultsUrl = discovery.ResultsUrl;
+            tournament.ApiBaseUrl = discovery.ApiBaseUrl;
         }
 
         if (!string.IsNullOrWhiteSpace(request.Locale))
