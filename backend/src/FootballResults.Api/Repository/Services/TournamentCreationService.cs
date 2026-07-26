@@ -39,6 +39,7 @@ public sealed class TournamentCreationService(
         {
             LiveScoreCompetitionId = preview.LiveScoreCompetitionId,
             Name = string.IsNullOrWhiteSpace(request.Name) ? preview.Name : request.Name,
+            Season = string.IsNullOrWhiteSpace(request.Season) ? preview.Season : request.Season,
             CompetitionName = preview.CompetitionName,
             CompetitionCountry = preview.CompetitionCountry,
             CompetitionUrlName = preview.CompetitionUrlName,

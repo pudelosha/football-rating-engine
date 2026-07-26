@@ -4,6 +4,7 @@ using FootballResults.Api.Model.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballResults.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260726175511_AddTournamentSeason")]
+    partial class AddTournamentSeason
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -609,12 +612,6 @@ namespace FootballResults.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<bool>("IsRoundInfoManualOverride")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsStageManualOverride")
-                        .HasColumnType("bit");
 
                     b.Property<DateTimeOffset?>("KickoffUtc")
                         .HasColumnType("datetimeoffset");
@@ -1640,9 +1637,6 @@ namespace FootballResults.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
 
                     b.Property<DateTimeOffset?>("LastSyncedAtUtc")
                         .HasColumnType("datetimeoffset");

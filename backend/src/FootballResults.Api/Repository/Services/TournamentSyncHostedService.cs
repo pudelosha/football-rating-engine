@@ -21,6 +21,7 @@ public abstract class TournamentSyncHostedService(
         CancellationToken cancellationToken)
     {
         return dbContext.Tournaments
+            .Where(tournament => tournament.IsActive)
             .Select(tournament => tournament.Id)
             .ToListAsync(cancellationToken);
     }
@@ -96,6 +97,7 @@ public sealed class LiveMatchSyncHostedService(
         var liveWindowStart = now.AddMinutes(Math.Max(0, options.LiveStartsBeforeMinutes));
 
         return dbContext.Tournaments
+            .Where(tournament => tournament.IsActive)
             .Where(tournament => tournament.Matches.Any(match =>
                 match.Status == MatchStatus.Live ||
                 match.SyncState == MatchSyncState.Live ||
@@ -130,6 +132,7 @@ public sealed class MatchFinalizationHostedService(
         var liveWindowStart = now.AddMinutes(Math.Max(0, options.LiveStartsBeforeMinutes));
 
         return dbContext.Tournaments
+            .Where(tournament => tournament.IsActive)
             .Where(tournament => tournament.Matches.Any(match =>
                 match.Status == MatchStatus.Live ||
                 match.SyncState == MatchSyncState.Live ||

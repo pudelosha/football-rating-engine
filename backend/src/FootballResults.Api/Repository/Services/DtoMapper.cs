@@ -9,7 +9,9 @@ internal static class DtoMapper
     {
         return new TournamentSummaryDto(
             tournament.Id,
+            tournament.IsActive,
             tournament.Name,
+            tournament.Season,
             tournament.CompetitionName,
             tournament.CompetitionCountry,
             tournament.CreatedAtUtc,
@@ -24,12 +26,18 @@ internal static class DtoMapper
     {
         return new TournamentDetailsDto(
             tournament.Id,
+            tournament.IsActive,
+            tournament.LiveScoreCompetitionId,
             tournament.Name,
+            tournament.Season,
             tournament.CompetitionName,
             tournament.CompetitionCountry,
             tournament.CategoryCode,
             tournament.CategoryName,
             tournament.CategoryTransliteratedName,
+            tournament.BaseUrl,
+            tournament.FixturesUrl,
+            tournament.ResultsUrl,
             tournament.Locale,
             tournament.TimezoneOffset,
             tournament.CreatedAtUtc,

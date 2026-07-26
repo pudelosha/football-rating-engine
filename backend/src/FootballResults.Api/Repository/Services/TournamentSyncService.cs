@@ -383,7 +383,11 @@ public sealed class TournamentSyncService(
     {
         var changed = false;
 
-        changed |= SetIfChanged(value => match.StageId = value, match.StageId, stage?.Id);
+        if (!match.IsStageManualOverride)
+        {
+            changed |= SetIfChanged(value => match.StageId = value, match.StageId, stage?.Id);
+        }
+
         changed |= SetIfChanged(value => match.KickoffUtc = value, match.KickoffUtc, row.KickoffUtc);
         changed |= SetIfChanged(value => match.HomeTeamId = value, match.HomeTeamId, homeTeam?.Id);
         changed |= SetIfChanged(value => match.AwayTeamId = value, match.AwayTeamId, awayTeam?.Id);
@@ -406,7 +410,10 @@ public sealed class TournamentSyncService(
         changed |= SetIfChanged(value => match.Status = value, match.Status, row.Status);
         changed |= SetIfChanged(value => match.RawStatus = value, match.RawStatus, row.StatusRaw);
         changed |= SetIfChanged(value => match.SyncState = value, match.SyncState, row.SyncState);
-        changed |= SetIfChanged(value => match.RoundInfo = value, match.RoundInfo, row.RoundInfo);
+        if (!match.IsRoundInfoManualOverride)
+        {
+            changed |= SetIfChanged(value => match.RoundInfo = value, match.RoundInfo, row.RoundInfo);
+        }
         changed |= SetIfChanged(value => match.MatchUrl = value, match.MatchUrl, row.MatchUrl);
         changed |= SetIfChanged(value => match.LastSourceEndpoint = value, match.LastSourceEndpoint, row.SourceEndpoint);
         changed |= SetIfChanged(value => match.LastSeenInListType = value, match.LastSeenInListType, row.ListType);

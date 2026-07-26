@@ -1,8 +1,9 @@
 ﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 
 type Language = 'en' | 'pl'
-type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'tournaments' | 'predictions' | 'admin' | 'profile' | 'logout'
+type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'tournaments' | 'predictions' | 'admin' | 'profile' | 'logout' | 'arrow-left'
 type View =
   | 'landing'
   | 'login'
@@ -16,6 +17,8 @@ type View =
   | 'dashboard'
   | 'admin'
   | 'admin-tournaments'
+  | 'admin-tournament-form'
+  | 'admin-tournament-details'
   | 'profile'
 type ToastTone = 'success' | 'error' | 'info'
 
@@ -58,7 +61,9 @@ type RotateApiKeyResponse = {
 
 type TournamentSummary = {
   id: number
+  isActive: boolean
   name: string
+  season: string
   competitionName: string
   competitionCountry: string
   createdAtUtc: string
@@ -68,6 +73,94 @@ type TournamentSummary = {
   teamCount: number
   matchCount: number
 }
+
+type TournamentDetails = {
+  id: number
+  isActive: boolean
+  liveScoreCompetitionId: string
+  name: string
+  season: string
+  competitionName: string
+  competitionCountry: string
+  categoryCode: string
+  categoryName: string
+  categoryTransliteratedName: string
+  baseUrl: string
+  fixturesUrl: string
+  resultsUrl: string
+  locale: string
+  timezoneOffset: string
+  createdAtUtc: string
+  updatedAtUtc: string
+  lastSyncedAtUtc?: string | null
+  stages: Array<{ id: number; name: string; code: string; sortOrder: number }>
+  teams: Array<{ id: number; name: string; abbreviation: string }>
+}
+
+type MatchSummary = {
+  id: number
+  tournamentId: number
+  stageId?: number | null
+  kickoffUtc?: string | null
+  homeTeam?: { id: number; name: string; abbreviation: string } | null
+  awayTeam?: { id: number; name: string; abbreviation: string } | null
+  homeTeamNameSnapshot: string
+  awayTeamNameSnapshot: string
+  homeScore?: number | null
+  awayScore?: number | null
+  regularTimeHomeScore?: number | null
+  regularTimeAwayScore?: number | null
+  afterExtraTimeHomeScore?: number | null
+  afterExtraTimeAwayScore?: number | null
+  penaltyHomeScore?: number | null
+  penaltyAwayScore?: number | null
+  status: string | number
+  rawStatus: string
+  syncState: string | number
+  roundInfo: string
+  lastSyncedAtUtc?: string | null
+}
+
+type TournamentSyncRun = {
+  id: number
+  tournamentId: number
+  mode: string
+  status: string
+  startedAtUtc: string
+  finishedAtUtc?: string | null
+  insertedMatches: number
+  updatedMatches: number
+  unchangedMatches: number
+  errorMessage: string
+}
+
+type SyncTournamentResponse = {
+  syncRunId: number
+  tournamentId: number
+  mode: string
+  status: string
+  insertedMatches: number
+  updatedMatches: number
+  unchangedMatches: number
+  errorMessage: string
+}
+
+type TournamentPreview = {
+  name: string
+  season: string
+  competitionName: string
+  competitionCountry: string
+  categoryCode: string
+  categoryName: string
+  categoryTransliteratedName: string
+  locale: string
+  timezoneOffset: string
+}
+
+type TournamentSortKey = 'name' | 'season' | 'country' | 'teams' | 'matches' | 'lastSync'
+type TeamSortKey = 'name' | 'abbreviation'
+type MatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
+type SortDirection = 'asc' | 'desc'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const AUTH_STORAGE_KEY = 'football-rating-engine.auth'
@@ -86,12 +179,22 @@ const routes: Record<View, string> = {
   dashboard: '/dashboard',
   admin: '/admin',
   'admin-tournaments': '/admin/tournaments',
+  'admin-tournament-form': '/admin/tournaments/new',
+  'admin-tournament-details': '/admin/tournaments/0',
   profile: '/profile',
 }
 
 function getViewFromPath(pathname: string): View {
   if (pathname === routes.dashboard) {
     return 'home'
+  }
+
+  if (pathname === '/admin/tournaments/new' || /^\/admin\/tournaments\/\d+\/edit$/.test(pathname)) {
+    return 'admin-tournament-form'
+  }
+
+  if (/^\/admin\/tournaments\/\d+$/.test(pathname)) {
+    return 'admin-tournament-details'
   }
 
   const match = Object.entries(routes).find(([, route]) => route === pathname)
@@ -135,6 +238,7 @@ const translations = {
     tournamentFilterSynced: 'Synced',
     tournamentFilterNotSynced: 'Not synced',
     tournamentName: 'Tournament',
+    competition: 'Competition',
     tournamentSeason: 'Season',
     tournamentCountry: 'Country',
     tournamentTeams: 'Teams',
@@ -143,12 +247,128 @@ const translations = {
     tournamentActions: 'Actions',
     edit: 'Edit',
     delete: 'Delete',
-    open: 'Open',
+    open: 'Details',
     noTournaments: 'No tournaments found.',
     neverSynced: 'Never synced',
     tournamentLoadFailed: 'Could not load tournaments.',
     tournamentDeleteSuccess: 'Tournament deleted.',
     tournamentDeleteConfirm: 'Delete this tournament?',
+    tournamentDeleteTitle: 'Delete tournament.',
+    tournamentDeleteCopy:
+      'This will remove the tournament and its related matches, stages, teams, and sync history from the database. This action cannot be undone.',
+    cancel: 'Cancel',
+    confirmDelete: 'Delete tournament',
+    tournamentCreateEyebrow: 'New tournament',
+    tournamentCreateTitle: 'Add tournament.',
+    tournamentCreateCopy:
+      'Paste a LiveScore competition URL, preview discovered metadata, then create the tournament. Creation also runs the initial full sync.',
+    tournamentEditEyebrow: 'Tournament setup',
+    tournamentEditTitle: 'Edit tournament.',
+    tournamentEditCopy:
+      'Update the admin-facing name and request settings. LiveScore identity is locked after creation to protect synced data.',
+    liveScoreUrl: 'LiveScore URL',
+    liveScoreUrlPlaceholder: 'https://www.livescore.com/en/football/england/premier-league/',
+    tournamentDisplayName: 'Display name',
+    tournamentDisplayNamePlaceholder: 'Leave empty to use discovered name',
+    locale: 'Locale',
+    timezoneOffset: 'Timezone offset',
+    previewTournament: 'Preview tournament',
+    createTournament: 'Create tournament',
+    saveTournament: 'Save tournament',
+    tournamentPreviewTitle: 'Discovered metadata',
+    tournamentCreated: 'Tournament created.',
+    tournamentUpdated: 'Tournament updated.',
+    tournamentCreating: 'Creating tournament and running initial sync.',
+    tournamentSaving: 'Saving tournament changes.',
+    tournamentPreviewLoaded: 'Tournament preview loaded.',
+    tournamentNotFound: 'Tournament not found.',
+    tournamentUrlInvalid: 'Enter a valid LiveScore competition URL',
+    tournamentDetailsEyebrow: 'Tournament Details',
+    tournamentDetailsTitle: 'Tournament control panel.',
+    tournamentDetailsCopy:
+      'Inspect the selected tournament, run LiveScore sync operations, and review recent data coverage without leaving the admin workspace.',
+    overview: 'Overview',
+    syncOperations: 'Sync operations',
+    recentSyncRuns: 'Recent sync runs',
+    tournamentDataCoverage: 'Data coverage',
+    teams: 'Teams',
+    stages: 'Stages',
+    matches: 'Matches',
+    liveScoreCompetitionId: 'LiveScore competition id',
+    baseUrl: 'Base URL',
+    fixturesUrl: 'Fixtures URL',
+    resultsUrl: 'Results URL',
+    created: 'Created',
+    updated: 'Updated',
+    upcoming: 'Upcoming',
+    live: 'Live',
+    finalized: 'Finalized',
+    problemRecords: 'Problem records',
+    missingTeams: 'Missing teams',
+    nextMatch: 'Next match',
+    lastMatch: 'Last match',
+    fullSync: 'Full sync',
+    scheduleSync: 'Schedule sync',
+    liveSync: 'Live sync',
+    finalizeSync: 'Finalize sync',
+    resultsSync: 'Results sync',
+    fullSyncCopy: 'Refresh fixtures and results with score details.',
+    scheduleSyncCopy: 'Refresh schedule changes and future fixtures.',
+    liveSyncCopy: 'Update matches currently live or due soon.',
+    finalizeSyncCopy: 'Verify finished matches and enrich final details.',
+    resultsSyncCopy: 'Reconcile closed matches from the results feed.',
+    syncStarted: 'Sync finished.',
+    syncFailed: 'Sync failed.',
+    mode: 'Mode',
+    status: 'Status',
+    started: 'Started',
+    finished: 'Finished',
+    inserted: 'Inserted',
+    updatedRows: 'Updated',
+    unchanged: 'Unchanged',
+    error: 'Error',
+    noSyncRuns: 'No sync runs yet.',
+    loadingTournament: 'Loading tournament.',
+    backToTournaments: 'Back to tournaments',
+    activeTournament: 'Active tournament',
+    inactiveTournament: 'Inactive tournament',
+    tournamentActivated: 'Tournament activated.',
+    tournamentDeactivated: 'Tournament paused.',
+    activateTournamentTitle: 'Activate tournament.',
+    deactivateTournamentTitle: 'Deactivate tournament.',
+    activateTournamentCopy:
+      'Active tournaments are included in hosted background synchronization. Schedule, live, finalize, and results services can keep this tournament up to date automatically.',
+    deactivateTournamentCopy:
+      'Inactive tournaments are put on hold and skipped by hosted background synchronization. Existing data stays available, and manual sync actions can still be run from this panel.',
+    confirmActivate: 'Activate tournament',
+    confirmDeactivate: 'Deactivate tournament',
+    tabDetails: 'Details',
+    tabTeams: 'Teams',
+    tabMatches: 'Matches',
+    teamName: 'Team',
+    abbreviation: 'Abbreviation',
+    kickoff: 'Kickoff',
+    homeTeam: 'Home',
+    awayTeam: 'Away',
+    score: 'Score',
+    round: 'Round',
+    editTeamTitle: 'Edit team.',
+    editTeamCopy: 'Adjust the team display name and abbreviation used across tournament views.',
+    teamUpdated: 'Team updated.',
+    saveTeam: 'Save team',
+    editMatchTitle: 'Edit match.',
+    editMatchCopy:
+      'Adjust match details manually. Live sync may overwrite score, status, and kickoff changes, but manual round and stage edits are preserved.',
+    saveMatch: 'Save match',
+    matchUpdated: 'Match updated.',
+    stage: 'Stage',
+    noStage: 'No stage',
+    finalScore: 'Final score',
+    regularTimeScore: 'Regular time score',
+    afterExtraTimeScore: 'After extra time score',
+    penaltiesScore: 'Penalties score',
+    rawStatus: 'Raw status',
+    syncState: 'Sync state',
     addTournamentComingSoon: 'Create tournament flow will be connected next.',
     editTournamentComingSoon: 'Edit tournament flow will be connected next.',
     adminRatingOps: 'Ratings',
@@ -323,6 +543,7 @@ const translations = {
     tournamentFilterSynced: 'Zsynchronizowane',
     tournamentFilterNotSynced: 'Bez synchronizacji',
     tournamentName: 'Turniej',
+    competition: 'Rozgrywki',
     tournamentSeason: 'Sezon',
     tournamentCountry: 'Kraj',
     tournamentTeams: 'Drużyny',
@@ -331,12 +552,128 @@ const translations = {
     tournamentActions: 'Akcje',
     edit: 'Edytuj',
     delete: 'Usuń',
-    open: 'Otwórz',
+    open: 'Szczegóły',
     noTournaments: 'Nie znaleziono turniejów.',
     neverSynced: 'Nigdy',
     tournamentLoadFailed: 'Nie udało się pobrać turniejów.',
     tournamentDeleteSuccess: 'Turniej usunięty.',
     tournamentDeleteConfirm: 'Usunąć ten turniej?',
+    tournamentDeleteTitle: 'Usuń turniej.',
+    tournamentDeleteCopy:
+      'To usunie turniej oraz powiązane mecze, etapy, drużyny i historię synchronizacji z bazy danych. Tej akcji nie można cofnąć.',
+    cancel: 'Anuluj',
+    confirmDelete: 'Usuń turniej',
+    tournamentCreateEyebrow: 'Nowy turniej',
+    tournamentCreateTitle: 'Dodaj turniej.',
+    tournamentCreateCopy:
+      'Wklej URL rozgrywek z LiveScore, sprawdź wykryte metadane, a potem utwórz turniej. Utworzenie uruchamia też pierwszy pełny sync.',
+    tournamentEditEyebrow: 'Konfiguracja turnieju',
+    tournamentEditTitle: 'Edytuj turniej.',
+    tournamentEditCopy:
+      'Zmień nazwę widoczną w panelu i ustawienia zapytań. Tożsamość LiveScore jest blokowana po utworzeniu, żeby chronić zsynchronizowane dane.',
+    liveScoreUrl: 'URL LiveScore',
+    liveScoreUrlPlaceholder: 'https://www.livescore.com/en/football/england/premier-league/',
+    tournamentDisplayName: 'Nazwa wyświetlana',
+    tournamentDisplayNamePlaceholder: 'Zostaw puste, aby użyć wykrytej nazwy',
+    locale: 'Locale',
+    timezoneOffset: 'Przesunięcie strefy czasowej',
+    previewTournament: 'Podgląd turnieju',
+    createTournament: 'Utwórz turniej',
+    saveTournament: 'Zapisz turniej',
+    tournamentPreviewTitle: 'Wykryte metadane',
+    tournamentCreated: 'Turniej utworzony.',
+    tournamentUpdated: 'Turniej zaktualizowany.',
+    tournamentCreating: 'Tworzymy turniej i uruchamiamy pierwszy sync.',
+    tournamentSaving: 'Zapisujemy zmiany turnieju.',
+    tournamentPreviewLoaded: 'Podgląd turnieju pobrany.',
+    tournamentNotFound: 'Nie znaleziono turnieju.',
+    tournamentUrlInvalid: 'Podaj prawidłowy URL rozgrywek LiveScore',
+    tournamentDetailsEyebrow: 'Szczegóły turnieju',
+    tournamentDetailsTitle: 'Panel kontroli turnieju.',
+    tournamentDetailsCopy:
+      'Sprawdzaj wybrany turniej, uruchamiaj synchronizacje LiveScore i kontroluj pokrycie danych bez wychodzenia z panelu admina.',
+    overview: 'Przegląd',
+    syncOperations: 'Operacje sync',
+    recentSyncRuns: 'Ostatnie sync runy',
+    tournamentDataCoverage: 'Pokrycie danych',
+    teams: 'Drużyny',
+    stages: 'Etapy',
+    matches: 'Mecze',
+    liveScoreCompetitionId: 'LiveScore competition id',
+    baseUrl: 'Bazowy URL',
+    fixturesUrl: 'Fixtures URL',
+    resultsUrl: 'Results URL',
+    created: 'Utworzono',
+    updated: 'Zaktualizowano',
+    upcoming: 'Nadchodzące',
+    live: 'Live',
+    finalized: 'Zamknięte',
+    problemRecords: 'Problematyczne rekordy',
+    missingTeams: 'Brakujące drużyny',
+    nextMatch: 'Następny mecz',
+    lastMatch: 'Ostatni mecz',
+    fullSync: 'Pełny sync',
+    scheduleSync: 'Schedule sync',
+    liveSync: 'Live sync',
+    finalizeSync: 'Finalize sync',
+    resultsSync: 'Results sync',
+    fullSyncCopy: 'Odświeża fixtures i results razem ze szczegółami wyników.',
+    scheduleSyncCopy: 'Odświeża zmiany terminarza i przyszłe mecze.',
+    liveSyncCopy: 'Aktualizuje mecze live oraz te, które zaraz startują.',
+    finalizeSyncCopy: 'Potwierdza zakończone mecze i uzupełnia detale.',
+    resultsSyncCopy: 'Uzgadnia zamknięte mecze z zakładki results.',
+    syncStarted: 'Sync zakończony.',
+    syncFailed: 'Sync nieudany.',
+    mode: 'Tryb',
+    status: 'Status',
+    started: 'Start',
+    finished: 'Koniec',
+    inserted: 'Dodane',
+    updatedRows: 'Zmienione',
+    unchanged: 'Bez zmian',
+    error: 'Błąd',
+    noSyncRuns: 'Brak sync runów.',
+    loadingTournament: 'Ładowanie turnieju.',
+    backToTournaments: 'Wróć do turniejów',
+    activeTournament: 'Turniej aktywny',
+    inactiveTournament: 'Turniej nieaktywny',
+    tournamentActivated: 'Turniej aktywowany.',
+    tournamentDeactivated: 'Turniej wstrzymany.',
+    activateTournamentTitle: 'Aktywuj turniej.',
+    deactivateTournamentTitle: 'Dezaktywuj turniej.',
+    activateTournamentCopy:
+      'Aktywne turnieje są uwzględniane przez hosted background synchronization. Serwisy schedule, live, finalize i results mogą automatycznie utrzymywać turniej aktualny.',
+    deactivateTournamentCopy:
+      'Nieaktywne turnieje są wstrzymane i pomijane przez hosted background synchronization. Istniejące dane zostają dostępne, a ręczne sync actions nadal można uruchamiać z tego panelu.',
+    confirmActivate: 'Aktywuj turniej',
+    confirmDeactivate: 'Dezaktywuj turniej',
+    tabDetails: 'Szczegóły',
+    tabTeams: 'Drużyny',
+    tabMatches: 'Mecze',
+    teamName: 'Drużyna',
+    abbreviation: 'Skrót',
+    kickoff: 'Start',
+    homeTeam: 'Gospodarz',
+    awayTeam: 'Gość',
+    score: 'Wynik',
+    round: 'Runda',
+    editTeamTitle: 'Edytuj drużynę.',
+    editTeamCopy: 'Zmień nazwę wyświetlaną drużyny i skrót używany w widokach turnieju.',
+    teamUpdated: 'Drużyna zaktualizowana.',
+    saveTeam: 'Zapisz drużynę',
+    editMatchTitle: 'Edytuj mecz.',
+    editMatchCopy:
+      'Zmień szczegóły meczu ręcznie. Live sync może nadpisać wynik, status i godzinę, ale ręcznie ustawiona runda oraz etap zostaną zachowane.',
+    saveMatch: 'Zapisz mecz',
+    matchUpdated: 'Mecz zaktualizowany.',
+    stage: 'Etap',
+    noStage: 'Bez etapu',
+    finalScore: 'Wynik końcowy',
+    regularTimeScore: 'Wynik po regulaminowym czasie',
+    afterExtraTimeScore: 'Wynik po dogrywce',
+    penaltiesScore: 'Karne',
+    rawStatus: 'Status źródłowy',
+    syncState: 'Stan sync',
     addTournamentComingSoon: 'Flow tworzenia turnieju zostanie podpięty w kolejnym kroku.',
     editTournamentComingSoon: 'Flow edycji turnieju zostanie podpięty w kolejnym kroku.',
     adminRatingOps: 'Ratingi',
@@ -765,8 +1102,34 @@ function formatDate(value: string | null | undefined, fallback: string) {
   return new Date(value).toLocaleString()
 }
 
-function extractSeason(value: string) {
-  return value.match(/\b\d{4}(?:[/-]\d{2,4})?\b/)?.[0]
+function compareText(left: string | null | undefined, right: string | null | undefined) {
+  return (left || '').localeCompare(right || '', undefined, { numeric: true, sensitivity: 'base' })
+}
+
+function toDateTimeLocalInput(value: string | null | undefined) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return offsetDate.toISOString().slice(0, 16)
+}
+
+function nullableNumber(value: string) {
+  return value.trim() === '' ? null : Number(value)
+}
+
+function enumValue(value: string | number, fallback: number, labels: Record<string, number>) {
+  if (typeof value === 'number') {
+    return value
+  }
+
+  return labels[value] ?? (Number(value) || fallback)
 }
 
 function App() {
@@ -800,7 +1163,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'admin-tournaments' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -1010,6 +1373,31 @@ function App() {
           t={t}
           user={user}
           onToast={showToast}
+          onCreate={() => navigateTo('/admin/tournaments/new')}
+          onOpen={(id) => navigateTo(`/admin/tournaments/${id}`)}
+          onEdit={(id) => navigateTo(`/admin/tournaments/${id}/edit`)}
+        />
+      )}
+
+      {view === 'admin-tournament-details' && user && (
+        <TournamentDetailsPage
+          t={t}
+          user={user}
+          tournamentId={location.pathname.match(/^\/admin\/tournaments\/(\d+)$/)?.[1] ?? ''}
+          onBack={() => navigateTo('/admin/tournaments')}
+          onEdit={(id) => navigateTo(`/admin/tournaments/${id}/edit`)}
+          onToast={showToast}
+        />
+      )}
+
+      {view === 'admin-tournament-form' && user && (
+        <TournamentFormPage
+          t={t}
+          user={user}
+          tournamentId={location.pathname.match(/^\/admin\/tournaments\/(\d+)\/edit$/)?.[1]}
+          onBack={() => navigateTo('/admin/tournaments')}
+          onSaved={() => navigateTo('/admin/tournaments')}
+          onToast={showToast}
         />
       )}
 
@@ -1054,6 +1442,7 @@ function MenuIcon({ name }: { name: MenuIconName }) {
     admin: ['M12 3l7 3v5c0 4.5-2.8 7.6-7 9-4.2-1.4-7-4.5-7-9V6Z', 'M9.5 12.2l1.7 1.7 3.4-4'],
     profile: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M4.5 20a7.5 7.5 0 0 1 15 0'],
     logout: ['M10 5H5v14h5', 'M14 8l4 4-4 4', 'M8 12h10'],
+    'arrow-left': ['M19 12H5', 'M12 5l-7 7 7 7'],
   }
 
   return (
@@ -1776,12 +2165,16 @@ function FormField({
   type,
   value,
   error,
+  placeholder,
+  disabled,
   onChange,
 }: {
   label: string
   type: string
   value: string
   error?: string
+  placeholder?: string
+  disabled?: boolean
   onChange: (value: string) => void
 }) {
   return (
@@ -1792,6 +2185,8 @@ function FormField({
       </span>
       <input
         aria-invalid={Boolean(error)}
+        disabled={disabled}
+        placeholder={placeholder}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -1943,16 +2338,25 @@ function TournamentsPanel({
   t,
   user,
   onToast,
+  onCreate,
+  onOpen,
+  onEdit,
 }: {
   t: (typeof translations)[Language]
   user: AuthUser
   onToast: (message: string, tone: ToastTone) => void
+  onCreate: () => void
+  onOpen: (id: number) => void
+  onEdit: (id: number) => void
 }) {
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
   const [search, setSearch] = useState('')
   const [syncFilter, setSyncFilter] = useState<'all' | 'synced' | 'not-synced'>('all')
+  const [sortKey, setSortKey] = useState<TournamentSortKey>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [isLoading, setIsLoading] = useState(true)
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null)
+  const [deleteCandidate, setDeleteCandidate] = useState<TournamentSummary | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -1989,7 +2393,7 @@ function TournamentsPanel({
   const filteredTournaments = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 
-    return tournaments.filter((tournament) => {
+    const filtered = tournaments.filter((tournament) => {
       const matchesSearch = !normalizedSearch ||
         [
           tournament.name,
@@ -2004,13 +2408,44 @@ function TournamentsPanel({
 
       return matchesSearch && matchesSync
     })
-  }, [search, syncFilter, tournaments])
 
-  const deleteTournament = async (tournament: TournamentSummary) => {
-    if (!window.confirm(`${t.tournamentDeleteConfirm} ${tournament.name}`)) {
+    return [...filtered].sort((left, right) => {
+      let comparison = 0
+
+      if (sortKey === 'name') {
+        comparison = compareText(left.name, right.name)
+      } else if (sortKey === 'season') {
+        comparison = compareText(left.season, right.season)
+      } else if (sortKey === 'country') {
+        comparison = compareText(left.competitionCountry, right.competitionCountry)
+      } else if (sortKey === 'teams') {
+        comparison = left.teamCount - right.teamCount
+      } else if (sortKey === 'matches') {
+        comparison = left.matchCount - right.matchCount
+      } else if (sortKey === 'lastSync') {
+        comparison = new Date(left.lastSyncedAtUtc || 0).getTime() - new Date(right.lastSyncedAtUtc || 0).getTime()
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [search, sortDirection, sortKey, syncFilter, tournaments])
+
+  const requestSort = (key: TournamentSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
       return
     }
 
+    setSortKey(key)
+    setSortDirection('asc')
+  }
+
+  const deleteTournament = async () => {
+    if (!deleteCandidate) {
+      return
+    }
+
+    const tournament = deleteCandidate
     setIsDeletingId(tournament.id)
     try {
       const result = await authorizedRequest<void>(user.token, `/api/tournaments/${tournament.id}`, {
@@ -2023,6 +2458,7 @@ function TournamentsPanel({
       }
 
       setTournaments((current) => current.filter((item) => item.id !== tournament.id))
+      setDeleteCandidate(null)
       onToast(t.tournamentDeleteSuccess, 'success')
     } catch {
       onToast(t.genericError, 'error')
@@ -2030,6 +2466,15 @@ function TournamentsPanel({
       setIsDeletingId(null)
     }
   }
+
+  const sortableHeaders: Array<{ key: TournamentSortKey; label: string }> = [
+    { key: 'name', label: t.tournamentName },
+    { key: 'season', label: t.tournamentSeason },
+    { key: 'country', label: t.tournamentCountry },
+    { key: 'teams', label: t.tournamentTeams },
+    { key: 'matches', label: t.tournamentMatches },
+    { key: 'lastSync', label: t.tournamentLastSync },
+  ]
 
   return (
     <section className="admin-dashboard">
@@ -2044,7 +2489,7 @@ function TournamentsPanel({
           <button
             className="form-submit compact"
             type="button"
-            onClick={() => onToast(t.addTournamentComingSoon, 'info')}
+            onClick={onCreate}
           >
             {t.addTournament}
           </button>
@@ -2079,12 +2524,19 @@ function TournamentsPanel({
           <table className="tournament-table">
             <thead>
               <tr>
-                <th>{t.tournamentName}</th>
-                <th>{t.tournamentSeason}</th>
-                <th>{t.tournamentCountry}</th>
-                <th>{t.tournamentTeams}</th>
-                <th>{t.tournamentMatches}</th>
-                <th>{t.tournamentLastSync}</th>
+                {sortableHeaders.map((header) => (
+                  <th key={header.key}>
+                    <button
+                      className="table-sort-button"
+                      type="button"
+                      aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      onClick={() => requestSort(header.key)}
+                    >
+                      <span>{header.label}</span>
+                      <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                    </button>
+                  </th>
+                ))}
                 <th>{t.tournamentActions}</th>
               </tr>
             </thead>
@@ -2095,22 +2547,22 @@ function TournamentsPanel({
                     <strong>{tournament.name}</strong>
                     <small>{tournament.competitionName}</small>
                   </td>
-                  <td>{extractSeason(tournament.name) ?? '-'}</td>
+                  <td>{tournament.season || '-'}</td>
                   <td>{tournament.competitionCountry || '-'}</td>
                   <td>{tournament.teamCount}</td>
                   <td>{tournament.matchCount}</td>
                   <td>{formatDate(tournament.lastSyncedAtUtc, t.neverSynced)}</td>
                   <td>
                     <div className="table-actions">
-                      <button type="button">{t.open}</button>
-                      <button type="button" onClick={() => onToast(t.editTournamentComingSoon, 'info')}>
+                      <button type="button" onClick={() => onOpen(tournament.id)}>{t.open}</button>
+                      <button type="button" onClick={() => onEdit(tournament.id)}>
                         {t.edit}
                       </button>
                       <button
                         className="danger"
                         type="button"
                         disabled={isDeletingId === tournament.id}
-                        onClick={() => deleteTournament(tournament)}
+                        onClick={() => setDeleteCandidate(tournament)}
                       >
                         {isDeletingId === tournament.id ? '...' : t.delete}
                       </button>
@@ -2134,7 +2586,1217 @@ function TournamentsPanel({
           </table>
         </div>
       </div>
+      {deleteCandidate && (
+        <DeleteTournamentModal
+          t={t}
+          tournament={deleteCandidate}
+          isDeleting={isDeletingId === deleteCandidate.id}
+          onCancel={() => setDeleteCandidate(null)}
+          onConfirm={deleteTournament}
+        />
+      )}
     </section>
+  )
+}
+
+function TournamentFormPage({
+  t,
+  user,
+  tournamentId,
+  onBack,
+  onSaved,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId?: string
+  onBack: () => void
+  onSaved: () => void
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const isEditMode = Boolean(tournamentId)
+  const [liveScoreUrl, setLiveScoreUrl] = useState('')
+  const [name, setName] = useState('')
+  const [season, setSeason] = useState('')
+  const [isActive, setIsActive] = useState(true)
+  const [locale, setLocale] = useState('en')
+  const [timezoneOffset, setTimezoneOffset] = useState('0')
+  const [preview, setPreview] = useState<TournamentPreview | null>(null)
+  const [loadedTournament, setLoadedTournament] = useState<TournamentDetails | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(isEditMode)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingActiveValue, setPendingActiveValue] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!tournamentId) {
+      return
+    }
+
+    let isMounted = true
+    authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`)
+      .then((result) => {
+        if (!isMounted) {
+          return
+        }
+
+        if (result.status === 404) {
+          onToast(t.tournamentNotFound, 'error')
+          onBack()
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.tournamentLoadFailed, 'error')
+          return
+        }
+
+        setLoadedTournament(result.data)
+        setName(result.data.name)
+        setSeason(result.data.season)
+        setIsActive(result.data.isActive)
+        setLocale(result.data.locale)
+        setTimezoneOffset(result.data.timezoneOffset)
+      })
+      .catch(() => {
+        if (isMounted) {
+          onToast(t.tournamentLoadFailed, 'error')
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [onBack, onToast, t, tournamentId, user.token])
+
+  const validate = (includeUrl: boolean) => {
+    const nextErrors: Record<string, string> = {}
+
+    if (includeUrl) {
+      try {
+        const parsedUrl = new URL(liveScoreUrl)
+        if (!parsedUrl.hostname.includes('livescore.com')) {
+          nextErrors.liveScoreUrl = t.tournamentUrlInvalid
+        }
+      } catch {
+        nextErrors.liveScoreUrl = t.tournamentUrlInvalid
+      }
+    }
+
+    if (!locale.trim()) {
+      nextErrors.locale = t.required
+    }
+
+    if (!timezoneOffset.trim()) {
+      nextErrors.timezoneOffset = t.required
+    }
+
+    setErrors(nextErrors)
+    return nextErrors
+  }
+
+  const previewTournament = async () => {
+    const nextErrors = validate(true)
+    if (Object.keys(nextErrors).length > 0) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsPreviewing(true)
+    try {
+      const result = await authorizedRequest<TournamentPreview>(user.token, '/api/tournaments/preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          liveScoreUrl: liveScoreUrl.trim(),
+          name: name.trim() || null,
+          season: season.trim() || null,
+          locale: locale.trim(),
+          timezoneOffset: timezoneOffset.trim(),
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setPreview(result.data)
+      setName((current) => current || result.data?.name || '')
+      setSeason((current) => current || result.data?.season || '')
+      setLocale(result.data.locale)
+      setTimezoneOffset(result.data.timezoneOffset)
+      onToast(t.tournamentPreviewLoaded, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsPreviewing(false)
+    }
+  }
+
+  const saveTournament = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nextErrors = validate(!isEditMode)
+    if (Object.keys(nextErrors).length > 0) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const result = isEditMode
+        ? await authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              name: name.trim() || null,
+              season: season.trim() || null,
+              isActive,
+              locale: locale.trim(),
+              timezoneOffset: timezoneOffset.trim(),
+            }),
+          })
+        : await authorizedRequest<TournamentDetails>(user.token, '/api/tournaments', {
+            method: 'POST',
+            body: JSON.stringify({
+              liveScoreUrl: liveScoreUrl.trim(),
+              name: name.trim() || null,
+              season: season.trim() || null,
+              locale: locale.trim(),
+              timezoneOffset: timezoneOffset.trim(),
+            }),
+          })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      onToast(isEditMode ? t.tournamentUpdated : t.tournamentCreated, 'success')
+      onSaved()
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const metadata = preview || loadedTournament
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content tournament-form-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{isEditMode ? t.tournamentEditEyebrow : t.tournamentCreateEyebrow}</p>
+          <h1>{isEditMode ? t.tournamentEditTitle : t.tournamentCreateTitle}</h1>
+          <p>{isEditMode ? t.tournamentEditCopy : t.tournamentCreateCopy}</p>
+        </div>
+
+        {isLoading ? (
+          <div className="tournament-form-card centered">
+            <LoadingSpinner />
+          </div>
+        ) : (
+          <form className="tournament-form-card" noValidate onSubmit={saveTournament}>
+            {isSubmitting && (
+              <div className="form-loading-overlay" role="status" aria-live="polite">
+                <LoadingSpinner />
+                <strong>{isEditMode ? t.tournamentSaving : t.tournamentCreating}</strong>
+              </div>
+            )}
+            {!isEditMode && (
+              <div className="tournament-url-row">
+                <FormField
+                  error={errors.liveScoreUrl}
+                  label={t.liveScoreUrl}
+                  placeholder={t.liveScoreUrlPlaceholder}
+                  type="url"
+                  value={liveScoreUrl}
+                  onChange={setLiveScoreUrl}
+                />
+                <button type="button" disabled={isPreviewing || isSubmitting} onClick={previewTournament}>
+                  {isPreviewing ? '...' : t.previewTournament}
+                </button>
+              </div>
+            )}
+
+            <FormField
+              error={errors.name}
+              label={t.tournamentDisplayName}
+              placeholder={t.tournamentDisplayNamePlaceholder}
+              type="text"
+              value={name}
+              onChange={setName}
+            />
+
+            <FormField
+              error={errors.season}
+              label={t.tournamentSeason}
+              placeholder="2026/2027"
+              type="text"
+              value={season}
+              onChange={setSeason}
+            />
+
+            {isEditMode && (
+              <label className="tournament-active-field">
+                <span>
+                  <span>{t.status}</span>
+                  <small>{isActive ? t.activeTournament : t.inactiveTournament}</small>
+                </span>
+                <button
+                  className={isActive ? 'active-toggle on' : 'active-toggle off'}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setPendingActiveValue(!isActive)}
+                >
+                  {isActive ? t.activeTournament : t.inactiveTournament}
+                </button>
+              </label>
+            )}
+
+            <div className="tournament-settings-grid">
+              <FormField
+                error={errors.locale}
+                label={t.locale}
+                type="text"
+                value={locale}
+                onChange={setLocale}
+              />
+              <FormField
+                error={errors.timezoneOffset}
+                label={t.timezoneOffset}
+                type="text"
+                value={timezoneOffset}
+                onChange={setTimezoneOffset}
+              />
+            </div>
+
+            {metadata && (
+              <div className="tournament-preview-card">
+                <h2>{t.tournamentPreviewTitle}</h2>
+                <dl>
+                  <div>
+                    <dt>{t.tournamentName}</dt>
+                    <dd>{metadata.name}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.tournamentSeason}</dt>
+                    <dd>{metadata.season || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.competition}</dt>
+                    <dd>{metadata.competitionName}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.tournamentCountry}</dt>
+                    <dd>{metadata.competitionCountry || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.locale}</dt>
+                    <dd>{metadata.locale}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.timezoneOffset}</dt>
+                    <dd>{metadata.timezoneOffset}</dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            <div className="tournament-form-actions">
+              <button type="button" disabled={isSubmitting} onClick={onBack}>
+                {t.cancel}
+              </button>
+              <button className="form-submit" type="submit" disabled={isSubmitting || isPreviewing}>
+                {isSubmitting ? '...' : isEditMode ? t.saveTournament : t.createTournament}
+              </button>
+            </div>
+            {pendingActiveValue !== null && loadedTournament && (
+              <TournamentActiveModal
+                t={t}
+                tournament={loadedTournament}
+                nextIsActive={pendingActiveValue}
+                onCancel={() => setPendingActiveValue(null)}
+                onConfirm={() => {
+                  setIsActive(pendingActiveValue)
+                  setPendingActiveValue(null)
+                }}
+              />
+            )}
+          </form>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function TournamentDetailsPage({
+  t,
+  user,
+  tournamentId,
+  onBack,
+  onEdit,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId: string
+  onBack: () => void
+  onEdit: (id: number) => void
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const [tournament, setTournament] = useState<TournamentDetails | null>(null)
+  const [matches, setMatches] = useState<MatchSummary[]>([])
+  const [syncRuns, setSyncRuns] = useState<TournamentSyncRun[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeSyncMode, setActiveSyncMode] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'details' | 'teams' | 'matches'>('details')
+  const [teamEditCandidate, setTeamEditCandidate] = useState<TournamentDetails['teams'][number] | null>(null)
+  const [matchEditCandidate, setMatchEditCandidate] = useState<MatchSummary | null>(null)
+  const [teamSortKey, setTeamSortKey] = useState<TeamSortKey>('name')
+  const [teamSortDirection, setTeamSortDirection] = useState<SortDirection>('asc')
+  const [matchSortKey, setMatchSortKey] = useState<MatchSortKey>('kickoff')
+  const [matchSortDirection, setMatchSortDirection] = useState<SortDirection>('asc')
+
+  const loadTournamentData = async () => {
+    if (!tournamentId) {
+      onBack()
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const [detailsResult, matchesResult, syncRunsResult] = await Promise.all([
+        authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`),
+        authorizedRequest<MatchSummary[]>(user.token, `/api/tournaments/${tournamentId}/matches`),
+        authorizedRequest<TournamentSyncRun[]>(user.token, `/api/tournaments/${tournamentId}/sync-runs`),
+      ])
+
+      if (detailsResult.status === 404) {
+        onToast(t.tournamentNotFound, 'error')
+        onBack()
+        return
+      }
+
+      if (!detailsResult.ok || !detailsResult.data) {
+        onToast(detailsResult.message || t.tournamentLoadFailed, 'error')
+        return
+      }
+
+      setTournament(detailsResult.data)
+      setMatches(matchesResult.ok && matchesResult.data ? matchesResult.data : [])
+      setSyncRuns(syncRunsResult.ok && syncRunsResult.data ? syncRunsResult.data : [])
+
+      if (!matchesResult.ok) {
+        onToast(matchesResult.message || t.genericError, 'error')
+      }
+
+      if (!syncRunsResult.ok) {
+        onToast(syncRunsResult.message || t.genericError, 'error')
+      }
+    } catch {
+      onToast(t.tournamentLoadFailed, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadTournamentData()
+  }, [tournamentId, user.token])
+
+  const runSync = async (mode: 'full' | 'schedule' | 'live' | 'finalize' | 'results') => {
+    setActiveSyncMode(mode)
+    try {
+      const result = await authorizedRequest<SyncTournamentResponse>(user.token, `/api/tournaments/${tournamentId}/sync/${mode}`, {
+        method: 'POST',
+      })
+
+      if (!result.ok) {
+        onToast(result.message || t.syncFailed, 'error')
+        return
+      }
+
+      onToast(t.syncStarted, 'success')
+      await loadTournamentData()
+    } catch {
+      onToast(t.syncFailed, 'error')
+    } finally {
+      setActiveSyncMode(null)
+    }
+  }
+
+  const finishedMatches = matches.filter((match) => ['Finished', 'AfterExtraTime', 'AfterPenalties', '3'].includes(String(match.status)) || String(match.syncState) === 'Finalized' || String(match.syncState) === '3')
+  const liveMatches = matches.filter((match) => String(match.status) === 'Live' || String(match.status) === '2' || String(match.syncState) === 'Live' || String(match.syncState) === '2')
+  const upcomingMatches = matches.filter((match) => String(match.status) === 'Upcoming' || String(match.status) === '1' || String(match.syncState) === 'Scheduled' || String(match.syncState) === '1')
+  const problemMatches = matches.filter((match) => ['Cancelled', 'Postponed', 'Interrupted', 'Abandoned', '4', '5'].includes(String(match.status)))
+  const missingTeamMatches = matches.filter((match) => !match.homeTeam || !match.awayTeam)
+  const sortedWithDates = matches
+    .filter((match) => match.kickoffUtc)
+    .sort((left, right) => new Date(left.kickoffUtc || 0).getTime() - new Date(right.kickoffUtc || 0).getTime())
+  const now = Date.now()
+  const nextMatch = sortedWithDates.find((match) => new Date(match.kickoffUtc || 0).getTime() >= now)
+  const recentRuns = syncRuns.slice(0, 8)
+  const syncButtons: Array<{ mode: 'full' | 'schedule' | 'live' | 'finalize' | 'results'; label: string; copy: string }> = [
+    { mode: 'full', label: t.fullSync, copy: t.fullSyncCopy },
+    { mode: 'schedule', label: t.scheduleSync, copy: t.scheduleSyncCopy },
+    { mode: 'live', label: t.liveSync, copy: t.liveSyncCopy },
+    { mode: 'finalize', label: t.finalizeSync, copy: t.finalizeSyncCopy },
+    { mode: 'results', label: t.resultsSync, copy: t.resultsSyncCopy },
+  ]
+
+  const requestTeamSort = (key: TeamSortKey) => {
+    if (teamSortKey === key) {
+      setTeamSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setTeamSortKey(key)
+    setTeamSortDirection('asc')
+  }
+
+  const requestMatchSort = (key: MatchSortKey) => {
+    if (matchSortKey === key) {
+      setMatchSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setMatchSortKey(key)
+    setMatchSortDirection('asc')
+  }
+
+  const sortedTeams = useMemo(() => {
+    if (!tournament) {
+      return []
+    }
+
+    return [...tournament.teams].sort((left, right) => {
+      const comparison = teamSortKey === 'name'
+        ? compareText(left.name, right.name)
+        : compareText(left.abbreviation, right.abbreviation)
+
+      return teamSortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [teamSortDirection, teamSortKey, tournament])
+
+  const sortedMatches = useMemo(() => {
+    return [...matches].sort((left, right) => {
+      let comparison = 0
+      if (matchSortKey === 'kickoff') {
+        comparison = new Date(left.kickoffUtc || 0).getTime() - new Date(right.kickoffUtc || 0).getTime()
+      } else if (matchSortKey === 'round') {
+        comparison = compareText(left.roundInfo, right.roundInfo)
+      } else if (matchSortKey === 'home') {
+        comparison = compareText(left.homeTeam?.name || left.homeTeamNameSnapshot, right.homeTeam?.name || right.homeTeamNameSnapshot)
+      } else if (matchSortKey === 'away') {
+        comparison = compareText(left.awayTeam?.name || left.awayTeamNameSnapshot, right.awayTeam?.name || right.awayTeamNameSnapshot)
+      } else if (matchSortKey === 'score') {
+        comparison = (left.homeScore ?? -1) - (right.homeScore ?? -1) || (left.awayScore ?? -1) - (right.awayScore ?? -1)
+      } else if (matchSortKey === 'status') {
+        comparison = compareText(String(left.status), String(right.status))
+      }
+
+      return matchSortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [matchSortDirection, matchSortKey, matches])
+
+  const teamHeaders: Array<{ key: TeamSortKey; label: string }> = [
+    { key: 'name', label: t.teamName },
+    { key: 'abbreviation', label: t.abbreviation },
+  ]
+
+  const matchHeaders: Array<{ key: MatchSortKey; label: string }> = [
+    { key: 'kickoff', label: t.kickoff },
+    { key: 'round', label: t.round },
+    { key: 'home', label: t.homeTeam },
+    { key: 'away', label: t.awayTeam },
+    { key: 'score', label: t.score },
+    { key: 'status', label: t.status },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content tournament-details-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.tournamentDetailsEyebrow}</p>
+          <h1>{tournament?.name ?? t.tournamentDetailsTitle}</h1>
+          <p>{t.tournamentDetailsCopy}</p>
+        </div>
+
+        {isLoading ? (
+          <div className="tournament-form-card centered">
+            <LoadingSpinner />
+            <strong>{t.loadingTournament}</strong>
+          </div>
+        ) : tournament && (
+          <>
+            <div className="details-top-actions">
+              <button type="button" onClick={onBack}>
+                <MenuIcon name="arrow-left" />
+                <span>{t.backToTournaments}</span>
+              </button>
+              <button type="button" onClick={() => onEdit(tournament.id)}>{t.edit}</button>
+            </div>
+
+            <div className="details-tabs">
+              {[
+                ['details', t.tabDetails],
+                ['teams', t.tabTeams],
+                ['matches', t.tabMatches],
+              ].map(([value, label]) => (
+                <button
+                  className={activeTab === value ? 'active' : ''}
+                  type="button"
+                  key={value}
+                  onClick={() => setActiveTab(value as 'details' | 'teams' | 'matches')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === 'details' && (
+              <>
+                <section className="details-panel">
+                  <div className="details-panel-heading">
+                    <MenuIcon name="tournaments" />
+                    <h2>{t.overview}</h2>
+                  </div>
+                  <dl className="details-grid">
+                    <div><dt>{t.tournamentName}</dt><dd>{tournament.name}</dd></div>
+                    <div><dt>{t.tournamentSeason}</dt><dd>{tournament.season || '-'}</dd></div>
+                    <div><dt>{t.competition}</dt><dd>{tournament.competitionName}</dd></div>
+                    <div><dt>{t.tournamentCountry}</dt><dd>{tournament.competitionCountry || '-'}</dd></div>
+                    <div><dt>{t.liveScoreCompetitionId}</dt><dd>{tournament.liveScoreCompetitionId || '-'}</dd></div>
+                    <div><dt>{t.resultsUrl}</dt><dd><a href={tournament.resultsUrl} target="_blank" rel="noreferrer">{tournament.resultsUrl}</a></dd></div>
+                    <div><dt>{t.locale}</dt><dd>{tournament.locale}</dd></div>
+                    <div><dt>{t.timezoneOffset}</dt><dd>{tournament.timezoneOffset}</dd></div>
+                    <div><dt>{t.created}</dt><dd>{formatDate(tournament.createdAtUtc, '-')}</dd></div>
+                    <div><dt>{t.tournamentLastSync}</dt><dd>{formatDate(tournament.lastSyncedAtUtc, t.neverSynced)}</dd></div>
+                    <div><dt>{t.baseUrl}</dt><dd><a href={tournament.baseUrl} target="_blank" rel="noreferrer">{tournament.baseUrl}</a></dd></div>
+                    <div><dt>{t.fixturesUrl}</dt><dd><a href={tournament.fixturesUrl} target="_blank" rel="noreferrer">{tournament.fixturesUrl}</a></dd></div>
+                  </dl>
+                </section>
+
+                <section className="details-panel">
+                  <div className="details-panel-heading">
+                    <MenuIcon name="matches" />
+                    <h2>{t.tournamentDataCoverage}</h2>
+                  </div>
+                  <div className="coverage-grid">
+                    <div><span>{t.matches}</span><strong>{matches.length}</strong></div>
+                    <div><span>{t.teams}</span><strong>{tournament.teams.length}</strong></div>
+                    <div><span>{t.stages}</span><strong>{tournament.stages.length}</strong></div>
+                    <div><span>{t.upcoming}</span><strong>{upcomingMatches.length}</strong></div>
+                    <div><span>{t.live}</span><strong>{liveMatches.length}</strong></div>
+                    <div><span>{t.finalized}</span><strong>{finishedMatches.length}</strong></div>
+                    <div><span>{t.problemRecords}</span><strong>{problemMatches.length}</strong></div>
+                    <div><span>{t.missingTeams}</span><strong>{missingTeamMatches.length}</strong></div>
+                    <div><span>{t.nextMatch}</span><strong>{formatDate(nextMatch?.kickoffUtc, '-')}</strong></div>
+                  </div>
+                </section>
+
+                <section className="details-panel">
+                  <div className="details-panel-heading">
+                    <MenuIcon name="admin" />
+                    <h2>{t.syncOperations}</h2>
+                  </div>
+                  <div className="sync-action-grid">
+                    {syncButtons.map((button) => (
+                      <button
+                        type="button"
+                        key={button.mode}
+                        disabled={Boolean(activeSyncMode)}
+                        onClick={() => runSync(button.mode)}
+                      >
+                        {activeSyncMode === button.mode ? <LoadingSpinner /> : <MenuIcon name="admin" />}
+                        <strong>{button.label}</strong>
+                        <span>{button.copy}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="details-panel">
+                  <div className="details-panel-heading">
+                    <MenuIcon name="matches" />
+                    <h2>{t.recentSyncRuns}</h2>
+                  </div>
+                  <div className="tournament-table-shell compact-table-shell">
+                    <table className="tournament-table sync-runs-table">
+                      <thead>
+                        <tr>
+                          <th>{t.mode}</th>
+                          <th>{t.status}</th>
+                          <th>{t.started}</th>
+                          <th>{t.finished}</th>
+                          <th>{t.inserted}</th>
+                          <th>{t.updatedRows}</th>
+                          <th>{t.unchanged}</th>
+                          <th>{t.error}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentRuns.map((run) => (
+                          <tr key={run.id}>
+                            <td>{run.mode}</td>
+                            <td>{run.status}</td>
+                            <td>{formatDate(run.startedAtUtc, '-')}</td>
+                            <td>{formatDate(run.finishedAtUtc, '-')}</td>
+                            <td>{run.insertedMatches}</td>
+                            <td>{run.updatedMatches}</td>
+                            <td>{run.unchangedMatches}</td>
+                            <td>{run.errorMessage || '-'}</td>
+                          </tr>
+                        ))}
+                        {recentRuns.length === 0 && (
+                          <tr>
+                            <td className="empty-table" colSpan={8}>{t.noSyncRuns}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </>
+            )}
+
+            {activeTab === 'teams' && (
+              <section className="details-panel">
+                <div className="details-panel-heading">
+                  <MenuIcon name="teams" />
+                  <h2>{t.teams}</h2>
+                </div>
+                <div className="tournament-table-shell compact-table-shell">
+                  <table className="tournament-table sync-runs-table">
+                    <thead>
+                      <tr>
+                        {teamHeaders.map((header) => (
+                          <th key={header.key}>
+                            <button
+                              className="table-sort-button"
+                              type="button"
+                              aria-sort={teamSortKey === header.key ? (teamSortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                              onClick={() => requestTeamSort(header.key)}
+                            >
+                              <span>{header.label}</span>
+                              <span aria-hidden="true">{teamSortKey === header.key ? (teamSortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                            </button>
+                          </th>
+                        ))}
+                        <th>{t.tournamentActions}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedTeams.map((team) => (
+                        <tr key={team.id}>
+                          <td>{team.name}</td>
+                          <td>{team.abbreviation || '-'}</td>
+                          <td>
+                            <div className="table-actions single-action">
+                              <button type="button" onClick={() => setTeamEditCandidate(team)}>
+                                {t.edit}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'matches' && (
+              <section className="details-panel">
+                <div className="details-panel-heading">
+                  <MenuIcon name="matches" />
+                  <h2>{t.matches}</h2>
+                </div>
+                <div className="tournament-table-shell compact-table-shell">
+                  <table className="tournament-table matches-table">
+                    <thead>
+                      <tr>
+                        {matchHeaders.map((header) => (
+                          <th key={header.key}>
+                            <button
+                              className="table-sort-button"
+                              type="button"
+                              aria-sort={matchSortKey === header.key ? (matchSortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                              onClick={() => requestMatchSort(header.key)}
+                            >
+                              <span>{header.label}</span>
+                              <span aria-hidden="true">{matchSortKey === header.key ? (matchSortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                            </button>
+                          </th>
+                        ))}
+                        <th>{t.tournamentActions}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedMatches.map((match) => (
+                        <tr key={match.id}>
+                          <td>{formatDate(match.kickoffUtc, '-')}</td>
+                          <td>{match.roundInfo || '-'}</td>
+                          <td>{match.homeTeam?.name || match.homeTeamNameSnapshot || '-'}</td>
+                          <td>{match.awayTeam?.name || match.awayTeamNameSnapshot || '-'}</td>
+                          <td>{match.homeScore ?? '-'} : {match.awayScore ?? '-'}</td>
+                          <td>{match.status}</td>
+                          <td>
+                            <div className="table-actions single-action">
+                              <button type="button" onClick={() => setMatchEditCandidate(match)}>
+                                {t.edit}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+          </>
+        )}
+        {teamEditCandidate && tournament && (
+          <EditTeamModal
+            t={t}
+            team={teamEditCandidate}
+            user={user}
+            onCancel={() => setTeamEditCandidate(null)}
+            onSaved={(updatedTeam) => {
+              setTournament({
+                ...tournament,
+                teams: tournament.teams.map((team) => team.id === updatedTeam.id ? updatedTeam : team),
+              })
+              setMatches((current) => current.map((match) => ({
+                ...match,
+                homeTeam: match.homeTeam?.id === updatedTeam.id ? updatedTeam : match.homeTeam,
+                awayTeam: match.awayTeam?.id === updatedTeam.id ? updatedTeam : match.awayTeam,
+              })))
+              setTeamEditCandidate(null)
+              onToast(t.teamUpdated, 'success')
+            }}
+            onToast={onToast}
+          />
+        )}
+        {matchEditCandidate && tournament && (
+          <EditMatchModal
+            t={t}
+            user={user}
+            tournament={tournament}
+            match={matchEditCandidate}
+            onCancel={() => setMatchEditCandidate(null)}
+            onSaved={(updatedMatch) => {
+              setMatches((current) => current.map((match) => match.id === updatedMatch.id ? updatedMatch : match))
+              setMatchEditCandidate(null)
+              onToast(t.matchUpdated, 'success')
+            }}
+            onToast={onToast}
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+function DeleteTournamentModal({
+  t,
+  tournament,
+  isDeleting,
+  onCancel,
+  onConfirm,
+}: {
+  t: (typeof translations)[Language]
+  tournament: TournamentSummary
+  isDeleting: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isDeleting) {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isDeleting, onCancel])
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isDeleting && onCancel()}>
+      <section
+        className="delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-tournament-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="tournaments" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.delete}</p>
+          <h2 id="delete-tournament-title">{t.tournamentDeleteTitle}</h2>
+          <p>{t.tournamentDeleteCopy}</p>
+          <div className="delete-modal-target">
+            <strong>{tournament.name}</strong>
+            <span>{tournament.competitionName} · {tournament.competitionCountry || '-'}</span>
+          </div>
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" disabled={isDeleting} onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button className="danger" type="button" disabled={isDeleting} onClick={onConfirm}>
+            {isDeleting ? '...' : t.confirmDelete}
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function TournamentActiveModal({
+  t,
+  tournament,
+  nextIsActive,
+  onCancel,
+  onConfirm,
+}: {
+  t: (typeof translations)[Language]
+  tournament: TournamentDetails
+  nextIsActive: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onCancel])
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        className="delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="active-tournament-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="tournaments" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{nextIsActive ? t.confirmActivate : t.confirmDeactivate}</p>
+          <h2 id="active-tournament-title">{nextIsActive ? t.activateTournamentTitle : t.deactivateTournamentTitle}</h2>
+          <p>{nextIsActive ? t.activateTournamentCopy : t.deactivateTournamentCopy}</p>
+          <div className="delete-modal-target">
+            <strong>{tournament.name}</strong>
+            <span>{tournament.season || '-'} · {tournament.competitionCountry || '-'}</span>
+          </div>
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button className={nextIsActive ? '' : 'danger'} type="button" onClick={onConfirm}>
+            {nextIsActive ? t.confirmActivate : t.confirmDeactivate}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
+  )
+}
+
+function EditTeamModal({
+  t,
+  user,
+  team,
+  onCancel,
+  onSaved,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  team: TournamentDetails['teams'][number]
+  onCancel: () => void
+  onSaved: (team: TournamentDetails['teams'][number]) => void
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const [name, setName] = useState(team.name)
+  const [abbreviation, setAbbreviation] = useState(team.abbreviation)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSaving) {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isSaving, onCancel])
+
+  const saveTeam = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nextErrors: Record<string, string> = {}
+    if (!name.trim()) {
+      nextErrors.name = t.required
+    }
+
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await authorizedRequest<TournamentDetails['teams'][number]>(user.token, `/api/teams/${team.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: name.trim(),
+          abbreviation: abbreviation.trim(),
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      onSaved(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isSaving && onCancel()}>
+      <form
+        className="delete-modal edit-team-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-team-title"
+        noValidate
+        onSubmit={saveTeam}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="teams" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.edit}</p>
+          <h2 id="edit-team-title">{t.editTeamTitle}</h2>
+          <p>{t.editTeamCopy}</p>
+        </div>
+        <div className="edit-team-fields">
+          <FormField
+            error={errors.name}
+            label={t.teamName}
+            type="text"
+            value={name}
+            onChange={setName}
+          />
+          <FormField
+            label={t.abbreviation}
+            type="text"
+            value={abbreviation}
+            onChange={setAbbreviation}
+          />
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" disabled={isSaving} onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button type="submit" disabled={isSaving}>
+            {isSaving ? '...' : t.saveTeam}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function EditMatchModal({
+  t,
+  user,
+  tournament,
+  match,
+  onCancel,
+  onSaved,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournament: TournamentDetails
+  match: MatchSummary
+  onCancel: () => void
+  onSaved: (match: MatchSummary) => void
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const statusLabels: Record<string, number> = { Unknown: 0, Upcoming: 1, Live: 2, Finished: 3, Postponed: 4, Cancelled: 5 }
+  const syncStateLabels: Record<string, number> = { Unknown: 0, Scheduled: 1, Live: 2, Finalized: 3, Postponed: 4, Cancelled: 5 }
+  const [stageId, setStageId] = useState(match.stageId?.toString() ?? '')
+  const [kickoffUtc, setKickoffUtc] = useState(toDateTimeLocalInput(match.kickoffUtc))
+  const [roundInfo, setRoundInfo] = useState(match.roundInfo)
+  const [homeScore, setHomeScore] = useState(match.homeScore?.toString() ?? '')
+  const [awayScore, setAwayScore] = useState(match.awayScore?.toString() ?? '')
+  const [regularHomeScore, setRegularHomeScore] = useState(match.regularTimeHomeScore?.toString() ?? '')
+  const [regularAwayScore, setRegularAwayScore] = useState(match.regularTimeAwayScore?.toString() ?? '')
+  const [extraHomeScore, setExtraHomeScore] = useState(match.afterExtraTimeHomeScore?.toString() ?? '')
+  const [extraAwayScore, setExtraAwayScore] = useState(match.afterExtraTimeAwayScore?.toString() ?? '')
+  const [penaltyHomeScore, setPenaltyHomeScore] = useState(match.penaltyHomeScore?.toString() ?? '')
+  const [penaltyAwayScore, setPenaltyAwayScore] = useState(match.penaltyAwayScore?.toString() ?? '')
+  const [status, setStatus] = useState(enumValue(match.status, 0, statusLabels).toString())
+  const [rawStatus, setRawStatus] = useState(match.rawStatus)
+  const [syncState, setSyncState] = useState(enumValue(match.syncState, 0, syncStateLabels).toString())
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSaving) {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isSaving, onCancel])
+
+  const saveMatch = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsSaving(true)
+
+    try {
+      const result = await authorizedRequest<MatchSummary>(user.token, `/api/tournaments/${tournament.id}/matches/${match.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          stageId: stageId ? Number(stageId) : null,
+          kickoffUtc: kickoffUtc ? new Date(kickoffUtc).toISOString() : null,
+          homeScore: nullableNumber(homeScore),
+          awayScore: nullableNumber(awayScore),
+          regularTimeHomeScore: nullableNumber(regularHomeScore),
+          regularTimeAwayScore: nullableNumber(regularAwayScore),
+          afterExtraTimeHomeScore: nullableNumber(extraHomeScore),
+          afterExtraTimeAwayScore: nullableNumber(extraAwayScore),
+          penaltyHomeScore: nullableNumber(penaltyHomeScore),
+          penaltyAwayScore: nullableNumber(penaltyAwayScore),
+          status: Number(status),
+          rawStatus,
+          syncState: Number(syncState),
+          roundInfo,
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      onSaved(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isSaving && onCancel()}>
+      <form
+        className="delete-modal edit-match-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-match-title"
+        noValidate
+        onSubmit={saveMatch}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="matches" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.edit}</p>
+          <h2 id="edit-match-title">{t.editMatchTitle}</h2>
+          <p>{t.editMatchCopy}</p>
+          <div className="delete-modal-target">
+            <strong>{match.homeTeam?.name || match.homeTeamNameSnapshot} vs {match.awayTeam?.name || match.awayTeamNameSnapshot}</strong>
+            <span>{formatDate(match.kickoffUtc, '-')}</span>
+          </div>
+        </div>
+
+        <div className="edit-match-grid">
+          <label className="form-field">
+            <span><span>{t.stage}</span></span>
+            <select value={stageId} onChange={(event) => setStageId(event.target.value)}>
+              <option value="">{t.noStage}</option>
+              {tournament.stages.map((stage) => (
+                <option value={stage.id} key={stage.id}>{stage.name}</option>
+              ))}
+            </select>
+          </label>
+          <FormField label={t.round} type="text" value={roundInfo} onChange={setRoundInfo} />
+          <FormField label={t.kickoff} type="datetime-local" value={kickoffUtc} onChange={setKickoffUtc} />
+          <label className="form-field">
+            <span><span>{t.status}</span></span>
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
+              {Object.entries(statusLabels).map(([label, value]) => (
+                <option value={value} key={label}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <FormField label={t.rawStatus} type="text" value={rawStatus} onChange={setRawStatus} />
+          <label className="form-field">
+            <span><span>{t.syncState}</span></span>
+            <select value={syncState} onChange={(event) => setSyncState(event.target.value)}>
+              {Object.entries(syncStateLabels).map(([label, value]) => (
+                <option value={value} key={label}>{label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="score-edit-grid">
+          <FormField label={`${t.finalScore} - ${t.homeTeam}`} type="number" value={homeScore} onChange={setHomeScore} />
+          <FormField label={`${t.finalScore} - ${t.awayTeam}`} type="number" value={awayScore} onChange={setAwayScore} />
+          <FormField label={`${t.regularTimeScore} - ${t.homeTeam}`} type="number" value={regularHomeScore} onChange={setRegularHomeScore} />
+          <FormField label={`${t.regularTimeScore} - ${t.awayTeam}`} type="number" value={regularAwayScore} onChange={setRegularAwayScore} />
+          <FormField label={`${t.afterExtraTimeScore} - ${t.homeTeam}`} type="number" value={extraHomeScore} onChange={setExtraHomeScore} />
+          <FormField label={`${t.afterExtraTimeScore} - ${t.awayTeam}`} type="number" value={extraAwayScore} onChange={setExtraAwayScore} />
+          <FormField label={`${t.penaltiesScore} - ${t.homeTeam}`} type="number" value={penaltyHomeScore} onChange={setPenaltyHomeScore} />
+          <FormField label={`${t.penaltiesScore} - ${t.awayTeam}`} type="number" value={penaltyAwayScore} onChange={setPenaltyAwayScore} />
+        </div>
+
+        <div className="delete-modal-actions">
+          <button type="button" disabled={isSaving} onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button type="submit" disabled={isSaving}>
+            {isSaving ? '...' : t.saveMatch}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }
 

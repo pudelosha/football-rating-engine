@@ -5,16 +5,20 @@ namespace FootballResults.Api.DTOs;
 public sealed record CreateTournamentRequest(
     string LiveScoreUrl,
     string? Name = null,
+    string? Season = null,
     string Locale = "en",
     string TimezoneOffset = "0");
 
 public sealed record UpdateTournamentRequest(
     string? Name,
+    string? Season,
+    bool? IsActive,
     string? Locale,
     string? TimezoneOffset);
 
 public sealed record TournamentPreviewDto(
     string Name,
+    string Season,
     string CompetitionName,
     string CompetitionCountry,
     string CategoryCode,
@@ -25,7 +29,9 @@ public sealed record TournamentPreviewDto(
 
 public sealed record TournamentSummaryDto(
     int Id,
+    bool IsActive,
     string Name,
+    string Season,
     string CompetitionName,
     string CompetitionCountry,
     DateTimeOffset CreatedAtUtc,
@@ -37,12 +43,18 @@ public sealed record TournamentSummaryDto(
 
 public sealed record TournamentDetailsDto(
     int Id,
+    bool IsActive,
+    string LiveScoreCompetitionId,
     string Name,
+    string Season,
     string CompetitionName,
     string CompetitionCountry,
     string CategoryCode,
     string CategoryName,
     string CategoryTransliteratedName,
+    string BaseUrl,
+    string FixturesUrl,
+    string ResultsUrl,
     string Locale,
     string TimezoneOffset,
     DateTimeOffset CreatedAtUtc,
@@ -59,6 +71,10 @@ public sealed record TournamentStageDto(
 
 public sealed record TeamDto(
     int Id,
+    string Name,
+    string Abbreviation);
+
+public sealed record UpdateTeamRequest(
     string Name,
     string Abbreviation);
 
@@ -86,6 +102,22 @@ public sealed record MatchDto(
     MatchSyncState SyncState,
     string RoundInfo,
     DateTimeOffset? LastSyncedAtUtc);
+
+public sealed record UpdateMatchRequest(
+    int? StageId,
+    DateTimeOffset? KickoffUtc,
+    int? HomeScore,
+    int? AwayScore,
+    int? RegularTimeHomeScore,
+    int? RegularTimeAwayScore,
+    int? AfterExtraTimeHomeScore,
+    int? AfterExtraTimeAwayScore,
+    int? PenaltyHomeScore,
+    int? PenaltyAwayScore,
+    MatchStatus Status,
+    string RawStatus,
+    MatchSyncState SyncState,
+    string RoundInfo);
 
 public sealed record SyncTournamentResponse(
     int SyncRunId,

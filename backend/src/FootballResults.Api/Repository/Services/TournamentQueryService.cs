@@ -14,7 +14,9 @@ public sealed class TournamentQueryService(AppDbContext dbContext) : ITournament
             .OrderBy(tournament => tournament.Name)
             .Select(tournament => new TournamentSummaryDto(
                 tournament.Id,
+                tournament.IsActive,
                 tournament.Name,
+                tournament.Season,
                 tournament.CompetitionName,
                 tournament.CompetitionCountry,
                 tournament.CreatedAtUtc,
@@ -50,6 +52,16 @@ public sealed class TournamentQueryService(AppDbContext dbContext) : ITournament
         if (!string.IsNullOrWhiteSpace(request.Name))
         {
             tournament.Name = request.Name;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Season))
+        {
+            tournament.Season = request.Season;
+        }
+
+        if (request.IsActive.HasValue)
+        {
+            tournament.IsActive = request.IsActive.Value;
         }
 
         if (!string.IsNullOrWhiteSpace(request.Locale))

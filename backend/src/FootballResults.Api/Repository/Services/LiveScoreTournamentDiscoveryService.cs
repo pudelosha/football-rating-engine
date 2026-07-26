@@ -44,6 +44,8 @@ public sealed partial class LiveScoreTournamentDiscoveryService(HttpClient httpC
         var categoryTransliteratedName = FindFirstString(nextData.RootElement, "CnmT");
         var detectedLocale = FindFirstString(nextData.RootElement, "locale");
         var urlSlug = baseUrl.TrimEnd('/').Split('/').LastOrDefault() ?? string.Empty;
+        var resolvedLocale = string.IsNullOrWhiteSpace(locale) ? detectedLocale.OrDefault("en") : locale;
+        var season = await InferSeasonAsync(apiBaseUrl, competitionId, resolvedLocale, cancellationToken);
 
         competitionName = string.IsNullOrWhiteSpace(competitionName) ? HumanizeSlug(urlSlug) : competitionName;
         categoryName = string.IsNullOrWhiteSpace(categoryName) ? competitionName : categoryName;
@@ -51,6 +53,7 @@ public sealed partial class LiveScoreTournamentDiscoveryService(HttpClient httpC
         return new LiveScoreTournamentDiscoveryResult(
             LiveScoreCompetitionId: competitionId,
             Name: categoryName,
+            Season: season,
             CompetitionName: competitionName,
             CompetitionCountry: competitionCountry,
             CompetitionUrlName: string.IsNullOrWhiteSpace(competitionUrlName) ? urlSlug : competitionUrlName,
@@ -61,7 +64,7 @@ public sealed partial class LiveScoreTournamentDiscoveryService(HttpClient httpC
             FixturesUrl: baseUrl + "fixtures/",
             ResultsUrl: baseUrl + "results/",
             ApiBaseUrl: apiBaseUrl,
-            Locale: string.IsNullOrWhiteSpace(locale) ? detectedLocale.OrDefault("en") : locale,
+            Locale: resolvedLocale,
             TimezoneOffset: string.IsNullOrWhiteSpace(timezoneOffset) ? "0" : timezoneOffset);
     }
 
@@ -158,6 +161,78 @@ public sealed partial class LiveScoreTournamentDiscoveryService(HttpClient httpC
             ' ',
             slug.Split('-', StringSplitOptions.RemoveEmptyEntries)
                 .Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
+    }
+
+    private async Task<string> InferSeasonAsync(
+        string apiBaseUrl,
+        string competitionId,
+        string locale,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(apiBaseUrl) || string.IsNullOrWhiteSpace(competitionId))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var url = $"{apiBaseUrl.TrimEnd('/')}/v1/api/app/competition/{competitionId}/fixtures-w/0?limit=500&locale={Uri.EscapeDataString(locale)}";
+            await using var stream = await httpClient.GetStreamAsync(url, cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            var years = FindNumbers(document.RootElement, "Esd")
+                .Select(value => value.ToString())
+                .Where(value => value.Length >= 4)
+                .Select(value => int.TryParse(value[..4], out var year) ? year : 0)
+                .Where(year => year > 0)
+                .Distinct()
+                .Order()
+                .ToList();
+
+            if (years.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return years.Count == 1 ? years[0].ToString() : $"{years.First()}/{years.Last()}";
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static IEnumerable<long> FindNumbers(JsonElement element, string name)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (property.Name.Equals(name, StringComparison.OrdinalIgnoreCase) &&
+                        property.Value.ValueKind == JsonValueKind.Number &&
+                        property.Value.TryGetInt64(out var number))
+                    {
+                        yield return number;
+                    }
+
+                    foreach (var value in FindNumbers(property.Value, name))
+                    {
+                        yield return value;
+                    }
+                }
+
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    foreach (var value in FindNumbers(item, name))
+                    {
+                        yield return value;
+                    }
+                }
+
+                break;
+        }
     }
 
     [GeneratedRegex("""window\.__PUBLIC_RUNTIME_CONFIG__\s*=\s*(?<json>\{.*?\})\s*;?\s*</script>""", RegexOptions.Singleline)]

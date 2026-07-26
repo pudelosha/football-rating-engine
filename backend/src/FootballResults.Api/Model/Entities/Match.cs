@@ -29,6 +29,8 @@ public sealed class Match
     public string RawStatus { get; set; } = string.Empty;
     public MatchSyncState SyncState { get; set; }
     public string RoundInfo { get; set; } = string.Empty;
+    public bool IsRoundInfoManualOverride { get; set; }
+    public bool IsStageManualOverride { get; set; }
     public string MatchUrl { get; set; } = string.Empty;
     public string LastSourceEndpoint { get; set; } = string.Empty;
     public LiveScoreListType LastSeenInListType { get; set; }

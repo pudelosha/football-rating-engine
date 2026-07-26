@@ -33,6 +33,33 @@ public sealed class TeamsController(AppDbContext dbContext) : ControllerBase
         return team is null ? NotFound() : Ok(DtoMapper.ToTeamDto(team));
     }
 
+    [HttpPut("teams/{id:int}")]
+    [Authorize(Policy = AuthExtensions.AdminPolicy)]
+    [ProducesResponseType(typeof(TeamDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TeamDto>> UpdateTeam(
+        int id,
+        UpdateTeamRequest request,
+        CancellationToken cancellationToken)
+    {
+        var team = await dbContext.Teams.FindAsync([id], cancellationToken);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            team.Name = request.Name.Trim();
+        }
+
+        team.Abbreviation = request.Abbreviation.Trim();
+        team.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(DtoMapper.ToTeamDto(team));
+    }
+
     [HttpGet("tournaments/{tournamentId:int}/teams")]
     [ProducesResponseType(typeof(IReadOnlyList<TeamDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TeamDto>>> GetTournamentTeams(

@@ -21,7 +21,7 @@ public sealed class AdminEndpointTests
         var create = await client.PostAsJsonAsync("/api/tournaments", Request());
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
 
-        var update = await client.PutAsJsonAsync($"/api/tournaments/{tournamentId}", new UpdateTournamentRequest("Updated Cup", "en", "0"));
+        var update = await client.PutAsJsonAsync($"/api/tournaments/{tournamentId}", new UpdateTournamentRequest("Updated Cup", "2026", true, "en", "0"));
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
 
         var delete = await client.DeleteAsync($"/api/tournaments/{tournamentId}");
@@ -57,6 +57,57 @@ public sealed class AdminEndpointTests
 
         Assert.Single(runs!);
         Assert.Equal(77, run!.Id);
+    }
+
+    [Fact]
+    public async Task Admin_CanUpdateTeam()
+    {
+        await using var factory = new FootballResultsApiFactory();
+        var tournamentId = await factory.SeedTournamentAsync();
+        var client = await factory.CreateAdminClientAsync();
+        var teams = await client.GetFromJsonAsync<IReadOnlyList<TeamDto>>($"/api/tournaments/{tournamentId}/teams");
+        var team = teams!.First();
+
+        var response = await client.PutAsJsonAsync($"/api/teams/{team.Id}", new UpdateTeamRequest("Updated Team", "UPD"));
+        var updated = await response.Content.ReadFromJsonAsync<TeamDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Updated Team", updated!.Name);
+        Assert.Equal("UPD", updated.Abbreviation);
+    }
+
+    [Fact]
+    public async Task Admin_CanUpdateMatch()
+    {
+        await using var factory = new FootballResultsApiFactory();
+        var tournamentId = await factory.SeedTournamentAsync();
+        var client = await factory.CreateAdminClientAsync();
+        var matches = await client.GetFromJsonAsync<IReadOnlyList<MatchDto>>($"/api/tournaments/{tournamentId}/matches");
+        var match = matches!.First();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/tournaments/{tournamentId}/matches/{match.Id}",
+            new UpdateMatchRequest(
+                match.StageId,
+                match.KickoffUtc,
+                3,
+                1,
+                2,
+                1,
+                null,
+                null,
+                null,
+                null,
+                MatchStatus.Finished,
+                "FT",
+                MatchSyncState.Finalized,
+                "Admin Round"));
+        var updated = await response.Content.ReadFromJsonAsync<MatchDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Admin Round", updated!.RoundInfo);
+        Assert.Equal(3, updated.HomeScore);
+        Assert.Equal(MatchStatus.Finished, updated.Status);
     }
 
     [Fact]

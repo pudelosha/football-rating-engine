@@ -17,12 +17,32 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-color: rgba(176, 216, 107, 0.76) rgba(16, 25, 21, 0.88);
+  scrollbar-width: thin;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+}
+
+body::-webkit-scrollbar {
+  width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+  background: rgba(16, 25, 21, 0.94);
+}
+
+body::-webkit-scrollbar-thumb {
+  border: 3px solid rgba(16, 25, 21, 0.94);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #b0d86b, #6f8f4c);
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #d3ff7b, #84a85c);
 }
 
 a {
@@ -961,7 +981,8 @@ p {
   text-align: right;
 }
 
-.form-field input {
+.form-field input,
+.form-field select {
   width: 100%;
   min-height: 52px;
   padding: 0 14px;
@@ -976,7 +997,8 @@ p {
     background 180ms ease;
 }
 
-.form-field input:focus {
+.form-field input:focus,
+.form-field select:focus {
   background: rgba(255, 255, 255, 0.11);
   box-shadow: 0 0 0 4px rgba(176, 216, 107, 0.14);
 }
@@ -1460,6 +1482,33 @@ p {
   text-transform: uppercase;
 }
 
+.table-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font-size: inherit;
+  font-weight: inherit;
+  text-align: left;
+  text-transform: inherit;
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.table-sort-button:hover {
+  color: #b0d86b;
+  transform: translateY(-1px);
+}
+
+.table-sort-button span:last-child {
+  color: #b0d86b;
+  font-size: 13px;
+  line-height: 1;
+}
+
 .tournament-table td {
   color: rgba(255, 249, 234, 0.78);
   font-size: 14px;
@@ -1510,6 +1559,10 @@ p {
   opacity: 0.58;
 }
 
+.table-actions.single-action {
+  grid-template-columns: 1fr;
+}
+
 .empty-table {
   height: 120px;
   color: rgba(255, 249, 234, 0.6) !important;
@@ -1529,6 +1582,558 @@ p {
   border-top-color: #b0d86b;
   border-radius: 50%;
   animation: spin 760ms linear infinite;
+}
+
+.tournament-form-layout {
+  max-width: 900px;
+}
+
+.tournament-form-card {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 8px;
+  background: rgba(35, 43, 37, 0.72);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.tournament-form-card.centered {
+  min-height: 240px;
+  place-items: center;
+}
+
+.tournament-url-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.tournament-url-row > button,
+.tournament-form-actions > button {
+  min-height: 52px;
+  padding: 0 16px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.tournament-url-row > button:disabled,
+.tournament-form-actions > button:disabled {
+  opacity: 0.62;
+}
+
+.tournament-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.tournament-active-field {
+  display: grid;
+  gap: 8px;
+}
+
+.tournament-active-field > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.tournament-active-field > span span {
+  color: rgba(255, 249, 234, 0.84);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.tournament-active-field > span small {
+  color: rgba(255, 249, 234, 0.56);
+  font-size: 13px;
+  font-weight: 760;
+  text-align: right;
+}
+
+.tournament-active-field button {
+  min-height: 46px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.tournament-active-field button.active-toggle.on {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.tournament-active-field button.active-toggle.off {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.92);
+}
+
+.tournament-preview-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.tournament-preview-card h2 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.tournament-preview-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.tournament-preview-card div {
+  display: grid;
+  gap: 4px;
+}
+
+.tournament-preview-card dt {
+  color: rgba(255, 249, 234, 0.52);
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.tournament-preview-card dd {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.tournament-form-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 0.34fr) minmax(0, 0.66fr);
+  gap: 10px;
+}
+
+.tournament-form-actions > button:first-child {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.form-loading-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 8px;
+  background: rgba(16, 25, 21, 0.78);
+  animation: toast-in 160ms ease both;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.form-loading-overlay strong {
+  max-width: 320px;
+  color: #fff9ea;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.form-loading-overlay .loading-spinner {
+  min-height: auto;
+}
+
+.tournament-details-layout {
+  gap: 18px;
+}
+
+.details-top-actions {
+  display: grid;
+  width: min(410px, 100%);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.details-top-actions button,
+.sync-action-grid button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.details-top-actions .menu-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.details-top-actions button:first-child {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.details-top-actions button.active-toggle.on {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.details-top-actions button.active-toggle.off {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.92);
+}
+
+.details-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.details-tabs button {
+  min-height: 42px;
+  color: rgba(255, 249, 234, 0.72);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.details-tabs button.active,
+.details-tabs button:hover {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.details-panel {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 8px;
+  background: rgba(35, 43, 37, 0.72);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.details-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.details-panel-heading .menu-icon {
+  width: 24px;
+  height: 24px;
+  color: #b0d86b;
+}
+
+.details-panel-heading h2 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 24px;
+  line-height: 1.12;
+}
+
+.details-grid,
+.coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.details-grid {
+  margin: 0;
+}
+
+.details-grid div,
+.coverage-grid div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 13px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.details-grid dt,
+.coverage-grid span {
+  color: rgba(255, 249, 234, 0.52);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.details-grid dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 14px;
+  font-weight: 820;
+}
+
+.details-grid a {
+  color: #b0d86b;
+}
+
+.coverage-grid strong {
+  color: #fff9ea;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.sync-action-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sync-action-grid button {
+  display: grid;
+  min-height: 128px;
+  align-content: center;
+  justify-items: center;
+  gap: 7px;
+  padding: 14px;
+  text-align: center;
+}
+
+.sync-action-grid button:disabled {
+  opacity: 0.66;
+}
+
+.sync-action-grid .menu-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.sync-action-grid strong {
+  color: inherit;
+  font-size: 14px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.sync-action-grid span {
+  max-width: 180px;
+  color: rgba(16, 25, 21, 0.72);
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.sync-action-grid .loading-spinner {
+  min-height: auto;
+}
+
+.sync-action-grid .loading-spinner span {
+  width: 22px;
+  height: 22px;
+  border-width: 3px;
+  border-color: rgba(16, 25, 21, 0.24);
+  border-top-color: #101915;
+}
+
+.compact-table-shell {
+  box-shadow: none;
+}
+
+.sync-runs-table {
+  min-width: 880px;
+}
+
+.matches-table {
+  min-width: 1020px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 35;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 8, 6, 0.62);
+  animation: toast-in 180ms ease both;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.delete-modal {
+  display: grid;
+  width: min(520px, 100%);
+  gap: 18px;
+  padding: 24px;
+  color: #fff9ea;
+  border-radius: 8px;
+  background: rgba(35, 43, 37, 0.94);
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.42);
+  animation: auth-card-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.delete-modal-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  color: #b0d86b;
+  border-radius: 50%;
+  background: rgba(176, 216, 107, 0.12);
+  box-shadow: 0 0 0 6px rgba(176, 216, 107, 0.08);
+}
+
+.delete-modal-icon .menu-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.delete-modal-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.delete-modal-copy .eyebrow {
+  margin: 0;
+}
+
+.delete-modal-copy h2 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 30px;
+  line-height: 1.05;
+}
+
+.delete-modal-copy p:not(.eyebrow) {
+  margin: 0;
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.delete-modal-target {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.delete-modal-target strong {
+  color: #fff9ea;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.delete-modal-target span {
+  color: rgba(255, 249, 234, 0.56);
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.delete-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delete-modal-actions button {
+  min-height: 44px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.delete-modal-actions button:first-child {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.delete-modal-actions button.danger {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.94);
+}
+
+.delete-modal-actions button:disabled {
+  opacity: 0.62;
+}
+
+.edit-team-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.edit-match-modal {
+  width: min(780px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.edit-match-modal::-webkit-scrollbar {
+  display: none;
+}
+
+.edit-match-grid,
+.score-edit-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.edit-match-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.score-edit-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 0;
+}
+
+.edit-match-modal .delete-modal-copy {
+  gap: 8px;
+}
+
+.edit-match-modal .delete-modal-target {
+  padding: 12px 14px;
+}
+
+.edit-match-modal .form-field {
+  gap: 6px;
+}
+
+.edit-match-modal .form-field > span {
+  gap: 10px;
+}
+
+.edit-match-modal .form-field input,
+.edit-match-modal .form-field select {
+  min-height: 46px;
+}
+
+.edit-match-modal .delete-modal-actions button {
+  min-height: 42px;
 }
 
 .dashboard-panel {
@@ -1775,6 +2380,20 @@ p {
 
   .tournament-filter {
     flex-wrap: wrap;
+  }
+
+  .tournament-url-row,
+  .tournament-settings-grid,
+  .tournament-preview-card dl,
+  .tournament-form-actions,
+  .details-tabs,
+  .details-top-actions,
+  .details-grid,
+  .coverage-grid,
+  .sync-action-grid,
+  .edit-match-grid,
+  .score-edit-grid {
+    grid-template-columns: 1fr;
   }
 
   .workspace-section,

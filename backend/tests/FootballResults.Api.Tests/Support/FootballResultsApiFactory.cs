@@ -132,7 +132,9 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
         var tournament = new Tournament
         {
             LiveScoreCompetitionId = $"comp-{Guid.NewGuid():N}",
+            IsActive = true,
             Name = "World Cup 2026",
+            Season = "2026",
             CompetitionName = "World Cup",
             CompetitionCountry = "International",
             CompetitionUrlName = "world-cup-2026",
@@ -255,6 +257,7 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
         {
             return Task.FromResult(new TournamentPreviewDto(
                 "World Cup 2026",
+                "2026",
                 "World Cup",
                 "International",
                 "international",
@@ -273,6 +276,7 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
             return Task.FromResult(new LiveScoreTournamentDiscoveryResult(
                 $"comp-{Guid.NewGuid():N}",
                 "World Cup 2026",
+                "2026",
                 "World Cup",
                 "International",
                 "world-cup-2026",
@@ -294,12 +298,18 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
         {
             return Task.FromResult(new TournamentDetailsDto(
                 123,
+                true,
+                "734",
                 request.Name ?? "World Cup 2026",
+                request.Season ?? "2026",
                 "World Cup",
                 "International",
                 "international",
                 "International",
                 "international",
+                request.LiveScoreUrl,
+                $"{request.LiveScoreUrl.TrimEnd('/')}/fixtures/",
+                $"{request.LiveScoreUrl.TrimEnd('/')}/results/",
                 request.Locale,
                 request.TimezoneOffset,
                 DateTimeOffset.UtcNow,

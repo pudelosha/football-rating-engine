@@ -20,6 +20,7 @@ public interface ILiveScoreTournamentDiscoveryService
 public sealed record LiveScoreTournamentDiscoveryResult(
     string LiveScoreCompetitionId,
     string Name,
+    string Season,
     string CompetitionName,
     string CompetitionCountry,
     string CompetitionUrlName,
@@ -37,6 +38,7 @@ public sealed record LiveScoreTournamentDiscoveryResult(
     {
         return new TournamentPreviewDto(
             Name,
+            Season,
             CompetitionName,
             CompetitionCountry,
             CategoryCode,

@@ -3,8 +3,10 @@ namespace FootballResults.Api.Model.Entities;
 public sealed class Tournament
 {
     public int Id { get; set; }
+    public bool IsActive { get; set; } = true;
     public string LiveScoreCompetitionId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string Season { get; set; } = string.Empty;
     public string CompetitionName { get; set; } = string.Empty;
     public string CompetitionCountry { get; set; } = string.Empty;
     public string CompetitionUrlName { get; set; } = string.Empty;
