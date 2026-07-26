@@ -16,6 +16,9 @@ type View =
   | 'home'
   | 'dashboard'
   | 'admin'
+  | 'admin-ratings'
+  | 'admin-squads'
+  | 'admin-squad-details'
   | 'admin-tournaments'
   | 'admin-tournament-form'
   | 'admin-tournament-details'
@@ -75,6 +78,81 @@ type TournamentSummary = {
   matchCount: number
 }
 
+type TeamSummary = {
+  id: number
+  name: string
+  abbreviation: string
+}
+
+type ExternalTeamMapping = {
+  id: number
+  teamId: number
+  teamName: string
+  provider: string
+  externalTeamId: string
+  externalSlug: string
+  sourceUrl: string
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+type SquadQualitySnapshot = {
+  id: number
+  teamId: number
+  teamName: string
+  teamAbbreviation: string
+  provider: string
+  externalTeamId: string
+  externalSlug: string
+  sourceUrl: string
+  season?: string | null
+  fetchedAtUtc: string
+  clubName: string
+  playerCount: number
+  squadSize?: number | null
+  totalMarketValueEur?: number | null
+  topElevenMarketValueEur?: number | null
+  topFifteenMarketValueEur?: number | null
+}
+
+type ImportTransfermarktSquadResponse = {
+  teamId: number
+  teamName: string
+  mappingId: number
+  snapshotId: number
+  externalTeamId: string
+  externalSlug: string
+  clubName: string
+  sourceUrl: string
+  season?: string | null
+  playerCount: number
+  totalMarketValueEur?: number | null
+  topElevenMarketValueEur?: number | null
+  topFifteenMarketValueEur?: number | null
+}
+
+type SquadTeamRow = {
+  team: TeamSummary
+  mapping?: ExternalTeamMapping
+  snapshot?: SquadQualitySnapshot
+}
+
+type SquadTournamentCoverage = {
+  tournamentId?: number
+  teamCount?: number
+  linkedTeams: number
+  snapshotTeams: number
+  lastSnapshotUtc?: string | null
+}
+
+type TournamentSquadCoverageResponse = {
+  tournamentId: number
+  teamCount: number
+  transfermarktMappedTeams: number
+  snapshotTeams: number
+  lastSnapshotUtc?: string | null
+}
+
 type TournamentDetails = {
   id: number
   isActive: boolean
@@ -96,7 +174,7 @@ type TournamentDetails = {
   updatedAtUtc: string
   lastSyncedAtUtc?: string | null
   stages: Array<{ id: number; name: string; code: string; sortOrder: number }>
-  teams: Array<{ id: number; name: string; abbreviation: string }>
+  teams: TeamSummary[]
 }
 
 type MatchSummary = {
@@ -180,6 +258,9 @@ const routes: Record<View, string> = {
   home: '/home',
   dashboard: '/dashboard',
   admin: '/admin',
+  'admin-ratings': '/admin/ratings',
+  'admin-squads': '/admin/squads',
+  'admin-squad-details': '/admin/squads/0',
   'admin-tournaments': '/admin/tournaments',
   'admin-tournament-form': '/admin/tournaments/new',
   'admin-tournament-details': '/admin/tournaments/0',
@@ -193,6 +274,10 @@ function getViewFromPath(pathname: string): View {
 
   if (pathname === '/admin/tournaments/new' || /^\/admin\/tournaments\/\d+\/edit$/.test(pathname)) {
     return 'admin-tournament-form'
+  }
+
+  if (/^\/admin\/squads\/\d+$/.test(pathname)) {
+    return 'admin-squad-details'
   }
 
   if (/^\/admin\/tournaments\/\d+$/.test(pathname)) {
@@ -224,6 +309,80 @@ const translations = {
     adminPanelCopy:
       'A structured workspace for sync jobs, rating rebuilds, squad imports, and data quality checks. The controls are placeholders for now, ready to be wired to backend endpoints.',
     adminOverview: 'Overview',
+    ratingsPanelEyebrow: 'Rating operations',
+    ratingsPanelTitle: 'Ratings panel.',
+    ratingsPanelCopy:
+      'A structured control surface for FTSR rebuilds, model inputs, rating layers, and future explainability checks. This screen is a static admin shell for now.',
+    ratingRebuildsTitle: 'Rating rebuilds',
+    ratingConfigTitle: 'Rating configuration',
+    ratingHistoryTitle: 'Rating history',
+    ratingActiveVersionsTitle: 'Active rating versions',
+    ratingActionPrepared: 'Prepared',
+    backToAdmin: 'Back to admin',
+    ratingRebuildActions: [
+      { title: 'Rebuild Base Elo', copy: 'Recalculate long-term team strength from completed matches, opponent quality, goal difference, competition weight, and home advantage rules.', meta: 'Matches + historical matches' },
+      { title: 'Rebuild Form Rating', copy: 'Refresh short-term adjustments from the latest weighted team results against expected Elo outcomes.', meta: 'Last 5-10 matches' },
+      { title: 'Rebuild Performance Rating', copy: 'Update quality-of-play signals from match statistics such as xG, shots, possession, fouls, offsides, and goalkeeper stress.', meta: 'MatchStatistics coverage' },
+      { title: 'Rebuild Squad Quality', copy: 'Recalculate squad strength from imported Transfermarkt snapshots, value distribution, player depth, age, and squad composition.', meta: 'Squad snapshots' },
+      { title: 'Rebuild Combined Rating', copy: 'Produce the final FTSR layer by combining Base Elo, form, performance, and squad quality into one explainable team rating.', meta: 'FTSR v3.5' },
+    ],
+    ratingConfigItems: [
+      'Base Elo K-factor and goal difference multiplier',
+      'Home advantage enabled per tournament',
+      'Form window and recency weights',
+      'Performance statistic weights and caps',
+      'Squad value normalization and depth rules',
+      'Combined rating layer weights',
+    ],
+    ratingHistoryItems: [
+      { name: 'Premier League 2026/2027', type: 'Combined Rating', status: 'Draft', date: 'Pending backend wiring' },
+      { name: 'Premier League 2026/2027', type: 'Squad Quality', status: 'Prepared', date: 'Static preview' },
+      { name: 'Ekstraklasa 2026/2027', type: 'Base Elo', status: 'Prepared', date: 'Static preview' },
+    ],
+    ratingActiveVersionItems: [
+      { label: 'Base Elo', value: 'Latest published run' },
+      { label: 'Form Rating', value: 'Latest published run' },
+      { label: 'Performance Rating', value: 'Latest published run' },
+      { label: 'Squad Quality', value: 'Latest imported snapshot' },
+      { label: 'Combined Rating', value: 'Draft until published' },
+    ],
+    squadsPanelEyebrow: 'Squad administration',
+    squadsPanelTitle: 'Squads panel.',
+    squadsPanelCopy:
+      'Map tournament teams to Transfermarkt sources, review squad coverage, and prepare squad quality inputs for the rating model.',
+    squadsTableTitle: 'Tournament squad coverage',
+    squadTeamCount: 'Team count',
+    squadCoverage: 'Squad coverage',
+    squadLastImport: 'Last squad import',
+    squadActions: 'Squad actions',
+    editSquads: 'Edit squads',
+    importSnapshot: 'Import snapshot',
+    squadFilterAll: 'All',
+    squadFilterUnlinked: 'Without full links',
+    squadFilterMissingSnapshots: 'Snapshots not imported',
+    noSquadTournaments: 'No tournaments available for squad administration.',
+    squadLoadFailed: 'Could not load squad tournament list.',
+    notImported: 'Not imported',
+    squadActionComingSoon: 'Squad editing will be connected next.',
+    squadTeamsTitle: 'Squad mapping',
+    squadTeamsCopy: 'Link each team with its Transfermarkt squad page and import the latest squad quality snapshot for the selected season.',
+    backToSquads: 'Back to squads',
+    squadSelectTournament: 'Choose a tournament to edit squads.',
+    squadTeamLoadFailed: 'Could not load tournament squad teams.',
+    transfermarktUrl: 'Transfermarkt URL',
+    transfermarktMapping: 'Transfermarkt mapping',
+    latestSnapshot: 'Latest snapshot',
+    linked: 'Linked',
+    notLinked: 'Not linked',
+    importRunning: 'Importing...',
+    squadImportSuccess: 'Squad snapshot imported.',
+    squadImportFailed: 'Could not import squad snapshot.',
+    squadBulkImportSuccess: 'Squad snapshots import finished.',
+    squadBulkImportNoMappings: 'No Transfermarkt mappings found for this tournament.',
+    editSquadMappingTitle: 'Edit squad source.',
+    editSquadMappingCopy: 'Paste the Transfermarkt club page URL. Import will normalize it to the detailed squad page for the tournament season.',
+    saveAndImportSnapshot: 'Save and import snapshot',
+    squadSeason: 'Snapshot season',
     adminTournamentOps: 'Tournaments',
     adminTournamentOpsCopy: 'Create new competitions, browse existing tournaments, and open the dedicated tournament administration panel for deeper setup and maintenance.',
     adminCreateTournament: 'Create new tournament',
@@ -532,6 +691,80 @@ const translations = {
     adminPanelCopy:
       'Strukturalny workspace dla sync jobów, rebuildów ratingów, importów kadr i kontroli jakości danych. Kontrolki są na razie placeholderami gotowymi do podpięcia pod backend.',
     adminOverview: 'Przegląd',
+    ratingsPanelEyebrow: 'Operacje ratingów',
+    ratingsPanelTitle: 'Panel ratingów.',
+    ratingsPanelCopy:
+      'Strukturalny panel dla rebuildów FTSR, danych wejściowych modelu, warstw ratingu i przyszłych kontroli explainability. Na razie jest to statyczny szkielet admina.',
+    ratingRebuildsTitle: 'Rebuildy ratingów',
+    ratingConfigTitle: 'Konfiguracja ratingów',
+    ratingHistoryTitle: 'Historia ratingów',
+    ratingActiveVersionsTitle: 'Aktywne wersje ratingów',
+    ratingActionPrepared: 'Przygotowane',
+    backToAdmin: 'Wróć do admina',
+    ratingRebuildActions: [
+      { title: 'Przelicz Base Elo', copy: 'Przelicz długoterminową siłę drużyn z zakończonych meczów, jakości przeciwnika, różnicy bramek, wagi rozgrywek i zasad przewagi gospodarza.', meta: 'Mecze + historia' },
+      { title: 'Przelicz Form Rating', copy: 'Odśwież krótkoterminowe korekty z ostatnich ważonych wyników drużyny względem oczekiwań Elo.', meta: 'Ostatnie 5-10 meczów' },
+      { title: 'Przelicz Performance Rating', copy: 'Zaktualizuj jakość gry ze statystyk meczowych takich jak xG, strzały, posiadanie, faule, spalone i presja na bramkarza.', meta: 'Pokrycie MatchStatistics' },
+      { title: 'Przelicz Squad Quality', copy: 'Przelicz siłę kadry ze snapshotów Transfermarkt, rozkładu wartości, głębi składu, wieku i kompozycji drużyny.', meta: 'Snapshoty kadr' },
+      { title: 'Przelicz Combined Rating', copy: 'Wygeneruj finalną warstwę FTSR łączącą Base Elo, formę, performance i squad quality w jeden wyjaśnialny rating.', meta: 'FTSR v3.5' },
+    ],
+    ratingConfigItems: [
+      'K-factor Base Elo i mnożnik różnicy bramek',
+      'Przewaga gospodarza ustawiana per turniej',
+      'Okno formy i wagi świeżości meczów',
+      'Wagi statystyk performance i limity korekt',
+      'Normalizacja wartości kadr i zasady głębi składu',
+      'Wagi warstw ratingu łączonego',
+    ],
+    ratingHistoryItems: [
+      { name: 'Premier League 2026/2027', type: 'Combined Rating', status: 'Draft', date: 'Czeka na backend' },
+      { name: 'Premier League 2026/2027', type: 'Squad Quality', status: 'Przygotowane', date: 'Statyczny preview' },
+      { name: 'Ekstraklasa 2026/2027', type: 'Base Elo', status: 'Przygotowane', date: 'Statyczny preview' },
+    ],
+    ratingActiveVersionItems: [
+      { label: 'Base Elo', value: 'Ostatni opublikowany run' },
+      { label: 'Form Rating', value: 'Ostatni opublikowany run' },
+      { label: 'Performance Rating', value: 'Ostatni opublikowany run' },
+      { label: 'Squad Quality', value: 'Ostatni zaimportowany snapshot' },
+      { label: 'Combined Rating', value: 'Draft do publikacji' },
+    ],
+    squadsPanelEyebrow: 'Administracja kadrami',
+    squadsPanelTitle: 'Panel kadr.',
+    squadsPanelCopy:
+      'Mapuj drużyny turniejowe do źródeł Transfermarkt, sprawdzaj pokrycie kadr i przygotowuj dane squad quality dla modelu ratingowego.',
+    squadsTableTitle: 'Pokrycie kadr w turniejach',
+    squadTeamCount: 'Liczba drużyn',
+    squadCoverage: 'Pokrycie kadr',
+    squadLastImport: 'Ostatni import kadr',
+    squadActions: 'Akcje kadr',
+    editSquads: 'Edytuj kadry',
+    importSnapshot: 'Importuj snapshot',
+    squadFilterAll: 'Wszystkie',
+    squadFilterUnlinked: 'Bez pełnego mapowania',
+    squadFilterMissingSnapshots: 'Bez snapshotów',
+    noSquadTournaments: 'Brak turniejów dostępnych dla administracji kadr.',
+    squadLoadFailed: 'Nie udało się pobrać listy turniejów dla kadr.',
+    notImported: 'Brak importu',
+    squadActionComingSoon: 'Edycja kadr zostanie podpięta w kolejnym kroku.',
+    squadTeamsTitle: 'Mapowanie kadr',
+    squadTeamsCopy: 'Połącz każdą drużynę ze stroną kadry Transfermarkt i zaimportuj najnowszy snapshot squad quality dla wybranego sezonu.',
+    backToSquads: 'Wróć do kadr',
+    squadSelectTournament: 'Wybierz turniej, aby edytować kadry.',
+    squadTeamLoadFailed: 'Nie udało się pobrać drużyn turnieju.',
+    transfermarktUrl: 'URL Transfermarkt',
+    transfermarktMapping: 'Mapowanie Transfermarkt',
+    latestSnapshot: 'Ostatni snapshot',
+    linked: 'Połączono',
+    notLinked: 'Brak mapowania',
+    importRunning: 'Import...',
+    squadImportSuccess: 'Snapshot kadry zaimportowany.',
+    squadImportFailed: 'Nie udało się zaimportować snapshotu kadry.',
+    squadBulkImportSuccess: 'Import snapshotów kadr zakończony.',
+    squadBulkImportNoMappings: 'Nie znaleziono mapowań Transfermarkt dla tego turnieju.',
+    editSquadMappingTitle: 'Edytuj źródło kadry.',
+    editSquadMappingCopy: 'Wklej URL strony klubu Transfermarkt. Import znormalizuje go do szczegółowej strony kadry dla sezonu turnieju.',
+    saveAndImportSnapshot: 'Zapisz i importuj snapshot',
+    squadSeason: 'Sezon snapshotu',
     adminTournamentOps: 'Turnieje',
     adminTournamentOpsCopy: 'Twórz nowe rozgrywki, przeglądaj istniejące turnieje i otwieraj dedykowany panel administracji turniejami do konfiguracji oraz utrzymania.',
     adminCreateTournament: 'Utwórz nowy turniej',
@@ -1171,7 +1404,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -1376,11 +1609,39 @@ function App() {
         />
       )}
 
+      {view === 'admin-ratings' && user && (
+        <RatingsPanel
+          t={t}
+          onBack={() => navigate('admin')}
+        />
+      )}
+
+      {view === 'admin-squads' && user && (
+        <SquadsPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          onBack={() => navigate('admin')}
+          onEdit={(id) => navigateTo(`/admin/squads/${id}`)}
+        />
+      )}
+
+      {view === 'admin-squad-details' && user && (
+        <SquadDetailsPanel
+          t={t}
+          user={user}
+          tournamentId={location.pathname.match(/^\/admin\/squads\/(\d+)$/)?.[1] ?? ''}
+          onToast={showToast}
+          onBack={() => navigateTo('/admin/squads')}
+        />
+      )}
+
       {view === 'admin-tournaments' && user && (
         <TournamentsPanel
           t={t}
           user={user}
           onToast={showToast}
+          onBack={() => navigate('admin')}
           onCreate={() => navigateTo('/admin/tournaments/new')}
           onOpen={(id) => navigateTo(`/admin/tournaments/${id}`)}
           onEdit={(id) => navigateTo(`/admin/tournaments/${id}/edit`)}
@@ -2278,11 +2539,13 @@ function AdminDashboard({
       icon: 'ratings',
       title: t.adminRatingOps,
       description: t.adminRatingOpsCopy,
+      action: () => onNavigate('admin-ratings'),
     },
     {
       icon: 'teams',
       title: t.adminSquadOps,
       description: t.adminSquadOpsCopy,
+      action: () => onNavigate('admin-squads'),
     },
     {
       icon: 'admin',
@@ -2342,10 +2605,672 @@ function AdminDashboard({
   )
 }
 
+function RatingsPanel({
+  t,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  onBack: () => void
+}) {
+  const rebuildIcons: MenuIconName[] = ['ratings', 'predictions', 'matches', 'teams', 'admin']
+
+  const versionIcons: MenuIconName[] = ['ratings', 'predictions', 'matches', 'teams', 'admin']
+
+  const versionBadges = ['v1', 'v1.5', 'v2', 'v3', 'v3.5']
+
+  const historyIcons: MenuIconName[] = ['admin', 'teams', 'ratings']
+
+  const configIcons: MenuIconName[] = [
+    'ratings',
+    'tournaments',
+    'predictions',
+    'matches',
+    'teams',
+    'admin',
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.ratingsPanelEyebrow}</p>
+          <h1>{t.ratingsPanelTitle}</h1>
+          <p>{t.ratingsPanelCopy}</p>
+        </div>
+
+        <div className="details-top-actions rating-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToAdmin}</span>
+          </button>
+        </div>
+
+        <section className="details-panel rating-rebuild-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="ratings" />
+            <h2>{t.ratingRebuildsTitle}</h2>
+          </div>
+          <div className="rating-rebuild-grid">
+            {t.ratingRebuildActions.map((action, index) => (
+              <article className="rating-action-card" key={action.title}>
+                <div>
+                  <MenuIcon name={rebuildIcons[index]} />
+                  <span>{action.meta}</span>
+                </div>
+                <h3>{action.title}</h3>
+                <p>{action.copy}</p>
+                <button type="button" disabled>{t.ratingActionPrepared}</button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <div className="rating-admin-grid rating-control-grid">
+          <section className="details-panel">
+            <div className="details-panel-heading">
+              <MenuIcon name="admin" />
+              <h2>{t.ratingConfigTitle}</h2>
+            </div>
+            <ol className="rating-step-list rating-config-list">
+              {t.ratingConfigItems.map((item, index) => (
+                <li key={item}>
+                  <span><MenuIcon name={configIcons[index]} /></span>
+                  <strong>{item}</strong>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="details-panel">
+            <div className="details-panel-heading">
+              <MenuIcon name="matches" />
+              <h2>{t.ratingHistoryTitle}</h2>
+            </div>
+            <div className="rating-history-list">
+              {t.ratingHistoryItems.map((item, index) => (
+                <article key={`${item.name}-${item.type}`}>
+                  <MenuIcon name={historyIcons[index]} />
+                  <div>
+                    <strong>{item.type}</strong>
+                    <span>{item.name}</span>
+                    <small>{item.date}</small>
+                  </div>
+                  <em>{item.status}</em>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="details-panel">
+            <div className="details-panel-heading">
+              <MenuIcon name="predictions" />
+              <h2>{t.ratingActiveVersionsTitle}</h2>
+            </div>
+            <div className="rating-version-grid">
+              {t.ratingActiveVersionItems.map((item, index) => (
+                <article key={item.label}>
+                  <div>
+                    <MenuIcon name={versionIcons[index]} />
+                    <span>{versionBadges[index]}</span>
+                  </div>
+                  <strong>{item.label}</strong>
+                  <small>{item.value}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SquadsPanel({
+  t,
+  user,
+  onToast,
+  onBack,
+  onEdit,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+  onEdit: (id: number) => void
+}) {
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
+  const [search, setSearch] = useState('')
+  const [squadFilter, setSquadFilter] = useState<'all' | 'unlinked' | 'missing-snapshots'>('all')
+  const [isLoading, setIsLoading] = useState(true)
+  const [bulkImportingTournamentId, setBulkImportingTournamentId] = useState<number | null>(null)
+  const [coverageByTournamentId, setCoverageByTournamentId] = useState<Record<number, SquadTournamentCoverage>>({})
+
+  const toCoverageMap = (items: TournamentSquadCoverageResponse[]) => Object.fromEntries(
+    items.map((item) => [
+      item.tournamentId,
+      {
+        tournamentId: item.tournamentId,
+        teamCount: item.teamCount,
+        linkedTeams: item.transfermarktMappedTeams,
+        snapshotTeams: item.snapshotTeams,
+        lastSnapshotUtc: item.lastSnapshotUtc,
+      },
+    ]),
+  )
+
+  const getTournamentCoverage = async (tournament: TournamentSummary): Promise<SquadTournamentCoverage> => {
+    const teamsResult = await authorizedRequest<TeamSummary[]>(user.token, `/api/tournaments/${tournament.id}/teams`)
+
+    if (!teamsResult.ok || !teamsResult.data) {
+      return {
+        linkedTeams: 0,
+        snapshotTeams: 0,
+        lastSnapshotUtc: null,
+      }
+    }
+
+    const teamStates = await Promise.all(teamsResult.data.map(async (team) => {
+      const [mappingsResult, snapshotResult] = await Promise.all([
+        authorizedRequest<ExternalTeamMapping[]>(user.token, `/api/teams/${team.id}/external-mappings`),
+        authorizedRequest<SquadQualitySnapshot>(user.token, `/api/teams/${team.id}/squad-quality/latest`),
+      ])
+
+      return {
+        hasMapping: Boolean(mappingsResult.data?.some((mapping) => mapping.provider.toLowerCase() === 'transfermarkt')),
+        snapshot: snapshotResult.ok ? snapshotResult.data : undefined,
+      }
+    }))
+
+    const snapshots = teamStates
+      .map((state) => state.snapshot?.fetchedAtUtc)
+      .filter((value): value is string => Boolean(value))
+      .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())
+
+    return {
+      linkedTeams: teamStates.filter((state) => state.hasMapping).length,
+      snapshotTeams: teamStates.filter((state) => Boolean(state.snapshot)).length,
+      lastSnapshotUtc: snapshots[0] ?? null,
+    }
+  }
+
+  const refreshTournamentCoverage = async (tournament: TournamentSummary) => {
+    const coverage = await getTournamentCoverage(tournament)
+
+    setCoverageByTournamentId((current) => ({
+      ...current,
+      [tournament.id]: coverage,
+    }))
+  }
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadTournamentsWithCoverage() {
+      setIsLoading(true)
+      try {
+        const [tournamentsResult, coverageResult] = await Promise.all([
+          authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments'),
+          authorizedRequest<TournamentSquadCoverageResponse[]>(user.token, '/api/tournaments/squad-quality/coverage'),
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!tournamentsResult.ok || !tournamentsResult.data) {
+          onToast(tournamentsResult.message || t.squadLoadFailed, 'error')
+          return
+        }
+
+        if (!coverageResult.ok || !coverageResult.data) {
+          onToast(coverageResult.message || t.squadLoadFailed, 'error')
+          return
+        }
+
+        setTournaments(tournamentsResult.data)
+        setCoverageByTournamentId(toCoverageMap(coverageResult.data))
+      } catch {
+        if (isMounted) {
+          onToast(t.squadLoadFailed, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadTournamentsWithCoverage()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t, user.token])
+
+  const filteredTournaments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+
+    return tournaments
+      .filter((tournament) => {
+        const matchesSearch = !normalizedSearch ||
+          [
+          tournament.name,
+          tournament.season,
+          tournament.competitionName,
+          tournament.competitionCountry,
+          ].some((value) => value.toLowerCase().includes(normalizedSearch))
+
+        const coverage = coverageByTournamentId[tournament.id]
+        const hasMissingSquadLinks = tournament.teamCount > 0 && (coverage?.linkedTeams ?? 0) < tournament.teamCount
+        const hasMissingSnapshot = tournament.teamCount > 0 && (coverage?.snapshotTeams ?? 0) < tournament.teamCount
+
+        const matchesFilter =
+          squadFilter === 'all' ||
+          (squadFilter === 'unlinked' && hasMissingSquadLinks) ||
+          (squadFilter === 'missing-snapshots' && hasMissingSnapshot)
+
+        return matchesSearch && matchesFilter
+      })
+      .sort((left, right) => compareText(left.name, right.name))
+  }, [coverageByTournamentId, search, squadFilter, tournaments])
+
+  const importTournamentSnapshots = async (tournament: TournamentSummary) => {
+    setBulkImportingTournamentId(tournament.id)
+    try {
+      const teamsResult = await authorizedRequest<TeamSummary[]>(user.token, `/api/tournaments/${tournament.id}/teams`)
+
+      if (!teamsResult.ok || !teamsResult.data) {
+        onToast(teamsResult.message || t.squadTeamLoadFailed, 'error')
+        return
+      }
+
+      const rows = await Promise.all(teamsResult.data.map(async (team) => {
+        const mappingsResult = await authorizedRequest<ExternalTeamMapping[]>(user.token, `/api/teams/${team.id}/external-mappings`)
+        return {
+          team,
+          mapping: mappingsResult.data?.find((mapping) => mapping.provider.toLowerCase() === 'transfermarkt'),
+        }
+      }))
+
+      const mappedRows = rows.filter((row): row is { team: TeamSummary; mapping: ExternalTeamMapping } => Boolean(row.mapping))
+
+      if (mappedRows.length === 0) {
+        onToast(t.squadBulkImportNoMappings, 'info')
+        return
+      }
+
+      const results = await Promise.all(mappedRows.map((row) => authorizedRequest<ImportTransfermarktSquadResponse>(
+        user.token,
+        `/api/admin/teams/${row.team.id}/transfermarkt/import`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            transfermarktUrl: row.mapping.sourceUrl,
+            season: tournament.season || null,
+          }),
+        },
+      )))
+
+      const failedCount = results.filter((result) => !result.ok).length
+
+      if (failedCount > 0) {
+        onToast(`${t.squadBulkImportSuccess} ${mappedRows.length - failedCount}/${mappedRows.length}`, 'error')
+        await refreshTournamentCoverage(tournament)
+        return
+      }
+
+      await refreshTournamentCoverage(tournament)
+      onToast(`${t.squadBulkImportSuccess} ${mappedRows.length}/${mappedRows.length}`, 'success')
+    } catch {
+      onToast(t.squadImportFailed, 'error')
+    } finally {
+      setBulkImportingTournamentId(null)
+    }
+  }
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content squads-panel tournaments-panel">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.squadsPanelEyebrow}</p>
+          <h1>{t.squadsPanelTitle}</h1>
+          <p>{t.squadsPanelCopy}</p>
+        </div>
+
+        <div className="details-top-actions panel-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToAdmin}</span>
+          </button>
+        </div>
+
+        <div className="tournament-toolbar squad-toolbar">
+          <label className="tournament-search">
+            <span>{t.tournamentSearch}</span>
+            <input
+              placeholder={t.tournamentSearchPlaceholder}
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <div className="tournament-filter squad-filter" aria-label={t.squadCoverage}>
+            {[
+              ['all', t.squadFilterAll],
+              ['unlinked', t.squadFilterUnlinked],
+              ['missing-snapshots', t.squadFilterMissingSnapshots],
+            ].map(([value, label]) => (
+              <button
+                className={squadFilter === value ? 'active' : ''}
+                type="button"
+                key={value}
+                onClick={() => setSquadFilter(value as 'all' | 'unlinked' | 'missing-snapshots')}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tournament-table-shell">
+          {isLoading ? (
+            <div className="table-loading-state">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <table className="tournament-table squads-table">
+              <thead>
+                <tr>
+                  <th>{t.tournamentName}</th>
+                  <th>{t.tournamentSeason}</th>
+                  <th>{t.squadTeamCount}</th>
+                  <th>{t.squadCoverage}</th>
+                  <th>{t.squadLastImport}</th>
+                  <th>{t.squadActions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTournaments.map((tournament) => (
+                  <tr key={tournament.id}>
+                    <td>
+                      <strong>{tournament.name}</strong>
+                      <small>{tournament.competitionCountry || tournament.competitionName}</small>
+                    </td>
+                    <td>{tournament.season || '-'}</td>
+                    <td>{tournament.teamCount}</td>
+                    <td>
+                      <span className={`squad-coverage-pill ${(coverageByTournamentId[tournament.id]?.linkedTeams ?? 0) >= tournament.teamCount && tournament.teamCount > 0 ? 'linked' : 'missing'}`}>
+                        {tournament.teamCount > 0 ? `${coverageByTournamentId[tournament.id]?.linkedTeams ?? 0} / ${tournament.teamCount}` : '-'}
+                      </span>
+                    </td>
+                    <td>{formatDate(coverageByTournamentId[tournament.id]?.lastSnapshotUtc, t.notImported)}</td>
+                    <td>
+                      <div className="squad-action-row">
+                        <button type="button" onClick={() => onEdit(tournament.id)}>
+                          {t.editSquads}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={bulkImportingTournamentId === tournament.id}
+                          onClick={() => importTournamentSnapshots(tournament)}
+                        >
+                          {bulkImportingTournamentId === tournament.id ? <LoadingSpinner /> : t.importSnapshot}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredTournaments.length === 0 && (
+                  <tr>
+                    <td colSpan={6}>{t.noSquadTournaments}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SquadDetailsPanel({
+  t,
+  user,
+  tournamentId,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId: string
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const [tournament, setTournament] = useState<TournamentDetails | null>(null)
+  const [squadRows, setSquadRows] = useState<SquadTeamRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [importingTeamId, setImportingTeamId] = useState<number | null>(null)
+  const [squadEditCandidate, setSquadEditCandidate] = useState<SquadTeamRow | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadSquadDetails() {
+      setIsLoading(true)
+      try {
+        const tournamentResult = await authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`)
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!tournamentResult.ok || !tournamentResult.data) {
+          onToast(tournamentResult.message || t.squadTeamLoadFailed, 'error')
+          return
+        }
+
+        const nextTournament = tournamentResult.data
+        const rows = await Promise.all(nextTournament.teams.map(async (team) => {
+          const [mappingsResult, snapshotResult] = await Promise.all([
+            authorizedRequest<ExternalTeamMapping[]>(user.token, `/api/teams/${team.id}/external-mappings`),
+            authorizedRequest<SquadQualitySnapshot>(user.token, `/api/teams/${team.id}/squad-quality/latest`),
+          ])
+
+          return {
+            team,
+            mapping: mappingsResult.data?.find((mapping) => mapping.provider.toLowerCase() === 'transfermarkt'),
+            snapshot: snapshotResult.ok ? snapshotResult.data : undefined,
+          }
+        }))
+
+        if (isMounted) {
+          setTournament(nextTournament)
+          setSquadRows(rows)
+        }
+      } catch {
+        if (isMounted) {
+          onToast(t.squadTeamLoadFailed, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadSquadDetails()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t, tournamentId, user.token])
+
+  const importSnapshot = async (row: SquadTeamRow, transfermarktUrl?: string) => {
+    const url = transfermarktUrl?.trim() || row.mapping?.sourceUrl
+
+    if (!url) {
+      setSquadEditCandidate(row)
+      return
+    }
+
+    setImportingTeamId(row.team.id)
+    try {
+      const result = await authorizedRequest<ImportTransfermarktSquadResponse>(
+        user.token,
+        `/api/admin/teams/${row.team.id}/transfermarkt/import`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            transfermarktUrl: url,
+            season: tournament?.season || null,
+          }),
+        },
+      )
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.squadImportFailed, 'error')
+        return
+      }
+
+      const imported = result.data
+      setSquadRows((current) => current.map((item) => item.team.id === row.team.id
+        ? {
+            ...item,
+            mapping: {
+              id: imported.mappingId,
+              teamId: imported.teamId,
+              teamName: imported.teamName,
+              provider: 'Transfermarkt',
+              externalTeamId: imported.externalTeamId,
+              externalSlug: imported.externalSlug,
+              sourceUrl: imported.sourceUrl,
+              createdAtUtc: new Date().toISOString(),
+              updatedAtUtc: new Date().toISOString(),
+            },
+            snapshot: {
+              id: imported.snapshotId,
+              teamId: imported.teamId,
+              teamName: imported.teamName,
+              teamAbbreviation: item.team.abbreviation,
+              provider: 'Transfermarkt',
+              externalTeamId: imported.externalTeamId,
+              externalSlug: imported.externalSlug,
+              sourceUrl: imported.sourceUrl,
+              season: imported.season,
+              fetchedAtUtc: new Date().toISOString(),
+              clubName: imported.clubName,
+              playerCount: imported.playerCount,
+              totalMarketValueEur: imported.totalMarketValueEur,
+              topElevenMarketValueEur: imported.topElevenMarketValueEur,
+              topFifteenMarketValueEur: imported.topFifteenMarketValueEur,
+            },
+          }
+        : item))
+      setSquadEditCandidate(null)
+      onToast(t.squadImportSuccess, 'success')
+    } catch {
+      onToast(t.squadImportFailed, 'error')
+    } finally {
+      setImportingTeamId(null)
+    }
+  }
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content squads-panel tournaments-panel">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.squadsPanelEyebrow}</p>
+          <h1>{t.squadTeamsTitle}</h1>
+          <p>{t.squadTeamsCopy}</p>
+        </div>
+
+        <div className="details-top-actions panel-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToSquads}</span>
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="table-loading-state">
+            <LoadingSpinner />
+          </div>
+        ) : tournament ? (
+          <section className="details-panel squad-team-panel">
+            <div className="details-panel-heading">
+              <MenuIcon name="teams" />
+              <h2>{tournament.name}</h2>
+            </div>
+            <p>{tournament.season}</p>
+
+            <div className="tournament-table-shell squad-team-table-shell">
+              <table className="tournament-table squads-table squad-team-table">
+                <thead>
+                  <tr>
+                    <th>{t.teamName}</th>
+                    <th>{t.transfermarktMapping}</th>
+                    <th>{t.latestSnapshot}</th>
+                    <th>{t.squadActions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {squadRows.map((row) => (
+                    <tr key={row.team.id}>
+                      <td>
+                        <strong>{row.team.name}</strong>
+                        <small>{row.team.abbreviation || '-'}</small>
+                      </td>
+                      <td>
+                        <span className={`squad-coverage-pill ${row.mapping ? 'linked' : 'missing'}`}>
+                          {row.mapping ? t.linked : t.notLinked}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>{row.snapshot ? formatDate(row.snapshot.fetchedAtUtc, t.notImported) : t.notImported}</strong>
+                        {row.snapshot && (
+                          <small>{row.snapshot.playerCount} players</small>
+                        )}
+                      </td>
+                      <td>
+                        <div className="squad-action-row">
+                          <button type="button" disabled={importingTeamId === row.team.id} onClick={() => setSquadEditCandidate(row)}>
+                            {t.edit}
+                          </button>
+                          <button type="button" disabled={importingTeamId === row.team.id} onClick={() => importSnapshot(row)}>
+                            {importingTeamId === row.team.id ? <LoadingSpinner /> : t.importSnapshot}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        {squadEditCandidate && tournament && (
+          <EditSquadMappingModal
+            t={t}
+            row={squadEditCandidate}
+            tournament={tournament}
+            isSaving={importingTeamId === squadEditCandidate.team.id}
+            onCancel={() => setSquadEditCandidate(null)}
+            onImport={(url) => importSnapshot(squadEditCandidate, url)}
+            onToast={onToast}
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
 function TournamentsPanel({
   t,
   user,
   onToast,
+  onBack,
   onCreate,
   onOpen,
   onEdit,
@@ -2353,6 +3278,7 @@ function TournamentsPanel({
   t: (typeof translations)[Language]
   user: AuthUser
   onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
   onCreate: () => void
   onOpen: (id: number) => void
   onEdit: (id: number) => void
@@ -2491,6 +3417,13 @@ function TournamentsPanel({
           <p className="eyebrow">{t.tournamentsPanelEyebrow}</p>
           <h1>{t.tournamentsPanelTitle}</h1>
           <p>{t.tournamentsPanelCopy}</p>
+        </div>
+
+        <div className="details-top-actions panel-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToAdmin}</span>
+          </button>
         </div>
 
         <div className="tournament-toolbar">
@@ -3500,6 +4433,114 @@ function DeleteTournamentModal({
         </div>
       </section>
     </div>
+  )
+}
+
+function EditSquadMappingModal({
+  t,
+  row,
+  tournament,
+  isSaving,
+  onCancel,
+  onImport,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  row: { team: TeamSummary; mapping?: ExternalTeamMapping; snapshot?: SquadQualitySnapshot }
+  tournament: { name: string; season: string }
+  isSaving: boolean
+  onCancel: () => void
+  onImport: (url: string) => void
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const [transfermarktUrl, setTransfermarktUrl] = useState(row.mapping?.sourceUrl || '')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSaving) {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isSaving, onCancel])
+
+  const submitImport = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nextErrors: Record<string, string> = {}
+    const trimmedUrl = transfermarktUrl.trim()
+
+    if (!trimmedUrl) {
+      nextErrors.transfermarktUrl = t.required
+    } else {
+      try {
+        const url = new URL(trimmedUrl)
+        if (url.hostname.toLowerCase() !== 'www.transfermarkt.com') {
+          nextErrors.transfermarktUrl = t.genericError
+        }
+      } catch {
+        nextErrors.transfermarktUrl = t.genericError
+      }
+    }
+
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    onImport(trimmedUrl)
+  }
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isSaving && onCancel()}>
+      <form
+        className="delete-modal edit-team-modal edit-squad-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-squad-title"
+        noValidate
+        onSubmit={submitImport}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="teams" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.editSquads}</p>
+          <h2 id="edit-squad-title">{t.editSquadMappingTitle}</h2>
+          <p>{t.editSquadMappingCopy}</p>
+        </div>
+        <div className="delete-modal-target">
+          <strong>{row.team.name}</strong>
+          <span>{tournament.name} - {tournament.season}</span>
+        </div>
+        <div className="edit-team-fields">
+          <FormField
+            error={errors.transfermarktUrl}
+            label={t.transfermarktUrl}
+            type="url"
+            value={transfermarktUrl}
+            onChange={setTransfermarktUrl}
+          />
+          <div className="squad-season-note">
+            <span>{t.squadSeason}</span>
+            <strong>{tournament.season || '-'}</strong>
+          </div>
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" disabled={isSaving} onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button type="submit" disabled={isSaving}>
+            {isSaving ? t.importRunning : t.saveAndImportSnapshot}
+          </button>
+        </div>
+      </form>
+    </div>,
+    document.body,
   )
 }
 

@@ -21,6 +21,9 @@ public interface ISquadQualityService
         int snapshotId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<TournamentSquadCoverageDto>> GetTournamentCoverageAsync(
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<TeamSquadQualityRatingDto>> GetTournamentTeamRatingsAsync(
         int tournamentId,
         CancellationToken cancellationToken);

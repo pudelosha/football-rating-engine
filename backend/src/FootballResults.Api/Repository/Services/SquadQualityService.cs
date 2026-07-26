@@ -207,6 +207,67 @@ public sealed partial class SquadQualityService(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<TournamentSquadCoverageDto>> GetTournamentCoverageAsync(
+        CancellationToken cancellationToken)
+    {
+        var tournamentTeams = await dbContext.TournamentTeams
+            .Select(tournamentTeam => new
+            {
+                tournamentTeam.TournamentId,
+                tournamentTeam.TeamId
+            })
+            .ToListAsync(cancellationToken);
+
+        if (tournamentTeams.Count == 0)
+        {
+            return [];
+        }
+
+        var teamIds = tournamentTeams
+            .Select(tournamentTeam => tournamentTeam.TeamId)
+            .Distinct()
+            .ToList();
+
+        var mappedTeamIds = await dbContext.ExternalTeamMappings
+            .Where(mapping => mapping.Provider == Provider && teamIds.Contains(mapping.TeamId))
+            .Select(mapping => mapping.TeamId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var mappedTeamIdSet = mappedTeamIds.ToHashSet();
+
+        var snapshotSummaries = await dbContext.SquadQualitySnapshots
+            .Where(snapshot => snapshot.Provider == Provider && teamIds.Contains(snapshot.TeamId))
+            .GroupBy(snapshot => snapshot.TeamId)
+            .Select(group => new
+            {
+                TeamId = group.Key,
+                LastSnapshotUtc = group.Max(snapshot => snapshot.FetchedAtUtc)
+            })
+            .ToListAsync(cancellationToken);
+        var snapshotByTeamId = snapshotSummaries.ToDictionary(summary => summary.TeamId);
+
+        return tournamentTeams
+            .GroupBy(tournamentTeam => tournamentTeam.TournamentId)
+            .Select(group =>
+            {
+                var groupTeamIds = group.Select(tournamentTeam => tournamentTeam.TeamId).Distinct().ToList();
+                var lastSnapshotUtc = groupTeamIds
+                    .Select(teamId => snapshotByTeamId.TryGetValue(teamId, out var snapshot) ? snapshot.LastSnapshotUtc : (DateTimeOffset?)null)
+                    .Where(value => value.HasValue)
+                    .OrderByDescending(value => value)
+                    .FirstOrDefault();
+
+                return new TournamentSquadCoverageDto(
+                    group.Key,
+                    groupTeamIds.Count,
+                    groupTeamIds.Count(mappedTeamIdSet.Contains),
+                    groupTeamIds.Count(snapshotByTeamId.ContainsKey),
+                    lastSnapshotUtc);
+            })
+            .OrderBy(coverage => coverage.TournamentId)
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<TeamSquadQualityRatingDto>> GetTournamentTeamRatingsAsync(
         int tournamentId,
         CancellationToken cancellationToken)

@@ -65,6 +65,15 @@ public sealed class SquadQualityController(ISquadQualityService squadQualityServ
         return Ok(await squadQualityService.GetSnapshotPlayersAsync(snapshotId, cancellationToken));
     }
 
+    [HttpGet("api/tournaments/squad-quality/coverage")]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [ProducesResponseType(typeof(IReadOnlyList<TournamentSquadCoverageDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<TournamentSquadCoverageDto>>> GetTournamentCoverage(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await squadQualityService.GetTournamentCoverageAsync(cancellationToken));
+    }
+
     [HttpGet("api/tournaments/{tournamentId:int}/ratings/squad-quality/teams")]
     [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
     [ProducesResponseType(typeof(IReadOnlyList<TeamSquadQualityRatingDto>), StatusCodes.Status200OK)]

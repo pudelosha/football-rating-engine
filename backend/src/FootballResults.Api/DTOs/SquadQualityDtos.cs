@@ -64,6 +64,13 @@ public sealed record SquadQualitySnapshotDto(
     decimal? ValueWeightedContractYears,
     int PlayerCount);
 
+public sealed record TournamentSquadCoverageDto(
+    int TournamentId,
+    int TeamCount,
+    int TransfermarktMappedTeams,
+    int SnapshotTeams,
+    DateTimeOffset? LastSnapshotUtc);
+
 public sealed record SquadPlayerSnapshotDto(
     int Id,
     int SquadQualitySnapshotId,
