@@ -28,6 +28,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<PerformanceRatingRun> PerformanceRatingRuns => Set<PerformanceRatingRun>();
     public DbSet<TeamPerformanceRating> TeamPerformanceRatings => Set<TeamPerformanceRating>();
     public DbSet<TeamPerformanceMatchSnapshot> TeamPerformanceMatchSnapshots => Set<TeamPerformanceMatchSnapshot>();
+    public DbSet<SyncServiceConfiguration> SyncServiceConfigurations => Set<SyncServiceConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -183,6 +184,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
                 .WithMany(tournament => tournament.SyncRuns)
                 .HasForeignKey(syncRun => syncRun.TournamentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SyncServiceConfiguration>(entity =>
+        {
+            entity.HasIndex(configuration => configuration.ServiceKey).IsUnique();
+
+            entity.Property(configuration => configuration.ServiceKey).HasMaxLength(80);
+            entity.Property(configuration => configuration.IntervalMinutes).HasDefaultValue(1);
         });
 
         modelBuilder.Entity<ExternalTeamMapping>(entity =>

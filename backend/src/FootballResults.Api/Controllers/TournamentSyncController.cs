@@ -51,6 +51,21 @@ public sealed class TournamentSyncController(ITournamentSyncService tournamentSy
         return Sync(tournamentId, TournamentSyncMode.Results, cancellationToken);
     }
 
+    [HttpPost("api/tournaments/sync/{mode}")]
+    [ProducesResponseType(typeof(SyncAllTournamentsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<SyncAllTournamentsResponse>> SyncAllActive(
+        string mode,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<TournamentSyncMode>(mode, true, out var parsedMode))
+        {
+            return BadRequest();
+        }
+
+        return Ok(await tournamentSyncService.SyncAllActiveAsync(parsedMode, cancellationToken));
+    }
+
     [HttpGet("api/tournaments/{tournamentId:int}/sync-runs")]
     [ProducesResponseType(typeof(IReadOnlyList<TournamentSyncRunDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TournamentSyncRunDto>>> GetTournamentSyncRuns(
@@ -58,6 +73,39 @@ public sealed class TournamentSyncController(ITournamentSyncService tournamentSy
         CancellationToken cancellationToken)
     {
         return Ok(await tournamentSyncService.GetTournamentSyncRunsAsync(tournamentId, cancellationToken));
+    }
+
+    [HttpGet("api/tournament-sync-runs")]
+    [ProducesResponseType(typeof(IReadOnlyList<TournamentSyncRunSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<TournamentSyncRunSummaryDto>>> GetRecentSyncRuns(
+        int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await tournamentSyncService.GetRecentSyncRunsAsync(limit, cancellationToken));
+    }
+
+    [HttpGet("api/system-jobs/health")]
+    [ProducesResponseType(typeof(IReadOnlyList<SyncServiceHealthDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<SyncServiceHealthDto>>> GetServiceHealth(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await tournamentSyncService.GetServiceHealthAsync(cancellationToken));
+    }
+
+    [HttpPut("api/system-jobs/services/{serviceKey}")]
+    [ProducesResponseType(typeof(SyncServiceConfigurationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SyncServiceConfigurationDto>> UpdateServiceConfiguration(
+        string serviceKey,
+        UpdateSyncServiceConfigurationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var configuration = await tournamentSyncService.UpdateServiceConfigurationAsync(
+            serviceKey,
+            request,
+            cancellationToken);
+
+        return configuration is null ? NotFound() : Ok(configuration);
     }
 
     [HttpGet("api/tournament-sync-runs/{syncRunId:int}")]

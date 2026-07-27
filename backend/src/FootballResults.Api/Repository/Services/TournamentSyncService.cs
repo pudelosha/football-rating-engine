@@ -77,6 +77,33 @@ public sealed class TournamentSyncService(
             syncRun.ErrorMessage);
     }
 
+    public async Task<SyncAllTournamentsResponse> SyncAllActiveAsync(
+        TournamentSyncMode mode,
+        CancellationToken cancellationToken)
+    {
+        var tournamentIds = await dbContext.Tournaments
+            .Where(tournament => tournament.IsActive)
+            .OrderBy(tournament => tournament.Name)
+            .Select(tournament => tournament.Id)
+            .ToListAsync(cancellationToken);
+
+        var results = new List<SyncTournamentResponse>();
+        foreach (var tournamentId in tournamentIds)
+        {
+            results.Add(await SyncAsync(tournamentId, mode, cancellationToken));
+        }
+
+        return new SyncAllTournamentsResponse(
+            mode,
+            tournamentIds.Count,
+            results.Count(result => result.Status == TournamentSyncRunStatus.Succeeded),
+            results.Count(result => result.Status == TournamentSyncRunStatus.Failed),
+            results.Sum(result => result.InsertedMatches),
+            results.Sum(result => result.UpdatedMatches),
+            results.Sum(result => result.UnchangedMatches),
+            results);
+    }
+
     public async Task<IReadOnlyList<TournamentSyncRunDto>> GetTournamentSyncRunsAsync(
         int tournamentId,
         CancellationToken cancellationToken)
@@ -89,10 +116,352 @@ public sealed class TournamentSyncService(
         return syncRuns.Select(DtoMapper.ToSyncRunDto).ToList();
     }
 
+    public async Task<IReadOnlyList<TournamentSyncRunSummaryDto>> GetRecentSyncRunsAsync(
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var take = Math.Clamp(limit, 1, 100);
+        var syncRuns = await dbContext.TournamentSyncRuns
+            .Include(syncRun => syncRun.Tournament)
+            .OrderByDescending(syncRun => syncRun.StartedAtUtc)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return syncRuns
+            .Select(syncRun => new TournamentSyncRunSummaryDto(
+                syncRun.Id,
+                syncRun.TournamentId,
+                syncRun.Tournament.Name,
+                syncRun.Mode,
+                syncRun.Status,
+                syncRun.StartedAtUtc,
+                syncRun.FinishedAtUtc,
+                syncRun.InsertedMatches,
+                syncRun.UpdatedMatches,
+                syncRun.UnchangedMatches,
+                syncRun.ErrorMessage))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<SyncServiceHealthDto>> GetServiceHealthAsync(CancellationToken cancellationToken)
+    {
+        var syncOptions = options.Value;
+        var now = DateTimeOffset.UtcNow;
+        var since = now.AddHours(-24);
+        var activeTournamentCount = await dbContext.Tournaments.CountAsync(tournament => tournament.IsActive, cancellationToken);
+        var configurations = await dbContext.SyncServiceConfigurations.ToListAsync(cancellationToken);
+        var scheduleConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Schedule, syncOptions.EnableScheduleSync, syncOptions.ScheduleIntervalSeconds);
+        var liveConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Live, syncOptions.EnableLiveSync, syncOptions.LiveIntervalSeconds);
+        var finalizeConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Finalize, syncOptions.EnableFinalizeSync, syncOptions.FinalizeIntervalSeconds);
+        var resultsConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Results, syncOptions.EnableResultsSync, syncOptions.ResultsIntervalSeconds);
+
+        var syncRuns = await dbContext.TournamentSyncRuns
+            .Where(syncRun => syncRun.StartedAtUtc >= since)
+            .OrderByDescending(syncRun => syncRun.StartedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        var latestByMode = await dbContext.TournamentSyncRuns
+            .GroupBy(syncRun => syncRun.Mode)
+            .Select(group => group
+                .OrderByDescending(syncRun => syncRun.StartedAtUtc)
+                .First())
+            .ToListAsync(cancellationToken);
+
+        var latestSuccessByMode = await dbContext.TournamentSyncRuns
+            .Where(syncRun => syncRun.Status == TournamentSyncRunStatus.Succeeded)
+            .GroupBy(syncRun => syncRun.Mode)
+            .Select(group => group
+                .OrderByDescending(syncRun => syncRun.StartedAtUtc)
+                .First())
+            .ToListAsync(cancellationToken);
+
+        var latestFailureByMode = await dbContext.TournamentSyncRuns
+            .Where(syncRun => syncRun.Status == TournamentSyncRunStatus.Failed)
+            .GroupBy(syncRun => syncRun.Mode)
+            .Select(group => group
+                .OrderByDescending(syncRun => syncRun.StartedAtUtc)
+                .First())
+            .ToListAsync(cancellationToken);
+
+        var liveEligibleCount = await CountLiveEligibleTournamentsAsync(syncOptions, cancellationToken);
+        var finalizeEligibleCount = await CountFinalizeEligibleTournamentsAsync(syncOptions, cancellationToken);
+
+        return
+        [
+            BuildServiceHealth(
+                SyncServiceKeys.Schedule,
+                "Schedule sync service",
+                TournamentSyncMode.Schedule,
+                scheduleConfig.IsEnabled,
+                scheduleConfig.IntervalMinutes,
+                activeTournamentCount,
+                activeTournamentCount,
+                "Refreshes future fixtures, kickoff changes, postponed matches, and unknown qualified teams.",
+                latestByMode,
+                latestSuccessByMode,
+                latestFailureByMode,
+                syncRuns,
+                now),
+            BuildServiceHealth(
+                SyncServiceKeys.Live,
+                "Live results service",
+                TournamentSyncMode.Live,
+                liveConfig.IsEnabled,
+                liveConfig.IntervalMinutes,
+                activeTournamentCount,
+                liveEligibleCount,
+                $"Checks active tournaments from {Math.Max(0, syncOptions.LiveStartsBeforeMinutes)} minutes before kickoff.",
+                latestByMode,
+                latestSuccessByMode,
+                latestFailureByMode,
+                syncRuns,
+                now),
+            BuildServiceHealth(
+                SyncServiceKeys.Finalize,
+                "Match finalizer service",
+                TournamentSyncMode.Finalize,
+                finalizeConfig.IsEnabled,
+                finalizeConfig.IntervalMinutes,
+                activeTournamentCount,
+                finalizeEligibleCount,
+                "Confirms finished matches and enriches final details when required.",
+                latestByMode,
+                latestSuccessByMode,
+                latestFailureByMode,
+                syncRuns,
+                now),
+            BuildServiceHealth(
+                SyncServiceKeys.Results,
+                "Results safety net service",
+                TournamentSyncMode.Results,
+                resultsConfig.IsEnabled,
+                resultsConfig.IntervalMinutes,
+                activeTournamentCount,
+                activeTournamentCount,
+                "Daily reconciliation for completed matches and late result corrections.",
+                latestByMode,
+                latestSuccessByMode,
+                latestFailureByMode,
+                syncRuns,
+                now),
+            BuildDetailsExtractorHealth(
+                syncOptions,
+                finalizeConfig,
+                activeTournamentCount,
+                finalizeEligibleCount,
+                latestByMode,
+                latestSuccessByMode,
+                latestFailureByMode,
+                syncRuns,
+                now)
+        ];
+    }
+
+    public async Task<SyncServiceConfigurationDto?> UpdateServiceConfigurationAsync(
+        string serviceKey,
+        UpdateSyncServiceConfigurationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var normalizedKey = serviceKey.Trim().ToLowerInvariant();
+        if (!IsConfigurableService(normalizedKey))
+        {
+            return null;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var intervalMinutes = Math.Clamp(request.IntervalMinutes, 1, 1440);
+        var configuration = await dbContext.SyncServiceConfigurations
+            .FirstOrDefaultAsync(configuration => configuration.ServiceKey == normalizedKey, cancellationToken);
+
+        if (configuration is null)
+        {
+            configuration = new SyncServiceConfiguration
+            {
+                ServiceKey = normalizedKey,
+                CreatedAtUtc = now
+            };
+            dbContext.SyncServiceConfigurations.Add(configuration);
+        }
+
+        configuration.IsEnabled = request.IsEnabled;
+        configuration.IntervalMinutes = intervalMinutes;
+        configuration.UpdatedAtUtc = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new SyncServiceConfigurationDto(
+            configuration.ServiceKey,
+            configuration.IsEnabled,
+            configuration.IntervalMinutes,
+            configuration.UpdatedAtUtc);
+    }
+
     public async Task<TournamentSyncRunDto?> GetSyncRunAsync(int syncRunId, CancellationToken cancellationToken)
     {
         var syncRun = await dbContext.TournamentSyncRuns.FindAsync([syncRunId], cancellationToken);
         return syncRun is null ? null : DtoMapper.ToSyncRunDto(syncRun);
+    }
+
+    private static SyncServiceHealthDto BuildServiceHealth(
+        string serviceKey,
+        string serviceName,
+        TournamentSyncMode mode,
+        bool isEnabled,
+        int intervalMinutes,
+        int activeTournamentCount,
+        int eligibleTournamentCount,
+        string notes,
+        IReadOnlyList<TournamentSyncRun> latestByMode,
+        IReadOnlyList<TournamentSyncRun> latestSuccessByMode,
+        IReadOnlyList<TournamentSyncRun> latestFailureByMode,
+        IReadOnlyList<TournamentSyncRun> last24Hours,
+        DateTimeOffset now)
+    {
+        var latest = latestByMode.FirstOrDefault(syncRun => syncRun.Mode == mode);
+        var latestSuccess = latestSuccessByMode.FirstOrDefault(syncRun => syncRun.Mode == mode);
+        var latestFailure = latestFailureByMode.FirstOrDefault(syncRun => syncRun.Mode == mode);
+        var runsLast24Hours = last24Hours.Count(syncRun => syncRun.Mode == mode);
+        var failuresLast24Hours = last24Hours.Count(syncRun => syncRun.Mode == mode && syncRun.Status == TournamentSyncRunStatus.Failed);
+
+        var status = GetServiceStatus(isEnabled, latest, intervalMinutes, now);
+
+        return new SyncServiceHealthDto(
+            serviceKey,
+            serviceName,
+            mode,
+            isEnabled,
+            status,
+            intervalMinutes,
+            latest?.StartedAtUtc,
+            latestSuccess?.FinishedAtUtc,
+            latestFailure?.FinishedAtUtc,
+            latestFailure?.ErrorMessage ?? string.Empty,
+            activeTournamentCount,
+            eligibleTournamentCount,
+            runsLast24Hours,
+            failuresLast24Hours,
+            notes);
+    }
+
+    private static SyncServiceHealthDto BuildDetailsExtractorHealth(
+        TournamentSyncOptions syncOptions,
+        EffectiveSyncServiceConfiguration finalizeConfig,
+        int activeTournamentCount,
+        int eligibleTournamentCount,
+        IReadOnlyList<TournamentSyncRun> latestByMode,
+        IReadOnlyList<TournamentSyncRun> latestSuccessByMode,
+        IReadOnlyList<TournamentSyncRun> latestFailureByMode,
+        IReadOnlyList<TournamentSyncRun> last24Hours,
+        DateTimeOffset now)
+    {
+        var finalizeHealth = BuildServiceHealth(
+            "match-details-extractor",
+            "Match details extractor",
+            TournamentSyncMode.Finalize,
+            finalizeConfig.IsEnabled,
+            finalizeConfig.IntervalMinutes,
+            activeTournamentCount,
+            eligibleTournamentCount,
+            $"Runs inside finalize/results processing after roughly {Math.Max(0, syncOptions.StatisticsDelayAfterFinishedMinutes)} minutes for finished matches that need statistics or extra-time details.",
+            latestByMode,
+            latestSuccessByMode,
+            latestFailureByMode,
+            last24Hours,
+            now);
+
+        return finalizeHealth with { Mode = null };
+    }
+
+    private static string GetServiceStatus(bool isEnabled, TournamentSyncRun? latest, int intervalMinutes, DateTimeOffset now)
+    {
+        if (!isEnabled)
+        {
+            return "Disabled";
+        }
+
+        if (latest?.Status == TournamentSyncRunStatus.Running)
+        {
+            return "Running";
+        }
+
+        if (latest is null)
+        {
+            return "Waiting";
+        }
+
+        var expectedInterval = TimeSpan.FromMinutes(Math.Max(1, intervalMinutes));
+        var staleAfter = expectedInterval + TimeSpan.FromMinutes(5);
+        if (now - latest.StartedAtUtc > staleAfter)
+        {
+            return "Stale";
+        }
+
+        return latest.Status == TournamentSyncRunStatus.Failed ? "Failing" : "Healthy";
+    }
+
+    private static EffectiveSyncServiceConfiguration GetEffectiveConfiguration(
+        IReadOnlyList<SyncServiceConfiguration> configurations,
+        string serviceKey,
+        bool defaultEnabled,
+        int defaultIntervalSeconds)
+    {
+        var configuration = configurations.FirstOrDefault(configuration => configuration.ServiceKey == serviceKey);
+        return configuration is null
+            ? new EffectiveSyncServiceConfiguration(defaultEnabled, SecondsToMinutes(defaultIntervalSeconds))
+            : new EffectiveSyncServiceConfiguration(configuration.IsEnabled, Math.Max(1, configuration.IntervalMinutes));
+    }
+
+    private static int SecondsToMinutes(int seconds)
+    {
+        return Math.Max(1, (int)Math.Ceiling(Math.Max(1, seconds) / 60.0));
+    }
+
+    private static bool IsConfigurableService(string serviceKey)
+    {
+        return serviceKey is SyncServiceKeys.Schedule or SyncServiceKeys.Live or SyncServiceKeys.Finalize or SyncServiceKeys.Results;
+    }
+
+    private sealed record EffectiveSyncServiceConfiguration(bool IsEnabled, int IntervalMinutes);
+
+    private Task<int> CountLiveEligibleTournamentsAsync(TournamentSyncOptions syncOptions, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var liveWindowStart = now.AddMinutes(Math.Max(0, syncOptions.LiveStartsBeforeMinutes));
+
+        return dbContext.Tournaments
+            .Where(tournament => tournament.IsActive)
+            .CountAsync(tournament => tournament.Matches.Any(match =>
+                match.Status == MatchStatus.Live ||
+                match.SyncState == MatchSyncState.Live ||
+                (match.KickoffUtc <= liveWindowStart &&
+                    match.Status != MatchStatus.Finished &&
+                    match.Status != MatchStatus.Cancelled &&
+                    match.Status != MatchStatus.Postponed &&
+                    match.SyncState != MatchSyncState.Finalized &&
+                    match.SyncState != MatchSyncState.Cancelled &&
+                    match.SyncState != MatchSyncState.Postponed)), cancellationToken);
+    }
+
+    private Task<int> CountFinalizeEligibleTournamentsAsync(TournamentSyncOptions syncOptions, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var liveWindowStart = now.AddMinutes(Math.Max(0, syncOptions.LiveStartsBeforeMinutes));
+
+        return dbContext.Tournaments
+            .Where(tournament => tournament.IsActive)
+            .CountAsync(tournament => tournament.Matches.Any(match =>
+                match.Status == MatchStatus.Live ||
+                match.SyncState == MatchSyncState.Live ||
+                (match.KickoffUtc <= liveWindowStart &&
+                    match.Status != MatchStatus.Cancelled &&
+                    match.Status != MatchStatus.Postponed &&
+                    match.SyncState != MatchSyncState.Cancelled &&
+                    match.SyncState != MatchSyncState.Postponed &&
+                    match.SyncState != MatchSyncState.Finalized) ||
+                (match.Status == MatchStatus.Finished &&
+                    (!match.RegularTimeHomeScore.HasValue ||
+                        !match.RegularTimeAwayScore.HasValue ||
+                        match.Statistics == null))), cancellationToken);
     }
 
     private async Task<IReadOnlyList<LiveScoreFixtureRow>> FetchRowsForModeAsync(

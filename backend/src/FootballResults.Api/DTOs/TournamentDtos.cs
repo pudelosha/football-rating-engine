@@ -134,6 +134,16 @@ public sealed record SyncTournamentResponse(
     int UnchangedMatches,
     string ErrorMessage);
 
+public sealed record SyncAllTournamentsResponse(
+    TournamentSyncMode Mode,
+    int TournamentCount,
+    int SucceededCount,
+    int FailedCount,
+    int InsertedMatches,
+    int UpdatedMatches,
+    int UnchangedMatches,
+    IReadOnlyList<SyncTournamentResponse> Results);
+
 public sealed record TournamentSyncRunDto(
     int Id,
     int TournamentId,
@@ -145,3 +155,43 @@ public sealed record TournamentSyncRunDto(
     int UpdatedMatches,
     int UnchangedMatches,
     string ErrorMessage);
+
+public sealed record TournamentSyncRunSummaryDto(
+    int Id,
+    int TournamentId,
+    string TournamentName,
+    TournamentSyncMode Mode,
+    TournamentSyncRunStatus Status,
+    DateTimeOffset StartedAtUtc,
+    DateTimeOffset? FinishedAtUtc,
+    int InsertedMatches,
+    int UpdatedMatches,
+    int UnchangedMatches,
+    string ErrorMessage);
+
+public sealed record SyncServiceHealthDto(
+    string ServiceKey,
+    string ServiceName,
+    TournamentSyncMode? Mode,
+    bool IsEnabled,
+    string Status,
+    int IntervalMinutes,
+    DateTimeOffset? LastRunUtc,
+    DateTimeOffset? LastSuccessUtc,
+    DateTimeOffset? LastFailureUtc,
+    string LastError,
+    int ActiveTournamentCount,
+    int EligibleTournamentCount,
+    int RunsLast24Hours,
+    int FailuresLast24Hours,
+    string Notes);
+
+public sealed record UpdateSyncServiceConfigurationRequest(
+    bool IsEnabled,
+    int IntervalMinutes);
+
+public sealed record SyncServiceConfigurationDto(
+    string ServiceKey,
+    bool IsEnabled,
+    int IntervalMinutes,
+    DateTimeOffset UpdatedAtUtc);

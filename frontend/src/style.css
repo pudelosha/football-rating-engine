@@ -1572,6 +1572,264 @@ p {
   font-weight: 950;
 }
 
+.system-jobs-panel-layout {
+  gap: 18px;
+}
+
+.system-job-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.system-job-card {
+  display: grid;
+  gap: 12px;
+  min-height: 260px;
+  padding: 18px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.system-job-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.system-job-card-top .menu-icon {
+  width: 24px;
+  height: 24px;
+  color: #b0d86b;
+}
+
+.system-job-card-top span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.system-job-card h3 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.system-job-card small {
+  color: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.system-job-card p {
+  margin: 0;
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.system-job-card button {
+  align-self: end;
+  min-height: 40px;
+  padding: 0 12px;
+  color: rgba(255, 249, 234, 0.58);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-weight: 950;
+  cursor: not-allowed;
+}
+
+.system-health-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.system-health-card.loading {
+  min-height: 180px;
+  place-items: center;
+}
+
+.system-health-card-heading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.system-health-card .menu-icon {
+  width: 22px;
+  height: 22px;
+  color: #b0d86b;
+}
+
+.system-health-card-heading div {
+  display: grid;
+  gap: 5px;
+}
+
+.system-health-card span,
+.system-health-card dt {
+  color: rgba(255, 249, 234, 0.56);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.system-health-card strong {
+  color: #fff9ea;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.system-health-card small {
+  color: rgba(255, 249, 234, 0.62);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.system-health-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.system-health-card dl div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.system-health-card dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 13px;
+  font-weight: 880;
+}
+
+.system-runs-table {
+  min-width: 980px;
+}
+
+.system-services-table {
+  min-width: 1120px;
+}
+
+.system-services-table tbody tr {
+  height: 92px;
+}
+
+.system-services-table td {
+  vertical-align: middle;
+}
+
+.system-services-table td:nth-child(5) {
+  min-width: 320px;
+  max-width: 420px;
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.service-purpose-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.service-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.service-action-row button {
+  min-height: 34px;
+  padding: 0 10px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.service-action-row button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.system-section-copy {
+  max-width: 820px;
+  margin: -4px 0 14px;
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.system-service-modal {
+  width: min(620px, 100%);
+}
+
+.system-service-form {
+  display: grid;
+  gap: 14px;
+}
+
+.system-service-form input[type='number'] {
+  min-height: 46px;
+  width: 100%;
+  padding: 0 12px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.system-service-form input[type='number']:focus {
+  box-shadow: 0 0 0 4px rgba(176, 216, 107, 0.14);
+}
+
+.system-service-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.system-service-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: #b0d86b;
+}
+
 .users-panel-layout {
   gap: 18px;
 }
@@ -3037,7 +3295,8 @@ p {
 
   .rating-rebuild-grid,
   .rating-layer-grid,
-  .rating-version-grid {
+  .rating-version-grid,
+  .system-job-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3180,6 +3439,7 @@ p {
   .rating-rebuild-grid,
   .rating-layer-grid,
   .rating-version-grid,
+  .system-job-grid,
   .pipeline {
     grid-template-columns: 1fr;
   }

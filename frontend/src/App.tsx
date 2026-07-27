@@ -20,6 +20,7 @@ type View =
   | 'admin-squads'
   | 'admin-squad-details'
   | 'admin-users'
+  | 'admin-system-jobs'
   | 'admin-tournaments'
   | 'admin-tournament-form'
   | 'admin-tournament-details'
@@ -225,6 +226,10 @@ type TournamentSyncRun = {
   errorMessage: string
 }
 
+type TournamentSyncRunSummary = TournamentSyncRun & {
+  tournamentName: string
+}
+
 type SyncTournamentResponse = {
   syncRunId: number
   tournamentId: number
@@ -234,6 +239,51 @@ type SyncTournamentResponse = {
   updatedMatches: number
   unchangedMatches: number
   errorMessage: string
+}
+
+type SyncAllTournamentsResponse = {
+  mode: string
+  tournamentCount: number
+  succeededCount: number
+  failedCount: number
+  insertedMatches: number
+  updatedMatches: number
+  unchangedMatches: number
+  results: SyncTournamentResponse[]
+}
+
+type SystemJobService = {
+  serviceKey?: string
+  title: string
+  cadence: string
+  status: string
+  nextRun: string
+  copy: string
+}
+
+type SyncServiceHealth = {
+  serviceName: string
+  serviceKey: string
+  mode?: string | null
+  isEnabled: boolean
+  status: string
+  intervalMinutes: number
+  lastRunUtc?: string | null
+  lastSuccessUtc?: string | null
+  lastFailureUtc?: string | null
+  lastError: string
+  activeTournamentCount: number
+  eligibleTournamentCount: number
+  runsLast24Hours: number
+  failuresLast24Hours: number
+  notes: string
+}
+
+type SyncServiceConfigurationResponse = {
+  serviceKey: string
+  isEnabled: boolean
+  intervalMinutes: number
+  updatedAtUtc: string
 }
 
 type TournamentPreview = {
@@ -274,6 +324,7 @@ const routes: Record<View, string> = {
   'admin-squads': '/admin/squads',
   'admin-squad-details': '/admin/squads/0',
   'admin-users': '/admin/users',
+  'admin-system-jobs': '/admin/system-jobs',
   'admin-tournaments': '/admin/tournaments',
   'admin-tournament-form': '/admin/tournaments/new',
   'admin-tournament-details': '/admin/tournaments/0',
@@ -618,6 +669,52 @@ const translations = {
     ],
     adminSystemJobsOps: 'System jobs',
     adminSystemJobsOpsCopy: 'Monitor scheduled sync services, intervals, recent runs, failures, and background processing health.',
+    systemJobsPanelEyebrow: 'System jobs',
+    systemJobsPanelTitle: 'Background sync control.',
+    systemJobsPanelCopy:
+      'A future operator panel for scheduled LiveScore synchronization, finalization checks, squad imports, and rating rebuild queues. This screen is UI-only for now.',
+    systemJobsCoreTitle: 'Hosted services',
+    systemJobsGlobalSyncTitle: 'Global sync operations',
+    systemJobsRecentTitle: 'Recent sync runs',
+    systemJobsHealthTitle: 'Service health',
+    systemJobsPrepared: 'Prepared',
+    systemJobsPaused: 'Paused',
+    systemJobsManual: 'Manual',
+    systemJobsLive: 'Live',
+    systemJobsOnHold: 'On hold',
+    systemJobsService: 'Service',
+    systemJobsPurpose: 'Purpose',
+    systemJobsEditService: 'Edit service',
+    systemJobsSaveService: 'Save service',
+    systemJobsInterval: 'Interval',
+    systemJobsHoldService: 'Put service on hold',
+    systemJobsServiceUpdated: 'Service settings updated locally.',
+    systemJobsGlobalSyncCopy: 'These actions are planned to run against all active tournaments, not a single tournament.',
+    systemJobsNextRun: 'Next run',
+    systemJobsLastRun: 'Last run',
+    systemJobsLastSuccess: 'Last success',
+    systemJobsLastFailure: 'Last failure',
+    systemJobsEligibleTournaments: 'Eligible tournaments',
+    systemJobsRuns24h: 'Runs 24h',
+    systemJobsFailures24h: 'Failures 24h',
+    systemJobsCoreItems: [
+      { serviceKey: 'schedule-sync', title: 'Schedule sync service', cadence: 'Every 60 minutes', status: 'Live', nextRun: '08:00', copy: 'Refreshes fixture dates, postponed games, unknown qualified teams, tournament metadata, and future match structure.' },
+      { serviceKey: 'live-results', title: 'Live results service', cadence: 'Every 1 minute', status: 'Live', nextRun: 'When kickoff is due', copy: 'Checks competition fixtures around scheduled kickoff windows and updates live scores without individual match calls.' },
+      { serviceKey: 'match-finalizer', title: 'Match finalizer service', cadence: 'Every 1 minute', status: 'Live', nextRun: 'After live window', copy: 'Detects matches that moved from fixtures to results, confirms final status, and closes records.' },
+      { title: 'Match details extractor', cadence: 'Uses finalizer interval', status: 'Live', nextRun: 'AET/AP only', copy: 'Requests individual match incidents only when extra time, penalties, or richer final details are required.' },
+      { serviceKey: 'results-safety-net', title: 'Results safety net service', cadence: 'Every 1440 minutes', status: 'Live', nextRun: '03:30', copy: 'Re-reads completed matches as a slower reconciliation pass for missed statuses, late corrections, or service interruptions.' },
+    ],
+    systemJobHealthItems: [
+      { label: 'Scheduler', value: 'Ready', note: 'Hosted timer registration placeholder' },
+      { label: 'LiveScore API', value: 'Not checked', note: 'Future latency and failure monitor' },
+      { label: 'Email worker', value: 'Ready', note: 'Auth messages already wired in backend' },
+      { label: 'Rating worker', value: 'Manual', note: 'Prepared for queued rebuilds' },
+    ],
+    systemJobRecentRuns: [
+      { job: 'Schedule sync service', mode: 'schedule', tournament: 'All active tournaments', time: 'Today 06:00', result: '104 unchanged', status: 'Succeeded' },
+      { job: 'Match finalizer service', mode: 'finalize', tournament: 'All active tournaments', time: 'Today 05:58', result: '7 finalized', status: 'Succeeded' },
+      { job: 'Results safety net service', mode: 'results', tournament: 'All active tournaments', time: 'Yesterday 03:30', result: '89 checked', status: 'Succeeded' },
+    ],
     adminPlaceholder: 'Not wired yet',
     backHome: 'Back to home',
     heroEyebrow: 'Football intelligence platform',
@@ -1060,6 +1157,52 @@ const translations = {
     ],
     adminSystemJobsOps: 'System jobs',
     adminSystemJobsOpsCopy: 'Monitoruj zaplanowane sync serwisy, interwały, ostatnie uruchomienia, błędy i zdrowie procesów w tle.',
+    systemJobsPanelEyebrow: 'System jobs',
+    systemJobsPanelTitle: 'Kontrola synchronizacji w tle.',
+    systemJobsPanelCopy:
+      'Przyszły panel operatora dla zaplanowanej synchronizacji LiveScore, finalizacji meczów, importów kadr i kolejek rebuildów ratingów. Na razie to tylko UI.',
+    systemJobsCoreTitle: 'Hosted services',
+    systemJobsGlobalSyncTitle: 'Globalne operacje sync',
+    systemJobsRecentTitle: 'Ostatnie sync runy',
+    systemJobsHealthTitle: 'Stan usług',
+    systemJobsPrepared: 'Przygotowany',
+    systemJobsPaused: 'Wstrzymany',
+    systemJobsManual: 'Ręczny',
+    systemJobsLive: 'Live',
+    systemJobsOnHold: 'Wstrzymany',
+    systemJobsService: 'Service',
+    systemJobsPurpose: 'Cel',
+    systemJobsEditService: 'Edytuj service',
+    systemJobsSaveService: 'Zapisz service',
+    systemJobsInterval: 'Interwał',
+    systemJobsHoldService: 'Wstrzymaj service',
+    systemJobsServiceUpdated: 'Ustawienia service zaktualizowane lokalnie.',
+    systemJobsGlobalSyncCopy: 'Te akcje docelowo uruchomią sync dla wszystkich aktywnych turniejów, nie tylko jednego turnieju.',
+    systemJobsNextRun: 'Następne uruchomienie',
+    systemJobsLastRun: 'Ostatnie uruchomienie',
+    systemJobsLastSuccess: 'Ostatni sukces',
+    systemJobsLastFailure: 'Ostatni błąd',
+    systemJobsEligibleTournaments: 'Kwalifikujące się turnieje',
+    systemJobsRuns24h: 'Runy 24h',
+    systemJobsFailures24h: 'Błędy 24h',
+    systemJobsCoreItems: [
+      { serviceKey: 'schedule-sync', title: 'Schedule sync service', cadence: 'Co 60 minut', status: 'Live', nextRun: '08:00', copy: 'Odświeża daty fixtures, przełożone mecze, nieznane drużyny, metadane turnieju i strukturę przyszłych spotkań.' },
+      { serviceKey: 'live-results', title: 'Live results service', cadence: 'Co 1 minutę', status: 'Live', nextRun: 'Gdy kickoff jest due', copy: 'Sprawdza fixtures rozgrywek w okolicach zaplanowanego kickoffu i aktualizuje live score bez indywidualnych zapytań meczu.' },
+      { serviceKey: 'match-finalizer', title: 'Match finalizer service', cadence: 'Co 1 minutę', status: 'Live', nextRun: 'Po oknie live', copy: 'Wykrywa mecze przeniesione z fixtures do results, potwierdza finalny status i zamyka rekordy.' },
+      { title: 'Match details extractor', cadence: 'Używa interwału finalizera', status: 'Live', nextRun: 'Tylko AET/AP', copy: 'Pobiera incydenty pojedynczego meczu tylko gdy potrzebna jest dogrywka, karne lub bogatsze detale finalne.' },
+      { serviceKey: 'results-safety-net', title: 'Results safety net service', cadence: 'Co 1440 minut', status: 'Live', nextRun: '03:30', copy: 'Ponownie czyta zakończone mecze jako wolniejszy reconciliation pass dla pominiętych statusów, korekt lub przerw serwisu.' },
+    ],
+    systemJobHealthItems: [
+      { label: 'Scheduler', value: 'Gotowy', note: 'Placeholder rejestracji hosted timerów' },
+      { label: 'LiveScore API', value: 'Nie sprawdzono', note: 'Przyszły monitor opóźnień i błędów' },
+      { label: 'Email worker', value: 'Gotowy', note: 'Wiadomości auth są już podpięte w backendzie' },
+      { label: 'Rating worker', value: 'Ręczny', note: 'Przygotowany pod kolejkę rebuildów' },
+    ],
+    systemJobRecentRuns: [
+      { job: 'Schedule sync service', mode: 'schedule', tournament: 'Wszystkie aktywne turnieje', time: 'Dziś 06:00', result: '104 bez zmian', status: 'Sukces' },
+      { job: 'Match finalizer service', mode: 'finalize', tournament: 'Wszystkie aktywne turnieje', time: 'Dziś 05:58', result: '7 sfinalizowanych', status: 'Sukces' },
+      { job: 'Results safety net service', mode: 'results', tournament: 'Wszystkie aktywne turnieje', time: 'Wczoraj 03:30', result: '89 sprawdzonych', status: 'Sukces' },
+    ],
     adminPlaceholder: 'Jeszcze nie podpięte',
     backHome: 'Wroć na stronę główną',
     heroEyebrow: 'Platforma analityki piłkarskiej',
@@ -1476,6 +1619,18 @@ function formatDate(value: string | null | undefined, fallback: string) {
   return new Date(value).toLocaleString()
 }
 
+function formatMinutes(minutes: number) {
+  if (minutes < 60) {
+    return `${minutes} min`
+  }
+
+  if (minutes % 60 === 0) {
+    return `${minutes / 60} h`
+  }
+
+  return `${minutes} min`
+}
+
 function compareText(left: string | null | undefined, right: string | null | undefined) {
   return (left || '').localeCompare(right || '', undefined, { numeric: true, sensitivity: 'base' })
 }
@@ -1537,7 +1692,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -1774,6 +1929,15 @@ function App() {
           t={t}
           user={user}
           language={language}
+          onToast={showToast}
+          onBack={() => navigate('admin')}
+        />
+      )}
+
+      {view === 'admin-system-jobs' && user && (
+        <SystemJobsPanel
+          t={t}
+          user={user}
           onToast={showToast}
           onBack={() => navigate('admin')}
         />
@@ -2705,6 +2869,7 @@ function AdminDashboard({
       icon: 'matches',
       title: t.adminSystemJobsOps,
       description: t.adminSystemJobsOpsCopy,
+      action: () => onNavigate('admin-system-jobs'),
     },
   ]
 
@@ -2866,6 +3031,513 @@ function RatingsPanel({
         </div>
       </div>
     </section>
+  )
+}
+
+function SystemJobsPanel({
+  t,
+  user,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const [services, setServices] = useState<SystemJobService[]>(() => [...t.systemJobsCoreItems])
+  const [editingService, setEditingService] = useState<SystemJobService | null>(null)
+  const [healthService, setHealthService] = useState<SystemJobService | null>(null)
+  const [editedInterval, setEditedInterval] = useState('')
+  const [editedOnHold, setEditedOnHold] = useState(false)
+  const [recentRuns, setRecentRuns] = useState<TournamentSyncRunSummary[]>([])
+  const [serviceHealth, setServiceHealth] = useState<SyncServiceHealth[]>([])
+  const [isLoadingRuns, setIsLoadingRuns] = useState(true)
+  const [isLoadingHealth, setIsLoadingHealth] = useState(true)
+  const [isSavingService, setIsSavingService] = useState(false)
+  const [activeGlobalSyncMode, setActiveGlobalSyncMode] = useState<'full' | 'schedule' | 'live' | 'finalize' | 'results' | null>(null)
+  const syncButtons: Array<{ mode: 'full' | 'schedule' | 'live' | 'finalize' | 'results'; label: string; copy: string }> = [
+    { mode: 'full', label: t.fullSync, copy: t.fullSyncCopy },
+    { mode: 'schedule', label: t.scheduleSync, copy: t.scheduleSyncCopy },
+    { mode: 'live', label: t.liveSync, copy: t.liveSyncCopy },
+    { mode: 'finalize', label: t.finalizeSync, copy: t.finalizeSyncCopy },
+    { mode: 'results', label: t.resultsSync, copy: t.resultsSyncCopy },
+  ]
+
+  useEffect(() => {
+    setServices([...t.systemJobsCoreItems])
+  }, [t])
+
+  const loadRecentRuns = async () => {
+    setIsLoadingRuns(true)
+    try {
+      const result = await authorizedRequest<TournamentSyncRunSummary[]>(user.token, '/api/tournament-sync-runs?limit=20')
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setRecentRuns(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoadingRuns(false)
+    }
+  }
+
+  const loadServiceHealth = async () => {
+    setIsLoadingHealth(true)
+    try {
+      const result = await authorizedRequest<SyncServiceHealth[]>(user.token, '/api/system-jobs/health')
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setServiceHealth(result.data)
+      setServices((current) => current.map((service) => {
+        const health = service.serviceKey
+          ? result.data!.find((item) => item.serviceKey === service.serviceKey)
+          : result.data!.find((item) => item.serviceName === service.title)
+
+        return health
+          ? {
+            ...service,
+            cadence: `${health.intervalMinutes} min`,
+            status: health.isEnabled ? t.systemJobsLive : t.systemJobsOnHold,
+          }
+          : service
+      }))
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoadingHealth(false)
+    }
+  }
+
+  useEffect(() => {
+    loadRecentRuns()
+    loadServiceHealth()
+  }, [user.token])
+
+  const runGlobalSync = async (mode: 'full' | 'schedule' | 'live' | 'finalize' | 'results') => {
+    setActiveGlobalSyncMode(mode)
+    try {
+      const result = await authorizedRequest<SyncAllTournamentsResponse>(user.token, `/api/tournaments/sync/${mode}`, {
+        method: 'POST',
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.syncFailed, 'error')
+        return
+      }
+
+      onToast(`${t.syncStarted} ${result.data.succeededCount}/${result.data.tournamentCount}`, result.data.failedCount > 0 ? 'error' : 'success')
+      await loadRecentRuns()
+      await loadServiceHealth()
+    } catch {
+      onToast(t.syncFailed, 'error')
+    } finally {
+      setActiveGlobalSyncMode(null)
+    }
+  }
+
+  const getServiceHealth = (service: SystemJobService) => serviceHealth.find((item) =>
+    service.serviceKey ? item.serviceKey === service.serviceKey : item.serviceName === service.title)
+
+  const openServiceEditor = (service: SystemJobService) => {
+    const health = getServiceHealth(service)
+    setEditingService(service)
+    setEditedInterval(String(health?.intervalMinutes ?? (parseInt(service.cadence, 10) || 1)))
+    setEditedOnHold(health ? !health.isEnabled : service.status !== t.systemJobsLive && service.status !== 'Live')
+  }
+
+  const saveServiceEditor = async () => {
+    if (!editingService) {
+      return
+    }
+
+    const intervalMinutes = Math.max(1, Number.parseInt(editedInterval, 10) || 1)
+
+    if (editingService.serviceKey) {
+      setIsSavingService(true)
+      try {
+        const result = await authorizedRequest<SyncServiceConfigurationResponse>(
+          user.token,
+          `/api/system-jobs/services/${editingService.serviceKey}`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({
+              isEnabled: !editedOnHold,
+              intervalMinutes,
+            }),
+          },
+        )
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.genericError, 'error')
+          return
+        }
+
+        await loadServiceHealth()
+        onToast(t.systemJobsServiceUpdated, 'success')
+      } catch {
+        onToast(t.genericError, 'error')
+        return
+      } finally {
+        setIsSavingService(false)
+      }
+    }
+
+    setServices((current) => current.map((service) => service.title === editingService.title
+      ? {
+        ...service,
+        cadence: `${intervalMinutes} min`,
+        status: editedOnHold ? t.systemJobsOnHold : t.systemJobsLive,
+      }
+      : service))
+    setEditingService(null)
+  }
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content system-jobs-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.systemJobsPanelEyebrow}</p>
+          <h1>{t.systemJobsPanelTitle}</h1>
+          <p>{t.systemJobsPanelCopy}</p>
+        </div>
+
+        <div className="details-top-actions panel-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToAdmin}</span>
+          </button>
+        </div>
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="matches" />
+            <h2>{t.systemJobsCoreTitle}</h2>
+          </div>
+          <div className="tournament-table-shell system-services-table-shell">
+            <table className="tournament-table system-services-table">
+              <thead>
+                <tr>
+                  <th>{t.systemJobsService}</th>
+                  <th>Status</th>
+                  <th>{t.systemJobsInterval}</th>
+                  <th>{t.systemJobsNextRun}</th>
+                  <th>{t.systemJobsPurpose}</th>
+                  <th>{t.userActions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.map((service) => (
+                  <tr key={service.title}>
+                    <td><strong>{service.title}</strong></td>
+                    <td>
+                      <span className={`access-status-pill ${service.status === t.systemJobsLive || service.status === 'Live' ? 'active' : 'pending'}`}>
+                        {service.status}
+                      </span>
+                    </td>
+                    <td>{service.cadence}</td>
+                    <td>{service.nextRun}</td>
+                    <td><span className="service-purpose-text">{service.copy}</span></td>
+                    <td>
+                      <div className="service-action-row">
+                        <button type="button" onClick={() => setHealthService(service)}>
+                          {t.systemJobsHealthTitle}
+                        </button>
+                        <button type="button" disabled={!service.serviceKey} onClick={() => openServiceEditor(service)}>
+                          {t.edit}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="admin" />
+            <h2>{t.systemJobsGlobalSyncTitle}</h2>
+          </div>
+          <p className="system-section-copy">{t.systemJobsGlobalSyncCopy}</p>
+          <div className="sync-action-grid">
+            {syncButtons.map((button) => (
+              <button
+                type="button"
+                key={button.mode}
+                disabled={Boolean(activeGlobalSyncMode)}
+                onClick={() => runGlobalSync(button.mode)}
+              >
+                {activeGlobalSyncMode === button.mode ? <LoadingSpinner /> : <MenuIcon name="admin" />}
+                <strong>{button.label}</strong>
+                <span>{button.copy}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="tournaments" />
+            <h2>{t.systemJobsRecentTitle}</h2>
+          </div>
+          <div className="tournament-table-shell system-runs-table-shell">
+            <table className="tournament-table system-runs-table">
+              <thead>
+                <tr>
+                  <th>{t.mode}</th>
+                  <th>{t.tournamentName}</th>
+                  <th>{t.status}</th>
+                  <th>{t.started}</th>
+                  <th>{t.finished}</th>
+                  <th>{t.inserted}</th>
+                  <th>{t.updatedRows}</th>
+                  <th>{t.unchanged}</th>
+                  <th>{t.error}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoadingRuns && recentRuns.map((run) => (
+                  <tr key={run.id}>
+                    <td>{run.mode}</td>
+                    <td><strong>{run.tournamentName}</strong></td>
+                    <td>{run.status}</td>
+                    <td>{formatDate(run.startedAtUtc, '-')}</td>
+                    <td>{formatDate(run.finishedAtUtc, '-')}</td>
+                    <td>{run.insertedMatches}</td>
+                    <td>{run.updatedMatches}</td>
+                    <td>{run.unchangedMatches}</td>
+                    <td>{run.errorMessage || '-'}</td>
+                  </tr>
+                ))}
+                {!isLoadingRuns && recentRuns.length === 0 && (
+                  <tr>
+                    <td colSpan={9}>-</td>
+                  </tr>
+                )}
+                {isLoadingRuns && (
+                  <tr>
+                    <td colSpan={9}>
+                      <LoadingSpinner />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {editingService && (
+          <SystemServiceModal
+            t={t}
+            service={editingService}
+            interval={editedInterval}
+            onHold={editedOnHold}
+            isSaving={isSavingService}
+            onIntervalChange={setEditedInterval}
+            onHoldChange={setEditedOnHold}
+            onCancel={() => setEditingService(null)}
+            onSave={saveServiceEditor}
+          />
+        )}
+
+        {healthService && (
+          <SystemServiceHealthModal
+            t={t}
+            service={healthService}
+            health={getServiceHealth(healthService)}
+            isLoading={isLoadingHealth}
+            onCancel={() => setHealthService(null)}
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+function SystemServiceModal({
+  t,
+  service,
+  interval,
+  onHold,
+  isSaving,
+  onIntervalChange,
+  onHoldChange,
+  onCancel,
+  onSave,
+}: {
+  t: (typeof translations)[Language]
+  service: SystemJobService
+  interval: string
+  onHold: boolean
+  isSaving: boolean
+  onIntervalChange: (value: string) => void
+  onHoldChange: (value: boolean) => void
+  onCancel: () => void
+  onSave: () => void
+}) {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onCancel])
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        className="delete-modal system-service-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="system-service-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="matches" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.systemJobsEditService}</p>
+          <h2 id="system-service-title">{service.title}</h2>
+          <p>{service.copy}</p>
+          <div className="delete-modal-target">
+            <strong>{service.cadence}</strong>
+            <span>{t.systemJobsNextRun}: {service.nextRun}</span>
+          </div>
+        </div>
+        <div className="system-service-form">
+          <label className="form-field">
+            <span>{t.systemJobsInterval}</span>
+            <input
+              type="number"
+              min="1"
+              value={interval}
+              disabled={isSaving}
+              onChange={(event) => onIntervalChange(event.target.value)}
+            />
+          </label>
+          <label className="system-service-toggle">
+            <input
+              type="checkbox"
+              checked={onHold}
+              disabled={isSaving}
+              onChange={(event) => onHoldChange(event.target.checked)}
+            />
+            <span>{t.systemJobsHoldService}</span>
+          </label>
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" disabled={isSaving} onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button type="button" disabled={isSaving} onClick={onSave}>
+            {isSaving ? '...' : t.systemJobsSaveService}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
+  )
+}
+
+function SystemServiceHealthModal({
+  t,
+  service,
+  health,
+  isLoading,
+  onCancel,
+}: {
+  t: (typeof translations)[Language]
+  service: SystemJobService
+  health?: SyncServiceHealth
+  isLoading: boolean
+  onCancel: () => void
+}) {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onCancel])
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        className="delete-modal system-health-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="system-health-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="ratings" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.systemJobsHealthTitle}</p>
+          <h2 id="system-health-title">{service.title}</h2>
+          <p>{service.copy}</p>
+        </div>
+
+        {isLoading && (
+          <div className="system-health-card loading">
+            <LoadingSpinner />
+          </div>
+        )}
+
+        {!isLoading && health && (
+          <article className="system-health-card modal-health-card">
+            <div className="system-health-card-heading">
+              <MenuIcon name="matches" />
+              <div>
+                <span>{health.mode || service.title}</span>
+                <strong>{health.status}</strong>
+              </div>
+            </div>
+            <dl>
+              <div><dt>{t.systemJobsInterval}</dt><dd>{formatMinutes(health.intervalMinutes)}</dd></div>
+              <div><dt>{t.systemJobsLastRun}</dt><dd>{formatDate(health.lastRunUtc, '-')}</dd></div>
+              <div><dt>{t.systemJobsLastSuccess}</dt><dd>{formatDate(health.lastSuccessUtc, '-')}</dd></div>
+              <div><dt>{t.systemJobsLastFailure}</dt><dd>{formatDate(health.lastFailureUtc, '-')}</dd></div>
+              <div><dt>{t.systemJobsEligibleTournaments}</dt><dd>{health.eligibleTournamentCount} / {health.activeTournamentCount}</dd></div>
+              <div><dt>{t.systemJobsRuns24h}</dt><dd>{health.runsLast24Hours}</dd></div>
+              <div><dt>{t.systemJobsFailures24h}</dt><dd>{health.failuresLast24Hours}</dd></div>
+              <div><dt>{t.error}</dt><dd>{health.lastError || '-'}</dd></div>
+            </dl>
+            <small>{health.notes}</small>
+          </article>
+        )}
+
+        {!isLoading && !health && (
+          <div className="delete-modal-target">
+            <strong>-</strong>
+            <span>{t.genericError}</span>
+          </div>
+        )}
+
+        <div className="delete-modal-actions single">
+          <button type="button" onClick={onCancel}>
+            {t.cancel}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
   )
 }
 

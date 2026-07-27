@@ -345,6 +345,63 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
             return Task.FromResult(runs);
         }
 
+        public Task<SyncAllTournamentsResponse> SyncAllActiveAsync(TournamentSyncMode mode, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<SyncTournamentResponse> results =
+            [
+                new SyncTournamentResponse(77, 1, mode, TournamentSyncRunStatus.Succeeded, 1, 2, 3, string.Empty)
+            ];
+
+            return Task.FromResult(new SyncAllTournamentsResponse(mode, 1, 1, 0, 1, 2, 3, results));
+        }
+
+        public Task<IReadOnlyList<TournamentSyncRunSummaryDto>> GetRecentSyncRunsAsync(int limit, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<TournamentSyncRunSummaryDto> runs =
+            [
+                new TournamentSyncRunSummaryDto(77, 1, "World Cup 2026", TournamentSyncMode.Full, TournamentSyncRunStatus.Succeeded, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, 2, 3, string.Empty)
+            ];
+
+            return Task.FromResult(runs);
+        }
+
+        public Task<IReadOnlyList<SyncServiceHealthDto>> GetServiceHealthAsync(CancellationToken cancellationToken)
+        {
+            IReadOnlyList<SyncServiceHealthDto> health =
+            [
+                new SyncServiceHealthDto(
+                    "schedule-sync",
+                    "Schedule sync service",
+                    TournamentSyncMode.Schedule,
+                    true,
+                    "Healthy",
+                    60,
+                    DateTimeOffset.UtcNow,
+                    DateTimeOffset.UtcNow,
+                    null,
+                    string.Empty,
+                    1,
+                    1,
+                    1,
+                    0,
+                    "Test health row")
+            ];
+
+            return Task.FromResult(health);
+        }
+
+        public Task<SyncServiceConfigurationDto?> UpdateServiceConfigurationAsync(
+            string serviceKey,
+            UpdateSyncServiceConfigurationRequest request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<SyncServiceConfigurationDto?>(new SyncServiceConfigurationDto(
+                serviceKey,
+                request.IsEnabled,
+                request.IntervalMinutes,
+                DateTimeOffset.UtcNow));
+        }
+
         public Task<TournamentSyncRunDto?> GetSyncRunAsync(int syncRunId, CancellationToken cancellationToken)
         {
             return Task.FromResult<TournamentSyncRunDto?>(new TournamentSyncRunDto(syncRunId, 1, TournamentSyncMode.Full, TournamentSyncRunStatus.Succeeded, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, 2, 3, string.Empty));

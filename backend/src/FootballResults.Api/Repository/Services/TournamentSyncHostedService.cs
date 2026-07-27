@@ -13,6 +13,7 @@ public abstract class TournamentSyncHostedService(
     ILogger logger) : BackgroundService
 {
     protected abstract TournamentSyncMode Mode { get; }
+    protected abstract string ServiceKey { get; }
     protected abstract bool IsEnabled(TournamentSyncOptions options);
     protected abstract TimeSpan GetInterval(TournamentSyncOptions options);
     protected virtual Task<List<int>> GetTournamentIdsAsync(
@@ -28,19 +29,37 @@ public abstract class TournamentSyncHostedService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var syncOptions = options.Value;
-        if (!IsEnabled(syncOptions))
+        while (!stoppingToken.IsCancellationRequested)
         {
-            logger.LogInformation("{ServiceName} is disabled.", GetType().Name);
-            return;
-        }
+            var syncOptions = options.Value;
+            var configuration = await GetConfigurationAsync(syncOptions, stoppingToken);
 
-        using var timer = new PeriodicTimer(GetInterval(syncOptions));
-        do
-        {
-            await SyncAllTournamentsAsync(stoppingToken);
+            if (configuration.IsEnabled)
+            {
+                await SyncAllTournamentsAsync(stoppingToken);
+            }
+            else
+            {
+                logger.LogInformation("{ServiceName} is disabled.", GetType().Name);
+            }
+
+            await Task.Delay(TimeSpan.FromMinutes(configuration.IntervalMinutes), stoppingToken);
         }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+    }
+
+    private async Task<HostedSyncServiceConfiguration> GetConfigurationAsync(
+        TournamentSyncOptions syncOptions,
+        CancellationToken cancellationToken)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var configuration = await dbContext.SyncServiceConfigurations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(configuration => configuration.ServiceKey == ServiceKey, cancellationToken);
+
+        return configuration is null
+            ? new HostedSyncServiceConfiguration(IsEnabled(syncOptions), SecondsToMinutes((int)GetInterval(syncOptions).TotalSeconds))
+            : new HostedSyncServiceConfiguration(configuration.IsEnabled, Math.Max(1, configuration.IntervalMinutes));
     }
 
     private async Task SyncAllTournamentsAsync(CancellationToken cancellationToken)
@@ -65,6 +84,13 @@ public abstract class TournamentSyncHostedService(
             logger.LogError(ex, "{ServiceName} failed.", GetType().Name);
         }
     }
+
+    private static int SecondsToMinutes(int seconds)
+    {
+        return Math.Max(1, (int)Math.Ceiling(Math.Max(1, seconds) / 60.0));
+    }
+
+    private sealed record HostedSyncServiceConfiguration(bool IsEnabled, int IntervalMinutes);
 }
 
 public sealed class TournamentScheduleSyncHostedService(
@@ -74,6 +100,7 @@ public sealed class TournamentScheduleSyncHostedService(
     : TournamentSyncHostedService(scopeFactory, options, logger)
 {
     protected override TournamentSyncMode Mode => TournamentSyncMode.Schedule;
+    protected override string ServiceKey => SyncServiceKeys.Schedule;
     protected override bool IsEnabled(TournamentSyncOptions options) => options.EnableScheduleSync;
     protected override TimeSpan GetInterval(TournamentSyncOptions options) => TimeSpan.FromSeconds(Math.Max(1, options.ScheduleIntervalSeconds));
 }
@@ -85,6 +112,7 @@ public sealed class LiveMatchSyncHostedService(
     : TournamentSyncHostedService(scopeFactory, options, logger)
 {
     protected override TournamentSyncMode Mode => TournamentSyncMode.Live;
+    protected override string ServiceKey => SyncServiceKeys.Live;
     protected override bool IsEnabled(TournamentSyncOptions options) => options.EnableLiveSync;
     protected override TimeSpan GetInterval(TournamentSyncOptions options) => TimeSpan.FromSeconds(Math.Max(1, options.LiveIntervalSeconds));
 
@@ -120,6 +148,7 @@ public sealed class MatchFinalizationHostedService(
     : TournamentSyncHostedService(scopeFactory, options, logger)
 {
     protected override TournamentSyncMode Mode => TournamentSyncMode.Finalize;
+    protected override string ServiceKey => SyncServiceKeys.Finalize;
     protected override bool IsEnabled(TournamentSyncOptions options) => options.EnableFinalizeSync;
     protected override TimeSpan GetInterval(TournamentSyncOptions options) => TimeSpan.FromSeconds(Math.Max(1, options.FinalizeIntervalSeconds));
 
@@ -158,6 +187,7 @@ public sealed class ResultsReconciliationHostedService(
     : TournamentSyncHostedService(scopeFactory, options, logger)
 {
     protected override TournamentSyncMode Mode => TournamentSyncMode.Results;
+    protected override string ServiceKey => SyncServiceKeys.Results;
     protected override bool IsEnabled(TournamentSyncOptions options) => options.EnableResultsSync;
     protected override TimeSpan GetInterval(TournamentSyncOptions options) => TimeSpan.FromSeconds(Math.Max(1, options.ResultsIntervalSeconds));
 }
