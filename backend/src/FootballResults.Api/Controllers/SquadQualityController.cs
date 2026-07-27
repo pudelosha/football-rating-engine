@@ -75,7 +75,7 @@ public sealed class SquadQualityController(ISquadQualityService squadQualityServ
     }
 
     [HttpGet("api/tournaments/{tournamentId:int}/ratings/squad-quality/teams")]
-    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
     [ProducesResponseType(typeof(IReadOnlyList<TeamSquadQualityRatingDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TeamSquadQualityRatingDto>>> GetTournamentTeamRatings(
         int tournamentId,

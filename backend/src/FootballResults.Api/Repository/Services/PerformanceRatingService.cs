@@ -211,7 +211,7 @@ public sealed class PerformanceRatingService(
             var dataCoverage = weightSum == 0 ? 0 : coverageWeightSum / weightSum;
             var sampleCoverage = SampleCoverage(teamMatches.Count, run.MatchCount);
             var adjustmentCap = run.MaxAdjustment * sampleCoverage;
-            var adjustment = Clamp(rawScore * run.Scale * sampleCoverage, -adjustmentCap, adjustmentCap);
+            var adjustment = Clamp(rawScore * dataCoverage * run.Scale * sampleCoverage, -adjustmentCap, adjustmentCap);
 
             dbContext.TeamPerformanceMatchSnapshots.AddRange(teamMatches);
             dbContext.TeamPerformanceRatings.Add(new TeamPerformanceRating
@@ -241,7 +241,7 @@ public sealed class PerformanceRatingService(
         int index)
     {
         var isHome = snapshot.HomeTeamId == teamId;
-        var score = CalculateMatchScore(statistics, isHome);
+        var score = CalculateMatchScore(statistics, snapshot, isHome);
         var weight = WeightForIndex(index);
 
         return new TeamPerformanceMatchSnapshot
@@ -420,7 +420,10 @@ public sealed class PerformanceRatingService(
             statistics.AwayOffsides);
     }
 
-    private static MatchPerformanceScore CalculateMatchScore(PerformanceStatisticsValues statistics, bool isHome)
+    private static MatchPerformanceScore CalculateMatchScore(
+        PerformanceStatisticsValues statistics,
+        MatchEloSnapshot snapshot,
+        bool isHome)
     {
         var components = new List<(decimal? Score, decimal Weight)>
         {
@@ -441,6 +444,7 @@ public sealed class PerformanceRatingService(
             : components
                 .Where(component => component.Score.HasValue)
                 .Sum(component => component.Score!.Value * component.Weight) / availableWeight;
+        rawScore = ApplyResultContext(rawScore, snapshot, isHome);
 
         return new MatchPerformanceScore(
             DataCoverage: RoundMetric(availableWeight),
@@ -454,6 +458,31 @@ public sealed class PerformanceRatingService(
             FoulStressScore: RoundNullable(components[7].Score),
             GoalkeeperStressScore: RoundNullable(components[8].Score),
             RawPerformanceScore: RoundMetric(rawScore));
+    }
+
+    private static decimal ApplyResultContext(decimal rawScore, MatchEloSnapshot snapshot, bool isHome)
+    {
+        var teamActual = isHome ? snapshot.HomeActual : snapshot.AwayActual;
+        var homeScore = snapshot.HistoricalMatch.HomeScore;
+        var awayScore = snapshot.HistoricalMatch.AwayScore;
+
+        if (teamActual == 0.5m)
+        {
+            var drawCap = homeScore == 0 && awayScore == 0 ? 0.15m : 0.25m;
+            return Clamp(rawScore, -drawCap, drawCap);
+        }
+
+        if (teamActual == 0m && rawScore > 0.35m)
+        {
+            return 0.35m;
+        }
+
+        if (teamActual == 1m && rawScore < -0.35m)
+        {
+            return -0.35m;
+        }
+
+        return rawScore;
     }
 
     private static decimal? TerritoryScore(PerformanceStatisticsValues statistics, bool isHome)

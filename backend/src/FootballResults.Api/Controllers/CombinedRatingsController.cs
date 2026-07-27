@@ -10,7 +10,7 @@ namespace FootballResults.Api.Controllers;
 public sealed class CombinedRatingsController(ICombinedRatingService combinedRatingService) : ControllerBase
 {
     [HttpGet("api/tournaments/{tournamentId:int}/ratings/combined/teams")]
-    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
     [ProducesResponseType(typeof(CombinedTeamRatingsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<CombinedTeamRatingsDto>> GetTournamentTeamRatings(
         int tournamentId,

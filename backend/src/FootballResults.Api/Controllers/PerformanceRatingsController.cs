@@ -46,7 +46,7 @@ public sealed class PerformanceRatingsController(IPerformanceRatingService perfo
     }
 
     [HttpGet("api/tournaments/{tournamentId:int}/ratings/performance/teams")]
-    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
     [ProducesResponseType(typeof(IReadOnlyList<TeamPerformanceRatingDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TeamPerformanceRatingDto>>> GetLatestTeamRatings(
         int tournamentId,
@@ -56,7 +56,7 @@ public sealed class PerformanceRatingsController(IPerformanceRatingService perfo
     }
 
     [HttpGet("api/rating-runs/{runId:int}/performance/snapshots")]
-    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
     [ProducesResponseType(typeof(IReadOnlyList<TeamPerformanceMatchSnapshotDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TeamPerformanceMatchSnapshotDto>>> GetRunSnapshots(
         int runId,

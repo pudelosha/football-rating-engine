@@ -1678,6 +1678,10 @@ p {
   width: min(460px, 100%);
 }
 
+.rating-table-search.align-right {
+  justify-self: end;
+}
+
 .rating-run-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1861,12 +1865,155 @@ p {
   min-width: 1080px;
 }
 
-.ratings-team-table td span {
+.ratings-team-table td > span:not(.rating-value-tooltip) {
   display: block;
   margin-top: 4px;
   color: rgba(255, 249, 234, 0.5);
   font-size: 11px;
   font-weight: 850;
+}
+
+.tournament-table-shell.rating-tooltip-table-shell {
+  overflow: visible;
+}
+
+.ratings-team-table td {
+  overflow: visible;
+}
+
+.rating-value-tooltip {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  color: inherit;
+  outline: none;
+}
+
+.rating-value-display {
+  display: inline-flex !important;
+  min-height: 28px;
+  align-items: center;
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  cursor: help;
+}
+
+.rating-value-display strong {
+  font-size: inherit;
+}
+
+.rating-tooltip-panel {
+  position: absolute;
+  z-index: 40;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  display: grid !important;
+  width: min(460px, calc(100vw - 40px));
+  gap: 12px;
+  padding: 14px;
+  color: rgba(255, 249, 234, 0.76) !important;
+  border-radius: 8px;
+  background: rgba(20, 29, 23, 0.98);
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(176, 216, 107, 0.14);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 6px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.rating-tooltip-panel::after {
+  position: absolute;
+  bottom: -6px;
+  left: calc(50% - 6px);
+  width: 12px;
+  height: 12px;
+  content: "";
+  background: rgba(20, 29, 23, 0.98);
+  transform: rotate(45deg);
+}
+
+.rating-tooltip-table-shell .rating-tooltip-panel {
+  top: calc(100% + 10px);
+  bottom: auto;
+  z-index: 200;
+  transform: translate(-50%, -6px);
+}
+
+.rating-tooltip-table-shell .rating-tooltip-panel::after {
+  top: -6px;
+  bottom: auto;
+}
+
+.rating-value-tooltip:hover .rating-tooltip-panel,
+.rating-value-tooltip:focus-within .rating-tooltip-panel {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.rating-tooltip-title {
+  color: #fff9ea;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.rating-tooltip-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 !important;
+}
+
+.rating-tooltip-grid > span {
+  display: grid !important;
+  gap: 4px;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.rating-tooltip-grid small {
+  color: rgba(255, 249, 234, 0.52);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.rating-tooltip-grid strong {
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.rating-tooltip-list {
+  display: grid !important;
+  gap: 6px;
+  margin: 0 !important;
+}
+
+.rating-tooltip-list > span {
+  display: block !important;
+  margin: 0 !important;
+  color: rgba(255, 249, 234, 0.66) !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.rating-tooltip-list > span strong {
+  display: inline !important;
+  color: #fff9ea;
+  font-size: inherit !important;
+  font-weight: 950;
 }
 
 .system-jobs-panel-layout {
@@ -2627,6 +2774,15 @@ p {
   text-transform: uppercase;
 }
 
+.tournament-search.compact span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .tournament-search input {
   min-height: 42px;
   width: 100%;
@@ -2886,7 +3042,9 @@ p {
   transform: translateY(-1px);
 }
 
-.table-sort-button span:last-child {
+.table-sort-button .sort-indicator {
+  display: inline-block;
+  margin: 0;
   color: #b0d86b;
   font-size: 13px;
   line-height: 1;
@@ -3222,6 +3380,36 @@ p {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.details-panel-heading.spread {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.details-panel-heading.spread > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.details-panel-heading.spread > .tournament-search {
+  width: min(460px, 46%);
+}
+
+.rating-updated-badge {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  color: rgba(255, 249, 234, 0.72);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
 }
 
 .details-panel-heading .menu-icon {
@@ -3799,6 +3987,19 @@ p {
   .rating-admin-grid,
   .rating-context-strip {
     grid-template-columns: 1fr;
+  }
+
+  .details-panel-heading.spread {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .details-panel-heading.spread > .tournament-search {
+    width: 100%;
+  }
+
+  .rating-table-search.align-right {
+    justify-self: stretch;
   }
 
   .rating-config-form.compact {

@@ -45,7 +45,7 @@ public sealed class TournamentsController(
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
     [ProducesResponseType(typeof(IReadOnlyList<TournamentSummaryDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<TournamentSummaryDto>>> GetAll(CancellationToken cancellationToken)
     {
@@ -53,7 +53,7 @@ public sealed class TournamentsController(
     }
 
     [HttpGet("{id:int}")]
-    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
     [ProducesResponseType(typeof(TournamentDetailsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TournamentDetailsDto>> GetById(int id, CancellationToken cancellationToken)

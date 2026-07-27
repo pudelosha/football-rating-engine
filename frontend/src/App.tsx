@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 
@@ -15,6 +15,8 @@ type View =
   | 'terms'
   | 'home'
   | 'dashboard'
+  | 'ratings'
+  | 'rating-details'
   | 'admin'
   | 'admin-ratings'
   | 'admin-rating-details'
@@ -258,6 +260,78 @@ type CombinedRatingsResponse = {
   teams: CombinedTeamRating[]
 }
 
+type TeamFormRatingDetail = {
+  teamId: number
+  matchCount: number
+  weightedActual: number
+  weightedExpected: number
+  weightedDelta: number
+  averageDelta: number
+  lastMatchUtc?: string | null
+}
+
+type TeamFormMatchSnapshot = {
+  teamId: number
+  opponentTeamName: string
+  kickoffUtc: string
+  isHome: boolean
+  actual: number
+  expected: number
+  delta: number
+  weight: number
+  weightedDelta: number
+}
+
+type TeamPerformanceRatingDetail = {
+  teamId: number
+  matchCount: number
+  dataCoverage: number
+  rawPerformanceScore: number
+  lastMatchUtc?: string | null
+}
+
+type TeamPerformanceMatchSnapshot = {
+  teamId: number
+  opponentTeamName: string
+  kickoffUtc: string
+  isHome: boolean
+  dataCoverage: number
+  xgScore?: number | null
+  shotScore?: number | null
+  shotsOnTargetScore?: number | null
+  shotQualityScore?: number | null
+  possessionScore?: number | null
+  territoryScore?: number | null
+  offsidesScore?: number | null
+  foulStressScore?: number | null
+  goalkeeperStressScore?: number | null
+  rawPerformanceScore: number
+  weight: number
+  weightedPerformanceScore: number
+}
+
+type TeamSquadQualityRatingDetail = {
+  teamId: number
+  snapshotId?: number | null
+  fetchedAtUtc?: string | null
+  totalMarketValueEur?: number | null
+  topElevenMarketValueEur?: number | null
+  topFifteenMarketValueEur?: number | null
+  averageAge?: number | null
+  valueWeightedAverageAge?: number | null
+  nationalTeamPlayers?: number | null
+  playerCount: number
+  topElevenScore?: number | null
+  topFifteenScore?: number | null
+  totalValueScore?: number | null
+  nationalTeamPlayersScore?: number | null
+  primeAgeScore?: number | null
+  contractStabilityScore?: number | null
+  positionalBalanceScore?: number | null
+  squadQualityScore: number
+  squadQualityAdjustment: number
+}
+
 type TournamentRatingSetup = {
   tournamentId: number
   includeForm: boolean
@@ -445,6 +519,8 @@ const routes: Record<View, string> = {
   terms: '/terms',
   home: '/home',
   dashboard: '/dashboard',
+  ratings: '/ratings',
+  'rating-details': '/ratings/0',
   admin: '/admin',
   'admin-ratings': '/admin/ratings',
   'admin-rating-details': '/admin/ratings/0',
@@ -470,6 +546,10 @@ function getViewFromPath(pathname: string): View {
 
   if (/^\/admin\/ratings\/\d+$/.test(pathname)) {
     return 'admin-rating-details'
+  }
+
+  if (/^\/ratings\/\d+$/.test(pathname)) {
+    return 'rating-details'
   }
 
   if (/^\/admin\/squads\/\d+$/.test(pathname)) {
@@ -516,11 +596,17 @@ const translations = {
     ratingActionPrepared: 'Prepared',
     ratingTournamentListTitle: 'Tournament ratings',
     ratingTournamentListCopy: 'Open a tournament to inspect current rating snapshots, layer runs, and team ratings.',
+    userRatingsPanelEyebrow: 'Ratings',
+    userRatingsPanelTitle: 'Team ratings.',
+    userRatingsPanelCopy: 'Browse tournament rating tables built from Base Elo, form, performance, and squad quality signals.',
+    userRatingDetailsEyebrow: 'Tournament ratings',
+    userRatingDetailsTitle: 'Team rating table.',
+    userRatingDetailsCopy: 'Explore the latest team strength ratings for the selected tournament.',
     ratingWeightsTitle: 'Layer weights',
     ratingParametersTitle: 'Snapshot defaults',
     ratingSaveConfig: 'Save configuration',
     ratingConfigSaved: 'Rating configuration saved.',
-    ratingOpenTournament: 'Open ratings',
+    ratingOpenTournament: 'Show ratings',
     ratingDetailsEyebrow: 'Tournament ratings',
     ratingDetailsCopy: 'Inspect latest rating runs and refresh snapshots manually for the selected tournament.',
     backToRatings: 'Back to ratings',
@@ -1099,11 +1185,17 @@ const translations = {
     ratingActionPrepared: 'Przygotowane',
     ratingTournamentListTitle: 'Ratingi turniejów',
     ratingTournamentListCopy: 'Otwórz turniej, aby sprawdzić aktualne snapshoty ratingów, runy warstw i ratingi drużyn.',
+    userRatingsPanelEyebrow: 'Ratingi',
+    userRatingsPanelTitle: 'Ratingi drużyn.',
+    userRatingsPanelCopy: 'Przeglądaj tabele ratingów turniejów budowane z Base Elo, formy, performance i jakości kadry.',
+    userRatingDetailsEyebrow: 'Ratingi turnieju',
+    userRatingDetailsTitle: 'Tabela ratingów drużyn.',
+    userRatingDetailsCopy: 'Sprawdź aktualne ratingi siły drużyn dla wybranego turnieju.',
     ratingWeightsTitle: 'Wagi warstw',
     ratingParametersTitle: 'Domyślne snapshotów',
     ratingSaveConfig: 'Zapisz konfigurację',
     ratingConfigSaved: 'Konfiguracja ratingów zapisana.',
-    ratingOpenTournament: 'Otwórz ratingi',
+    ratingOpenTournament: 'Pokaż ratingi',
     ratingDetailsEyebrow: 'Ratingi turnieju',
     ratingDetailsCopy: 'Sprawdzaj ostatnie runy ratingowe i ręcznie odświeżaj snapshoty dla wybranego turnieju.',
     backToRatings: 'Wróć do ratingów',
@@ -1696,7 +1788,6 @@ function getLists(language: Language) {
           ],
   }
 }
-
 function HeroField() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -2027,7 +2118,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -2225,6 +2316,25 @@ function App() {
         />
       )}
 
+      {view === 'ratings' && user && (
+        <UserRatingsPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          onOpen={(id) => navigateTo(`/ratings/${id}`)}
+        />
+      )}
+
+      {view === 'rating-details' && user && (
+        <UserRatingDetailsPanel
+          t={t}
+          user={user}
+          tournamentId={Number(location.pathname.match(/^\/ratings\/(\d+)$/)?.[1] ?? 0)}
+          onToast={showToast}
+          onBack={() => navigateTo('/ratings')}
+        />
+      )}
+
       {view === 'admin' && user && (
         <AdminDashboard
           t={t}
@@ -2401,7 +2511,6 @@ function AppMenu({
   onNavigate: (view: View) => void
 }) {
   const futureItems: Array<[MenuIconName, string]> = [
-    ['ratings', t.menuRatings],
     ['teams', t.menuTeams],
     ['matches', t.menuMatches],
     ['tournaments', t.menuTournaments],
@@ -2423,6 +2532,12 @@ function AppMenu({
             <span className="menu-label">
               <MenuIcon name="home" />
               <span>{t.menuHome}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => onNavigate('ratings')}>
+            <span className="menu-label">
+              <MenuIcon name="ratings" />
+              <span>{t.menuRatings}</span>
             </span>
           </button>
           {futureItems.map(([icon, item]) => (
@@ -3272,6 +3387,602 @@ function AdminDashboard({
   )
 }
 
+function toRecordByTeamId<T extends { teamId: number }>(items: T[]): Record<number, T> {
+  return Object.fromEntries(items.map((item) => [item.teamId, item]))
+}
+
+function groupByTeamId<T extends { teamId: number }>(items: T[]): Record<number, T[]> {
+  return items.reduce<Record<number, T[]>>((groups, item) => {
+    groups[item.teamId] = [...(groups[item.teamId] ?? []), item]
+    return groups
+  }, {})
+}
+
+function formatSigned(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
+}
+
+function formatNullableScore(value?: number | null): string {
+  return value === null || value === undefined ? '-' : value.toFixed(3)
+}
+
+function formatMoney(value?: number | null): string {
+  if (value === null || value === undefined) {
+    return '-'
+  }
+
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 1,
+    notation: 'compact',
+    style: 'currency',
+    currency: 'EUR',
+  }).format(value)
+}
+
+function RatingValue({
+  value,
+  children,
+}: {
+  value: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <span className="rating-value-tooltip" tabIndex={0}>
+      <span className="rating-value-display">{value}</span>
+      <span className="rating-tooltip-panel" role="tooltip">
+        {children}
+      </span>
+    </span>
+  )
+}
+
+function TooltipMetric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <span>
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  )
+}
+
+function UserRatingsPanel({
+  t,
+  user,
+  onToast,
+  onOpen,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onOpen: (id: number) => void
+}) {
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
+  const [search, setSearch] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [sortKey, setSortKey] = useState<TournamentSortKey>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const result = await authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments')
+        if (!isMounted) {
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.genericError, 'error')
+          return
+        }
+
+        setTournaments(result.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.genericError, user.token])
+
+  const sortedTournaments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const filtered = tournaments.filter((tournament) => {
+      if (!normalizedSearch) {
+        return true
+      }
+
+      return [
+        tournament.name,
+        tournament.season,
+        tournament.competitionName,
+        tournament.competitionCountry,
+      ].some((value) => value.toLowerCase().includes(normalizedSearch))
+    })
+
+    return filtered.sort((left, right) => {
+      let comparison = 0
+
+      if (sortKey === 'name') {
+        comparison = compareText(left.name, right.name)
+      } else if (sortKey === 'season') {
+        comparison = compareText(left.season || '', right.season || '')
+      } else if (sortKey === 'country') {
+        comparison = compareText(left.competitionCountry || left.competitionName, right.competitionCountry || right.competitionName)
+      } else if (sortKey === 'teams') {
+        comparison = left.teamCount - right.teamCount
+      } else if (sortKey === 'matches') {
+        comparison = left.matchCount - right.matchCount
+      } else if (sortKey === 'lastSync') {
+        comparison = new Date(left.lastSyncedAtUtc ?? 0).getTime() - new Date(right.lastSyncedAtUtc ?? 0).getTime()
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.name, right.name)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [search, sortDirection, sortKey, tournaments])
+
+  const requestSort = (key: TournamentSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'teams' || key === 'matches' || key === 'lastSync' ? 'desc' : 'asc')
+  }
+
+  const tournamentHeaders: Array<{ key: TournamentSortKey; label: string }> = [
+    { key: 'name', label: t.tournamentName },
+    { key: 'season', label: t.tournamentSeason },
+    { key: 'country', label: t.tournamentCountry },
+    { key: 'teams', label: t.teams },
+    { key: 'matches', label: t.matches },
+    { key: 'lastSync', label: t.tournamentLastSync },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.userRatingsPanelEyebrow}</p>
+          <h1>{t.userRatingsPanelTitle}</h1>
+          <p>{t.userRatingsPanelCopy}</p>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="tournaments" />
+              <h2>{t.ratingTournamentListTitle}</h2>
+            </div>
+            <label className="tournament-search compact">
+              <span>{t.tournamentSearch}</span>
+              <input
+                placeholder={t.tournamentSearchPlaceholder}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table ratings-tournament-table">
+              <thead>
+                <tr>
+                  {tournamentHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        {header.label}
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && sortedTournaments.map((tournament) => (
+                  <tr key={tournament.id}>
+                    <td><strong>{tournament.name}</strong></td>
+                    <td>{tournament.season}</td>
+                    <td>{tournament.competitionCountry}</td>
+                    <td>{tournament.teamCount}</td>
+                    <td>{tournament.matchCount}</td>
+                    <td>{formatDate(tournament.lastSyncedAtUtc, '-')}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpen(tournament.id)}>
+                        {t.ratingOpenTournament}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && sortedTournaments.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function UserRatingDetailsPanel({
+  t,
+  user,
+  tournamentId,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId: number
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const [tournament, setTournament] = useState<TournamentDetails | null>(null)
+  const [combinedRatings, setCombinedRatings] = useState<CombinedRatingsResponse | null>(null)
+  const [formDetailsByTeamId, setFormDetailsByTeamId] = useState<Record<number, TeamFormRatingDetail>>({})
+  const [formSnapshotsByTeamId, setFormSnapshotsByTeamId] = useState<Record<number, TeamFormMatchSnapshot[]>>({})
+  const [performanceDetailsByTeamId, setPerformanceDetailsByTeamId] = useState<Record<number, TeamPerformanceRatingDetail>>({})
+  const [performanceSnapshotsByTeamId, setPerformanceSnapshotsByTeamId] = useState<Record<number, TeamPerformanceMatchSnapshot[]>>({})
+  const [squadDetailsByTeamId, setSquadDetailsByTeamId] = useState<Record<number, TeamSquadQualityRatingDetail>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [sortKey, setSortKey] = useState<RatingTeamSortKey>('finalRating')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const [tournamentResult, ratingsResult] = await Promise.all([
+          authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`),
+          authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournamentId}/ratings/combined/teams`),
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!tournamentResult.ok || !tournamentResult.data) {
+          onToast(tournamentResult.message || t.genericError, 'error')
+          return
+        }
+
+        if (!ratingsResult.ok || !ratingsResult.data) {
+          onToast(ratingsResult.message || t.genericError, 'error')
+          return
+        }
+
+        const [formResult, performanceResult, squadResult, formSnapshotsResult, performanceSnapshotsResult] = await Promise.all([
+          authorizedRequest<TeamFormRatingDetail[]>(user.token, `/api/tournaments/${tournamentId}/ratings/form/teams`),
+          authorizedRequest<TeamPerformanceRatingDetail[]>(user.token, `/api/tournaments/${tournamentId}/ratings/performance/teams`),
+          authorizedRequest<TeamSquadQualityRatingDetail[]>(user.token, `/api/tournaments/${tournamentId}/ratings/squad-quality/teams`),
+          ratingsResult.data.runContext.formRatingRunId
+            ? authorizedRequest<TeamFormMatchSnapshot[]>(user.token, `/api/rating-runs/${ratingsResult.data.runContext.formRatingRunId}/form/snapshots`)
+            : Promise.resolve({ ok: true, data: [] as TeamFormMatchSnapshot[] }),
+          ratingsResult.data.runContext.performanceRatingRunId
+            ? authorizedRequest<TeamPerformanceMatchSnapshot[]>(user.token, `/api/rating-runs/${ratingsResult.data.runContext.performanceRatingRunId}/performance/snapshots`)
+            : Promise.resolve({ ok: true, data: [] as TeamPerformanceMatchSnapshot[] }),
+        ])
+
+        setTournament(tournamentResult.data)
+        setCombinedRatings(ratingsResult.data)
+        setFormDetailsByTeamId(toRecordByTeamId(formResult.ok && formResult.data ? formResult.data : []))
+        setPerformanceDetailsByTeamId(toRecordByTeamId(performanceResult.ok && performanceResult.data ? performanceResult.data : []))
+        setSquadDetailsByTeamId(toRecordByTeamId(squadResult.ok && squadResult.data ? squadResult.data : []))
+        setFormSnapshotsByTeamId(groupByTeamId(formSnapshotsResult.ok && formSnapshotsResult.data ? formSnapshotsResult.data : []))
+        setPerformanceSnapshotsByTeamId(groupByTeamId(performanceSnapshotsResult.ok && performanceSnapshotsResult.data ? performanceSnapshotsResult.data : []))
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.genericError, tournamentId, user.token])
+
+  const displayedTeams = useMemo(() => {
+    return [...(combinedRatings?.teams ?? [])].sort((left, right) => {
+      let comparison = 0
+
+      if (sortKey === 'team') {
+        comparison = compareText(left.teamName, right.teamName)
+      } else if (sortKey === 'baseElo') {
+        comparison = left.baseElo - right.baseElo
+      } else if (sortKey === 'form') {
+        comparison = left.formAdjustment - right.formAdjustment
+      } else if (sortKey === 'performance') {
+        comparison = left.performanceAdjustment - right.performanceAdjustment
+      } else if (sortKey === 'squad') {
+        comparison = left.squadQualityAdjustment - right.squadQualityAdjustment
+      } else if (sortKey === 'finalRating') {
+        comparison = left.finalRating - right.finalRating
+      } else if (sortKey === 'confidence') {
+        comparison = left.ratingConfidence - right.ratingConfidence
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.teamName, right.teamName)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [combinedRatings, sortDirection, sortKey])
+
+  const requestSort = (key: RatingTeamSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'team' ? 'asc' : 'desc')
+  }
+
+  const ratingHeaders: Array<{ key: RatingTeamSortKey; label: string }> = [
+    { key: 'team', label: t.ratingTeam },
+    { key: 'baseElo', label: t.ratingBaseElo },
+    { key: 'form', label: t.ratingForm },
+    { key: 'performance', label: t.ratingPerformance },
+    { key: 'squad', label: t.ratingSquad },
+    { key: 'finalRating', label: t.ratingFinal },
+    { key: 'confidence', label: t.ratingConfidence },
+  ]
+
+  const renderBaseTooltip = (team: CombinedTeamRating) => (
+    <>
+      <strong className="rating-tooltip-title">{team.teamName} - {t.ratingBaseElo}</strong>
+      <span className="rating-tooltip-grid">
+        <TooltipMetric label="Rating" value={team.baseElo.toFixed(2)} />
+        <TooltipMetric label="Last match" value={formatDate(team.lastBaseEloMatchUtc, '-')} />
+      </span>
+    </>
+  )
+
+  const renderFormTooltip = (team: CombinedTeamRating) => {
+    const detail = formDetailsByTeamId[team.teamId]
+    const snapshots = formSnapshotsByTeamId[team.teamId] ?? []
+
+    return (
+      <>
+        <strong className="rating-tooltip-title">{team.teamName} - {t.ratingForm}</strong>
+        <span className="rating-tooltip-grid">
+          <TooltipMetric label="Adjustment" value={formatSigned(team.formAdjustment)} />
+          <TooltipMetric label="Matches" value={detail?.matchCount ?? team.formMatchesPlayed} />
+          <TooltipMetric label="Weighted actual" value={detail ? detail.weightedActual.toFixed(4) : '-'} />
+          <TooltipMetric label="Weighted expected" value={detail ? detail.weightedExpected.toFixed(4) : '-'} />
+          <TooltipMetric label="Weighted delta" value={detail ? formatSigned(detail.weightedDelta) : '-'} />
+          <TooltipMetric label="Average delta" value={detail ? formatSigned(detail.averageDelta) : '-'} />
+        </span>
+        {snapshots.length > 0 && (
+          <span className="rating-tooltip-list">
+            {snapshots.map((snapshot) => (
+              <span key={`${snapshot.kickoffUtc}-${snapshot.opponentTeamName}`}>
+                vs <strong>{snapshot.opponentTeamName}</strong>: actual {snapshot.actual.toFixed(2)}, expected {snapshot.expected.toFixed(2)}, weighted {formatSigned(snapshot.weightedDelta)}
+              </span>
+            ))}
+          </span>
+        )}
+      </>
+    )
+  }
+
+  const renderPerformanceTooltip = (team: CombinedTeamRating) => {
+    const detail = performanceDetailsByTeamId[team.teamId]
+    const snapshots = performanceSnapshotsByTeamId[team.teamId] ?? []
+
+    return (
+      <>
+        <strong className="rating-tooltip-title">{team.teamName} - {t.ratingPerformance}</strong>
+        <span className="rating-tooltip-grid">
+          <TooltipMetric label="Adjustment" value={formatSigned(team.performanceAdjustment)} />
+          <TooltipMetric label="Matches" value={detail?.matchCount ?? team.performanceMatchesPlayed} />
+          <TooltipMetric label="Data coverage" value={detail ? `${Math.round(detail.dataCoverage * 100)}%` : '-'} />
+          <TooltipMetric label="Raw score" value={detail ? detail.rawPerformanceScore.toFixed(4) : '-'} />
+        </span>
+        {snapshots.length > 0 && (
+          <span className="rating-tooltip-list">
+            {snapshots.map((snapshot) => (
+              <span key={`${snapshot.kickoffUtc}-${snapshot.opponentTeamName}`}>
+                vs <strong>{snapshot.opponentTeamName}</strong>: xG {formatNullableScore(snapshot.xgScore)}, shots {formatNullableScore(snapshot.shotScore)}, possession {formatNullableScore(snapshot.possessionScore)}, weighted {formatSigned(snapshot.weightedPerformanceScore)}
+              </span>
+            ))}
+          </span>
+        )}
+      </>
+    )
+  }
+
+  const renderSquadTooltip = (team: CombinedTeamRating) => {
+    const detail = squadDetailsByTeamId[team.teamId]
+
+    return (
+      <>
+        <strong className="rating-tooltip-title">{team.teamName} - {t.ratingSquad}</strong>
+        <span className="rating-tooltip-grid">
+          <TooltipMetric label="Adjustment" value={formatSigned(team.squadQualityAdjustment)} />
+          <TooltipMetric label="Players" value={detail?.playerCount ?? team.squadPlayerCount} />
+          <TooltipMetric label="Total value" value={formatMoney(detail?.totalMarketValueEur)} />
+          <TooltipMetric label="Top XI value" value={formatMoney(detail?.topElevenMarketValueEur)} />
+          <TooltipMetric label="Top 15 value" value={formatMoney(detail?.topFifteenMarketValueEur)} />
+          <TooltipMetric label="Squad score" value={detail ? detail.squadQualityScore.toFixed(4) : '-'} />
+          <TooltipMetric label="Top XI score" value={formatNullableScore(detail?.topElevenScore)} />
+          <TooltipMetric label="Depth score" value={formatNullableScore(detail?.topFifteenScore)} />
+          <TooltipMetric label="Prime age" value={formatNullableScore(detail?.primeAgeScore)} />
+          <TooltipMetric label="Balance score" value={formatNullableScore(detail?.positionalBalanceScore)} />
+        </span>
+      </>
+    )
+  }
+
+  const renderFinalTooltip = (team: CombinedTeamRating) => (
+    <>
+      <strong className="rating-tooltip-title">{team.teamName} - {t.ratingFinal}</strong>
+      <span className="rating-tooltip-grid">
+        <TooltipMetric label={t.ratingBaseElo} value={team.baseElo.toFixed(2)} />
+        <TooltipMetric label={t.ratingForm} value={formatSigned(team.formAdjustment)} />
+        <TooltipMetric label={t.ratingPerformance} value={formatSigned(team.performanceAdjustment)} />
+        <TooltipMetric label={t.ratingSquad} value={formatSigned(team.squadQualityAdjustment)} />
+        <TooltipMetric label="Total adjustment" value={formatSigned(team.totalAdjustment)} />
+        <TooltipMetric label={t.ratingFinal} value={team.finalRating.toFixed(2)} />
+      </span>
+    </>
+  )
+
+  const renderConfidenceTooltip = (team: CombinedTeamRating) => (
+    <>
+      <strong className="rating-tooltip-title">{team.teamName} - {t.ratingConfidence}</strong>
+      <span className="rating-tooltip-grid">
+        <TooltipMetric label="Confidence" value={`${Math.round(team.ratingConfidence * 100)}%`} />
+        <TooltipMetric label="Form sample" value={`${team.formMatchesPlayed} matches`} />
+        <TooltipMetric label="Performance sample" value={`${team.performanceMatchesPlayed} matches`} />
+        <TooltipMetric label="Squad snapshot" value={team.hasSquadQualityRating ? formatDate(team.squadSnapshotFetchedAtUtc, '-') : '-'} />
+      </span>
+    </>
+  )
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.userRatingDetailsEyebrow}</p>
+          <h1>{tournament?.name || t.userRatingDetailsTitle}</h1>
+          <p>{t.userRatingDetailsCopy}</p>
+        </div>
+
+        <div className="details-top-actions rating-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToRatings}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="teams" />
+              <h2>{t.ratingTeamRatings}</h2>
+            </div>
+            <span className="rating-updated-badge">
+              {t.ratingUpdated}: {combinedRatings ? formatDate(combinedRatings.runContext.calculatedAtUtc, '-') : '-'}
+            </span>
+          </div>
+          <div className="tournament-table-shell compact-table-shell rating-tooltip-table-shell">
+            <table className="tournament-table ratings-team-table">
+              <thead>
+                <tr>
+                  {ratingHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        {header.label}
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && displayedTeams.map((team) => (
+                  <tr key={team.teamId}>
+                    <td>
+                      <strong>{team.teamName}</strong>
+                      <span>{team.teamAbbreviation}</span>
+                    </td>
+                    <td>
+                      <RatingValue value={team.baseElo.toFixed(2)}>
+                        {renderBaseTooltip(team)}
+                      </RatingValue>
+                    </td>
+                    <td>
+                      <RatingValue value={formatSigned(team.formAdjustment)}>
+                        {renderFormTooltip(team)}
+                      </RatingValue>
+                    </td>
+                    <td>
+                      <RatingValue value={formatSigned(team.performanceAdjustment)}>
+                        {renderPerformanceTooltip(team)}
+                      </RatingValue>
+                    </td>
+                    <td>
+                      <RatingValue value={formatSigned(team.squadQualityAdjustment)}>
+                        {renderSquadTooltip(team)}
+                      </RatingValue>
+                    </td>
+                    <td>
+                      <RatingValue value={<strong>{team.finalRating.toFixed(2)}</strong>}>
+                        {renderFinalTooltip(team)}
+                      </RatingValue>
+                    </td>
+                    <td>
+                      <RatingValue value={`${Math.round(team.ratingConfidence * 100)}%`}>
+                        {renderConfidenceTooltip(team)}
+                      </RatingValue>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && displayedTeams.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
 function RatingsPanel({
   t,
   user,
@@ -3533,7 +4244,7 @@ function RatingsPanel({
                         onClick={() => requestSort(header.key)}
                       >
                         {header.label}
-                        <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                       </button>
                     </th>
                   ))}
@@ -4058,7 +4769,7 @@ function RatingTournamentDetailsPanel({
                         onClick={() => requestRatingSort(header.key)}
                       >
                         <span>{header.label}</span>
-                        <span aria-hidden="true">{ratingSortKey === header.key ? (ratingSortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                        <span className="sort-indicator" aria-hidden="true">{ratingSortKey === header.key ? (ratingSortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                       </button>
                     </th>
                   ))}
@@ -5177,7 +5888,7 @@ function UsersAccessPanel({
                         onClick={() => requestUserSort(header.key)}
                       >
                         <span>{header.label}</span>
-                        <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                       </button>
                     </th>
                   ))}
@@ -5569,7 +6280,7 @@ function SquadsPanel({
                         onClick={() => requestSort(header.key)}
                       >
                         {header.label}
-                        <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                       </button>
                     </th>
                   ))}
@@ -5852,7 +6563,7 @@ function SquadDetailsPanel({
                           onClick={() => requestSort(header.key)}
                         >
                           <span>{header.label}</span>
-                          <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                          <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                         </button>
                       </th>
                     ))}
@@ -6314,7 +7025,7 @@ function TournamentsPanel({
                       onClick={() => requestSort(header.key)}
                     >
                       <span>{header.label}</span>
-                      <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                      <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                     </button>
                   </th>
                 ))}
@@ -7094,7 +7805,7 @@ function TournamentDetailsPage({
                               onClick={() => requestTeamSort(header.key)}
                             >
                               <span>{header.label}</span>
-                              <span aria-hidden="true">{teamSortKey === header.key ? (teamSortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                              <span className="sort-indicator" aria-hidden="true">{teamSortKey === header.key ? (teamSortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                             </button>
                           </th>
                         ))}
@@ -7140,7 +7851,7 @@ function TournamentDetailsPage({
                               onClick={() => requestMatchSort(header.key)}
                             >
                               <span>{header.label}</span>
-                              <span aria-hidden="true">{matchSortKey === header.key ? (matchSortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                              <span className="sort-indicator" aria-hidden="true">{matchSortKey === header.key ? (matchSortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
                             </button>
                           </th>
                         ))}
@@ -7257,7 +7968,7 @@ function DeleteTournamentModal({
           <p>{t.tournamentDeleteCopy}</p>
           <div className="delete-modal-target">
             <strong>{tournament.name}</strong>
-            <span>{tournament.competitionName} · {tournament.competitionCountry || '-'}</span>
+            <span>{tournament.competitionName} - {tournament.competitionCountry || '-'}</span>
           </div>
         </div>
         <div className="delete-modal-actions">
@@ -7423,7 +8134,7 @@ function TournamentActiveModal({
           <p>{nextIsActive ? t.activateTournamentCopy : t.deactivateTournamentCopy}</p>
           <div className="delete-modal-target">
             <strong>{tournament.name}</strong>
-            <span>{tournament.season || '-'} · {tournament.competitionCountry || '-'}</span>
+            <span>{tournament.season || '-'} - {tournament.competitionCountry || '-'}</span>
           </div>
         </div>
         <div className="delete-modal-actions">
@@ -8070,5 +8781,7 @@ function LoadingSpinner() {
 }
 
 export default App
+
+
 
 

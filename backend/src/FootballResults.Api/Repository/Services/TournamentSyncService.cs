@@ -752,7 +752,7 @@ public sealed class TournamentSyncService(
     {
         var changed = false;
 
-        if (!match.IsStageManualOverride)
+        if (!match.IsStageManualOverride && match.StageId is null)
         {
             changed |= SetIfChanged(value => match.StageId = value, match.StageId, stage?.Id);
         }
@@ -779,7 +779,7 @@ public sealed class TournamentSyncService(
         changed |= SetIfChanged(value => match.Status = value, match.Status, row.Status);
         changed |= SetIfChanged(value => match.RawStatus = value, match.RawStatus, row.StatusRaw);
         changed |= SetIfChanged(value => match.SyncState = value, match.SyncState, row.SyncState);
-        if (!match.IsRoundInfoManualOverride)
+        if (!match.IsRoundInfoManualOverride && string.IsNullOrWhiteSpace(match.RoundInfo))
         {
             changed |= SetIfChanged(value => match.RoundInfo = value, match.RoundInfo, row.RoundInfo);
         }

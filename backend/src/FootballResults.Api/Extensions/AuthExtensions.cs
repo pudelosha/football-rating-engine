@@ -11,6 +11,7 @@ namespace FootballResults.Api.Extensions;
 public static class AuthExtensions
 {
     public const string ApiKeyOrAdminPolicy = "ApiKeyOrAdmin";
+    public const string ApiKeyOrUserPolicy = "ApiKeyOrUser";
     public const string AdminPolicy = "AdminOnly";
     public const string UserPolicy = "UserOnly";
 
@@ -82,6 +83,15 @@ public static class AuthExtensions
             {
                 policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationDefaults.AuthenticationScheme);
                 policy.RequireAssertion(context =>
+                    context.User.IsInRole("Admin") ||
+                    context.User.HasClaim("api_key_valid", "true"));
+            });
+
+            options.AddPolicy(ApiKeyOrUserPolicy, policy =>
+            {
+                policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationDefaults.AuthenticationScheme);
+                policy.RequireAssertion(context =>
+                    context.User.IsInRole("User") ||
                     context.User.IsInRole("Admin") ||
                     context.User.HasClaim("api_key_valid", "true"));
             });
