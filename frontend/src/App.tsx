@@ -379,6 +379,7 @@ const translations = {
     squadImportFailed: 'Could not import squad snapshot.',
     squadBulkImportSuccess: 'Squad snapshots import finished.',
     squadBulkImportNoMappings: 'No Transfermarkt mappings found for this tournament.',
+    loading: 'Loading',
     editSquadMappingTitle: 'Edit squad source.',
     editSquadMappingCopy: 'Paste the Transfermarkt club page URL. Import will normalize it to the detailed squad page for the tournament season.',
     saveAndImportSnapshot: 'Save and import snapshot',
@@ -761,6 +762,7 @@ const translations = {
     squadImportFailed: 'Nie udało się zaimportować snapshotu kadry.',
     squadBulkImportSuccess: 'Import snapshotów kadr zakończony.',
     squadBulkImportNoMappings: 'Nie znaleziono mapowań Transfermarkt dla tego turnieju.',
+    loading: 'Ładowanie',
     editSquadMappingTitle: 'Edytuj źródło kadry.',
     editSquadMappingCopy: 'Wklej URL strony klubu Transfermarkt. Import znormalizuje go do szczegółowej strony kadry dla sezonu turnieju.',
     saveAndImportSnapshot: 'Zapisz i importuj snapshot',
@@ -2845,7 +2847,7 @@ function SquadsPanel({
     return () => {
       isMounted = false
     }
-  }, [onToast, t, user.token])
+  }, [t, user.token])
 
   const filteredTournaments = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -2876,11 +2878,12 @@ function SquadsPanel({
 
   const importTournamentSnapshots = async (tournament: TournamentSummary) => {
     setBulkImportingTournamentId(tournament.id)
+    let completionToast: { message: string; tone: ToastTone } | null = null
     try {
       const teamsResult = await authorizedRequest<TeamSummary[]>(user.token, `/api/tournaments/${tournament.id}/teams`)
 
       if (!teamsResult.ok || !teamsResult.data) {
-        onToast(teamsResult.message || t.squadTeamLoadFailed, 'error')
+        completionToast = { message: teamsResult.message || t.squadTeamLoadFailed, tone: 'error' }
         return
       }
 
@@ -2895,7 +2898,7 @@ function SquadsPanel({
       const mappedRows = rows.filter((row): row is { team: TeamSummary; mapping: ExternalTeamMapping } => Boolean(row.mapping))
 
       if (mappedRows.length === 0) {
-        onToast(t.squadBulkImportNoMappings, 'info')
+        completionToast = { message: t.squadBulkImportNoMappings, tone: 'info' }
         return
       }
 
@@ -2914,17 +2917,21 @@ function SquadsPanel({
       const failedCount = results.filter((result) => !result.ok).length
 
       if (failedCount > 0) {
-        onToast(`${t.squadBulkImportSuccess} ${mappedRows.length - failedCount}/${mappedRows.length}`, 'error')
         await refreshTournamentCoverage(tournament)
+        completionToast = { message: `${t.squadBulkImportSuccess} ${mappedRows.length - failedCount}/${mappedRows.length}`, tone: 'error' }
         return
       }
 
       await refreshTournamentCoverage(tournament)
-      onToast(`${t.squadBulkImportSuccess} ${mappedRows.length}/${mappedRows.length}`, 'success')
+      completionToast = { message: `${t.squadBulkImportSuccess} ${mappedRows.length}/${mappedRows.length}`, tone: 'success' }
     } catch {
-      onToast(t.squadImportFailed, 'error')
+      completionToast = { message: t.squadImportFailed, tone: 'error' }
     } finally {
       setBulkImportingTournamentId(null)
+      if (completionToast) {
+        const nextToast = completionToast
+        window.setTimeout(() => onToast(nextToast.message, nextToast.tone), 0)
+      }
     }
   }
 
@@ -2972,12 +2979,16 @@ function SquadsPanel({
           </div>
         </div>
 
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        {bulkImportingTournamentId !== null && (
+          <FullPageProcessingOverlay label={t.importRunning} />
+        )}
+
         <div className="tournament-table-shell">
-          {isLoading ? (
-            <div className="table-loading-state">
-              <LoadingSpinner />
-            </div>
-          ) : (
+          {!isLoading && (
             <table className="tournament-table squads-table">
               <thead>
                 <tr>
@@ -3014,7 +3025,7 @@ function SquadsPanel({
                           disabled={bulkImportingTournamentId === tournament.id}
                           onClick={() => importTournamentSnapshots(tournament)}
                         >
-                          {bulkImportingTournamentId === tournament.id ? <LoadingSpinner /> : t.importSnapshot}
+                          {t.importSnapshot}
                         </button>
                       </div>
                     </td>
@@ -3104,7 +3115,7 @@ function SquadDetailsPanel({
     return () => {
       isMounted = false
     }
-  }, [onToast, t, tournamentId, user.token])
+  }, [t, tournamentId, user.token])
 
   const importSnapshot = async (row: SquadTeamRow, transfermarktUrl?: string) => {
     const url = transfermarktUrl?.trim() || row.mapping?.sourceUrl
@@ -3115,6 +3126,7 @@ function SquadDetailsPanel({
     }
 
     setImportingTeamId(row.team.id)
+    let completionToast: { message: string; tone: ToastTone } | null = null
     try {
       const result = await authorizedRequest<ImportTransfermarktSquadResponse>(
         user.token,
@@ -3129,7 +3141,7 @@ function SquadDetailsPanel({
       )
 
       if (!result.ok || !result.data) {
-        onToast(result.message || t.squadImportFailed, 'error')
+        completionToast = { message: result.message || t.squadImportFailed, tone: 'error' }
         return
       }
 
@@ -3168,11 +3180,15 @@ function SquadDetailsPanel({
           }
         : item))
       setSquadEditCandidate(null)
-      onToast(t.squadImportSuccess, 'success')
+      completionToast = { message: t.squadImportSuccess, tone: 'success' }
     } catch {
-      onToast(t.squadImportFailed, 'error')
+      completionToast = { message: t.squadImportFailed, tone: 'error' }
     } finally {
       setImportingTeamId(null)
+      if (completionToast) {
+        const nextToast = completionToast
+        window.setTimeout(() => onToast(nextToast.message, nextToast.tone), 0)
+      }
     }
   }
 
@@ -3192,12 +3208,15 @@ function SquadDetailsPanel({
           </button>
         </div>
 
-        {isLoading ? (
-          <div className="table-loading-state">
-            <LoadingSpinner />
-          </div>
-        ) : tournament ? (
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        {!isLoading && tournament ? (
           <section className="details-panel squad-team-panel">
+            {importingTeamId !== null && (
+              <FullPageProcessingOverlay label={t.importRunning} />
+            )}
             <div className="details-panel-heading">
               <MenuIcon name="teams" />
               <h2>{tournament.name}</h2>
@@ -3238,7 +3257,7 @@ function SquadDetailsPanel({
                             {t.edit}
                           </button>
                           <button type="button" disabled={importingTeamId === row.team.id} onClick={() => importSnapshot(row)}>
-                            {importingTeamId === row.team.id ? <LoadingSpinner /> : t.importSnapshot}
+                            {t.importSnapshot}
                           </button>
                         </div>
                       </td>
@@ -3263,6 +3282,18 @@ function SquadDetailsPanel({
         )}
       </div>
     </section>
+  )
+}
+
+function FullPageProcessingOverlay({ label }: { label: string }) {
+  return createPortal(
+    <div className="processing-overlay page-processing-overlay" role="status" aria-live="polite">
+      <div>
+        <LoadingSpinner />
+        <strong>{label}</strong>
+      </div>
+    </div>,
+    document.body,
   )
 }
 

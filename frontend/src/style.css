@@ -1702,6 +1702,7 @@ p {
 }
 
 .tournament-table-shell {
+  position: relative;
   overflow-x: auto;
   border-radius: 8px;
   background: rgba(35, 43, 37, 0.72);
@@ -1714,6 +1715,42 @@ p {
   display: grid;
   min-height: 260px;
   place-items: center;
+}
+
+.processing-overlay {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  min-height: 220px;
+  background: rgba(13, 21, 16, 0.68);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.processing-overlay strong {
+  color: rgba(255, 249, 234, 0.82);
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.page-processing-overlay {
+  position: fixed;
+  min-height: 100vh;
+  background: rgba(13, 21, 16, 0.74);
+}
+
+.page-processing-overlay > div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  transform: translate(-50%, -50%);
 }
 
 .tournament-table {
@@ -1807,16 +1844,8 @@ p {
   cursor: wait;
 }
 
-.squad-action-row .loading-spinner {
-  width: 20px;
-  height: 20px;
-}
-
-.squad-action-row .loading-spinner span {
-  border-width: 2px;
-}
-
 .squad-team-panel {
+  position: relative;
   gap: 12px;
 }
 
