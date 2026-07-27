@@ -1830,6 +1830,204 @@ p {
   accent-color: #b0d86b;
 }
 
+.data-quality-panel-layout {
+  gap: 18px;
+}
+
+.data-quality-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.data-quality-live-checks {
+  display: grid;
+  gap: 14px;
+}
+
+.data-quality-check-card {
+  display: grid;
+  gap: 16px;
+  align-content: space-between;
+  min-height: 238px;
+  padding: 20px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.095);
+  text-align: left;
+  transition: transform 180ms ease, background 180ms ease;
+  cursor: pointer;
+}
+
+.data-quality-check-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.data-quality-check-card:focus-visible {
+  outline: 2px solid #b0d86b;
+  outline-offset: 3px;
+}
+
+.data-quality-check-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.data-quality-check-grid .menu-icon {
+  width: 28px;
+  height: 28px;
+  color: #b0d86b;
+}
+
+.data-quality-check-grid h3 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.data-quality-check-grid p {
+  margin: 0;
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.data-quality-check-title-row {
+  display: grid;
+  gap: 8px;
+}
+
+.data-quality-check-live {
+  display: grid;
+  gap: 12px;
+  justify-items: stretch;
+}
+
+.quality-status-pill {
+  justify-self: start;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.quality-status-pill.needs-review {
+  background: #e6c85f;
+}
+
+.quality-status-pill.critical {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.92);
+}
+
+.data-quality-check-grid dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.data-quality-check-grid dl div {
+  display: grid;
+  gap: 4px;
+  min-height: 62px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.data-quality-check-grid dt {
+  color: rgba(255, 249, 234, 0.52);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.data-quality-check-grid dd {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.quality-severity-pill {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.quality-severity-pill.high {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.92);
+}
+
+.quality-severity-pill.medium {
+  color: #101915;
+  background: #e6c85f;
+}
+
+.quality-severity-pill.low {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.data-quality-issues-modal {
+  width: min(980px, calc(100vw - 32px));
+}
+
+.data-quality-issues-table-shell {
+  max-height: min(54vh, 520px);
+}
+
+.data-quality-issues-table {
+  min-width: 860px;
+}
+
+.data-quality-issues-table td strong {
+  display: block;
+  color: #fff9ea;
+  font-size: 13px;
+}
+
+.data-quality-issues-table td span:not(.quality-severity-pill) {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 249, 234, 0.54);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.modal-loading-block {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-height: 180px;
+  align-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.modal-loading-block strong {
+  color: rgba(255, 249, 234, 0.72);
+  font-size: 13px;
+}
+
 .users-panel-layout {
   gap: 18px;
 }
@@ -3304,6 +3502,18 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .data-quality-check-card {
+    grid-template-columns: 1fr;
+  }
+
+  .data-quality-check-live {
+    justify-items: stretch;
+  }
+
+  .quality-status-pill {
+    justify-self: start;
+  }
+
   .users-access-grid {
     grid-template-columns: 1fr;
   }
@@ -3440,6 +3650,7 @@ p {
   .rating-layer-grid,
   .rating-version-grid,
   .system-job-grid,
+  .data-quality-check-grid,
   .pipeline {
     grid-template-columns: 1fr;
   }

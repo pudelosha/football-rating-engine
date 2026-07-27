@@ -21,6 +21,7 @@ type View =
   | 'admin-squad-details'
   | 'admin-users'
   | 'admin-system-jobs'
+  | 'admin-data-quality'
   | 'admin-tournaments'
   | 'admin-tournament-form'
   | 'admin-tournament-details'
@@ -286,6 +287,27 @@ type SyncServiceConfigurationResponse = {
   updatedAtUtc: string
 }
 
+type DataQualityTournamentCheck = {
+  key: string
+  title: string
+  status: string
+  issueCount: number
+  checkedCount: number
+  lastSampleUtc?: string | null
+  summary: string
+}
+
+type DataQualityIssue = {
+  key: string
+  severity: string
+  tournamentName: string
+  entityType: string
+  entityLabel: string
+  entityId?: number | null
+  sampleUtc?: string | null
+  issue: string
+}
+
 type TournamentPreview = {
   name: string
   season: string
@@ -325,6 +347,7 @@ const routes: Record<View, string> = {
   'admin-squad-details': '/admin/squads/0',
   'admin-users': '/admin/users',
   'admin-system-jobs': '/admin/system-jobs',
+  'admin-data-quality': '/admin/data-quality',
   'admin-tournaments': '/admin/tournaments',
   'admin-tournament-form': '/admin/tournaments/new',
   'admin-tournament-details': '/admin/tournaments/0',
@@ -606,6 +629,39 @@ const translations = {
     adminSquadOpsCopy: 'Manage squad sources, map teams to Transfermarkt, import player lists, and maintain squad quality snapshots for rating calculations.',
     adminQualityOps: 'Data quality',
     adminQualityOpsCopy: 'Review missing match statistics, stale squad snapshots, unfinished fixtures, and other data gaps before rating rebuilds run.',
+    dataQualityPanelEyebrow: 'Data quality',
+    dataQualityPanelTitle: 'Data health desk.',
+    dataQualityPanelCopy:
+      'A planned review workspace for missing tournament data, stale samples, incomplete match records, squad snapshot age, and sync freshness. This panel is UI-only for now.',
+    dataQualityReadinessTitle: 'Data health snapshot',
+    dataQualityChecksTitle: 'Tournament data checks',
+    dataQualityQueueTitle: 'Issue queue preview',
+    dataQualityRatingGateTitle: 'Freshness rules',
+    dataQualitySeverity: 'Severity',
+    dataQualityArea: 'Area',
+    dataQualitySignal: 'Signal',
+    dataQualityAction: 'Action',
+    dataQualityIssuesFound: 'issues',
+    dataQualityCheckedRecords: 'checked',
+    dataQualityLastSample: 'last sample',
+    dataQualityNoSample: 'No sample',
+    dataQualityStatusHealthy: 'Healthy',
+    dataQualityStatusReview: 'Needs review',
+    dataQualityStatusCritical: 'Critical',
+    dataQualityProblems: 'Detected problems',
+    dataQualityNoProblems: 'No problems detected for this check.',
+    dataQualityTournament: 'Tournament',
+    dataQualityEntity: 'Entity',
+    dataQualityProblem: 'Problem',
+    dataQualitySample: 'Sample',
+    dataQualityChecks: [
+      { key: 'tournament-structure', title: 'Tournament structure', status: 'Identity', copy: 'Missing identity, teams, stages, LiveScore IDs, or inconsistent season metadata.' },
+      { key: 'match-completeness', title: 'Match completeness', status: 'Matches', copy: 'Missing teams, kickoff dates, final scores, unfinished past matches, or manual round/stage review.' },
+      { key: 'result-enrichment', title: 'Result enrichment', status: 'Results', copy: 'Extra-time and penalty matches missing regular-time, extra-time, penalty, or incident-derived details.' },
+      { key: 'match-statistics', title: 'Match statistics', status: 'Stats', copy: 'Finished matches without MatchStatistics, xG, or usable performance inputs.' },
+      { key: 'squad-snapshots', title: 'Squad snapshots', status: 'Squads', copy: 'Teams without Transfermarkt mappings, fresh snapshots, player values, or complete squad metadata.' },
+      { key: 'sync-freshness', title: 'Sync freshness', status: 'Jobs', copy: 'Stale sync samples, recent failures, or tournaments outside the expected refresh window.' },
+    ],
     adminUsersOps: 'Users and access',
     adminUsersOpsCopy: 'Review users, account status, access level, lockouts, and future role-based visibility controls.',
     usersPanelEyebrow: 'Users and access',
@@ -1094,6 +1150,39 @@ const translations = {
     adminSquadOpsCopy: 'Zarządzaj źródłami kadr, mapuj drużyny do Transfermarkt, importuj listy zawodników i utrzymuj snapshoty jakości kadr dla ratingów.',
     adminQualityOps: 'Jakość danych',
     adminQualityOpsCopy: 'Sprawdzaj brakujące statystyki meczowe, stare snapshoty kadr, niezakończone fixtures i inne luki danych przed rebuildami ratingów.',
+    dataQualityPanelEyebrow: 'Jakość danych',
+    dataQualityPanelTitle: 'Panel zdrowia danych.',
+    dataQualityPanelCopy:
+      'Planowany workspace do przeglądu brakujących danych turniejów, starych próbek, niepełnych rekordów meczów, wieku snapshotów kadr i świeżości sync. Na razie to tylko UI.',
+    dataQualityReadinessTitle: 'Snapshot zdrowia danych',
+    dataQualityChecksTitle: 'Kontrole danych turniejów',
+    dataQualityQueueTitle: 'Podgląd kolejki problemów',
+    dataQualityRatingGateTitle: 'Reguły świeżości',
+    dataQualitySeverity: 'Priorytet',
+    dataQualityArea: 'Obszar',
+    dataQualitySignal: 'Sygnał',
+    dataQualityAction: 'Akcja',
+    dataQualityIssuesFound: 'problemów',
+    dataQualityCheckedRecords: 'sprawdzone',
+    dataQualityLastSample: 'ostatnia próbka',
+    dataQualityNoSample: 'Brak próbki',
+    dataQualityStatusHealthy: 'Zdrowe',
+    dataQualityStatusReview: 'Do sprawdzenia',
+    dataQualityStatusCritical: 'Krytyczne',
+    dataQualityProblems: 'Wykryte problemy',
+    dataQualityNoProblems: 'Brak wykrytych problemów dla tej kontroli.',
+    dataQualityTournament: 'Turniej',
+    dataQualityEntity: 'Rekord',
+    dataQualityProblem: 'Problem',
+    dataQualitySample: 'Próbka',
+    dataQualityChecks: [
+      { key: 'tournament-structure', title: 'Struktura turnieju', status: 'Identity', copy: 'Brakująca identyfikacja, drużyny, stage, LiveScore ID albo niespójne metadane sezonu.' },
+      { key: 'match-completeness', title: 'Kompletność meczów', status: 'Mecze', copy: 'Brakujące drużyny, kickoffy, finalne wyniki, stare niezakończone mecze albo ręczny round/stage do sprawdzenia.' },
+      { key: 'result-enrichment', title: 'Wzbogacanie wyników', status: 'Wyniki', copy: 'Mecze po dogrywce lub karnych bez regular-time, extra-time, karnych albo detali z incydentów.' },
+      { key: 'match-statistics', title: 'Statystyki meczowe', status: 'Stats', copy: 'Zakończone mecze bez MatchStatistics, xG albo użytecznych wejść performance.' },
+      { key: 'squad-snapshots', title: 'Snapshoty kadr', status: 'Kadry', copy: 'Drużyny bez mapowań Transfermarkt, świeżych snapshotów, wartości zawodników albo pełnych metadanych kadry.' },
+      { key: 'sync-freshness', title: 'Świeżość sync', status: 'Joby', copy: 'Stare próbki sync, ostatnie błędy albo turnieje poza oczekiwanym oknem odświeżenia.' },
+    ],
     adminUsersOps: 'Użytkownicy i dostęp',
     adminUsersOpsCopy: 'Przeglądaj użytkowników, status kont, poziom dostępu, blokady i przyszłe ustawienia widoczności według ról.',
     usersPanelEyebrow: 'Użytkownicy i dostęp',
@@ -1692,7 +1781,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -1936,6 +2025,15 @@ function App() {
 
       {view === 'admin-system-jobs' && user && (
         <SystemJobsPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          onBack={() => navigate('admin')}
+        />
+      )}
+
+      {view === 'admin-data-quality' && user && (
+        <DataQualityPanel
           t={t}
           user={user}
           onToast={showToast}
@@ -2858,6 +2956,7 @@ function AdminDashboard({
       icon: 'admin',
       title: t.adminQualityOps,
       description: t.adminQualityOpsCopy,
+      action: () => onNavigate('admin-data-quality'),
     },
     {
       icon: 'profile',
@@ -3056,6 +3155,7 @@ function SystemJobsPanel({
   const [isLoadingHealth, setIsLoadingHealth] = useState(true)
   const [isSavingService, setIsSavingService] = useState(false)
   const [activeGlobalSyncMode, setActiveGlobalSyncMode] = useState<'full' | 'schedule' | 'live' | 'finalize' | 'results' | null>(null)
+  const isInitialLoading = isLoadingRuns || isLoadingHealth
   const syncButtons: Array<{ mode: 'full' | 'schedule' | 'live' | 'finalize' | 'results'; label: string; copy: string }> = [
     { mode: 'full', label: t.fullSync, copy: t.fullSyncCopy },
     { mode: 'schedule', label: t.scheduleSync, copy: t.scheduleSyncCopy },
@@ -3063,6 +3163,7 @@ function SystemJobsPanel({
     { mode: 'finalize', label: t.finalizeSync, copy: t.finalizeSyncCopy },
     { mode: 'results', label: t.resultsSync, copy: t.resultsSyncCopy },
   ]
+  const activeGlobalSyncLabel = syncButtons.find((button) => button.mode === activeGlobalSyncMode)?.label
 
   useEffect(() => {
     setServices([...t.systemJobsCoreItems])
@@ -3217,6 +3318,14 @@ function SystemJobsPanel({
           </button>
         </div>
 
+        {isInitialLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        {activeGlobalSyncMode && (
+          <FullPageProcessingOverlay label={activeGlobalSyncLabel ?? t.syncOperations} />
+        )}
+
         <section className="details-panel">
           <div className="details-panel-heading">
             <MenuIcon name="matches" />
@@ -3324,13 +3433,6 @@ function SystemJobsPanel({
                     <td colSpan={9}>-</td>
                   </tr>
                 )}
-                {isLoadingRuns && (
-                  <tr>
-                    <td colSpan={9}>
-                      <LoadingSpinner />
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -3361,6 +3463,270 @@ function SystemJobsPanel({
         )}
       </div>
     </section>
+  )
+}
+
+function DataQualityPanel({
+  t,
+  user,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const checkIcons: MenuIconName[] = ['tournaments', 'matches', 'admin', 'ratings', 'teams', 'predictions']
+  const [checks, setChecks] = useState<DataQualityTournamentCheck[]>([])
+  const [selectedCheck, setSelectedCheck] = useState<(typeof t.dataQualityChecks)[number] | null>(null)
+  const [selectedCheckIssues, setSelectedCheckIssues] = useState<DataQualityIssue[]>([])
+  const [isLoadingIssues, setIsLoadingIssues] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadChecks = async () => {
+      setIsLoading(true)
+      try {
+        const result = await authorizedRequest<DataQualityTournamentCheck[]>(user.token, '/api/admin/data-quality/tournament-checks')
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.genericError, 'error')
+          return
+        }
+
+        setChecks(result.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadChecks()
+
+    return () => {
+      isMounted = false
+    }
+  }, [t.genericError, user.token])
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'Healthy') {
+      return t.dataQualityStatusHealthy
+    }
+
+    if (status === 'Critical') {
+      return t.dataQualityStatusCritical
+    }
+
+    return t.dataQualityStatusReview
+  }
+
+  const openIssuesModal = async (metadata: (typeof t.dataQualityChecks)[number]) => {
+    setSelectedCheck(metadata)
+    setSelectedCheckIssues([])
+    setIsLoadingIssues(true)
+
+    try {
+      const result = await authorizedRequest<DataQualityIssue[]>(
+        user.token,
+        `/api/admin/data-quality/tournament-checks/${metadata.key}/issues`,
+      )
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setSelectedCheckIssues(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoadingIssues(false)
+    }
+  }
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content data-quality-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.dataQualityPanelEyebrow}</p>
+          <h1>{t.dataQualityPanelTitle}</h1>
+          <p>{t.dataQualityPanelCopy}</p>
+        </div>
+
+        <div className="details-top-actions panel-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToAdmin}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="data-quality-live-checks">
+          <div className="data-quality-check-grid">
+            {t.dataQualityChecks.map((metadata, index) => {
+              const liveCheck = checks.find((check) => check.key === metadata.key)
+              const status = liveCheck?.status ?? 'Healthy'
+
+              return (
+              <button
+                type="button"
+                className="data-quality-check-card"
+                key={metadata.key}
+                onClick={() => openIssuesModal(metadata)}
+              >
+                <div className="data-quality-check-head">
+                  <MenuIcon name={checkIcons[index]} />
+                  <div className="data-quality-check-title-row">
+                    <h3>{metadata.title}</h3>
+                    <p>{metadata.copy}</p>
+                  </div>
+                </div>
+                <div className="data-quality-check-live">
+                  <strong className={`quality-status-pill ${status.toLowerCase().replace(/\s+/g, '-')}`}>
+                    {getStatusLabel(status)}
+                  </strong>
+                  <dl>
+                    <div>
+                      <dt>{t.dataQualityIssuesFound}</dt>
+                      <dd>{liveCheck?.issueCount ?? '-'}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.dataQualityCheckedRecords}</dt>
+                      <dd>{liveCheck?.checkedCount ?? '-'}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.dataQualityLastSample}</dt>
+                      <dd>{liveCheck?.lastSampleUtc ? formatDate(liveCheck.lastSampleUtc, t.dataQualityNoSample) : t.dataQualityNoSample}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </button>
+            )})}
+          </div>
+        </section>
+
+        {selectedCheck && (
+          <DataQualityIssuesModal
+            t={t}
+            check={selectedCheck}
+            issues={selectedCheckIssues}
+            isLoading={isLoadingIssues}
+            onCancel={() => setSelectedCheck(null)}
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+function DataQualityIssuesModal({
+  t,
+  check,
+  issues,
+  isLoading,
+  onCancel,
+}: {
+  t: (typeof translations)[Language]
+  check: (typeof t.dataQualityChecks)[number]
+  issues: DataQualityIssue[]
+  isLoading: boolean
+  onCancel: () => void
+}) {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onCancel])
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        className="delete-modal data-quality-issues-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="data-quality-issues-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="admin" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.dataQualityProblems}</p>
+          <h2 id="data-quality-issues-title">{check.title}</h2>
+          <p>{check.copy}</p>
+        </div>
+
+        {isLoading ? (
+          <div className="modal-loading-block">
+            <LoadingSpinner />
+            <strong>{t.loading}</strong>
+          </div>
+        ) : issues.length > 0 ? (
+          <div className="tournament-table-shell compact-table-shell data-quality-issues-table-shell">
+            <table className="tournament-table data-quality-issues-table">
+              <thead>
+                <tr>
+                  <th>{t.dataQualitySeverity}</th>
+                  <th>{t.dataQualityTournament}</th>
+                  <th>{t.dataQualityEntity}</th>
+                  <th>{t.dataQualityProblem}</th>
+                  <th>{t.dataQualitySample}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {issues.map((issue, index) => (
+                  <tr key={`${issue.key}-${issue.entityId ?? issue.entityLabel}-${index}`}>
+                    <td>
+                      <span className={`quality-severity-pill ${issue.severity.toLowerCase()}`}>
+                        {issue.severity}
+                      </span>
+                    </td>
+                    <td>{issue.tournamentName}</td>
+                    <td>
+                      <strong>{issue.entityLabel}</strong>
+                      <span>{issue.entityType}{issue.entityId ? ` #${issue.entityId}` : ''}</span>
+                    </td>
+                    <td>{issue.issue}</td>
+                    <td>{issue.sampleUtc ? formatDate(issue.sampleUtc, t.dataQualityNoSample) : t.dataQualityNoSample}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="delete-modal-target">
+            <strong>{t.dataQualityNoProblems}</strong>
+          </div>
+        )}
+
+        <div className="delete-modal-actions single">
+          <button type="button" onClick={onCancel}>
+            {t.cancel}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
   )
 }
 
@@ -4832,6 +5198,10 @@ function TournamentsPanel({
           </button>
         </div>
 
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
         <div className="tournament-toolbar">
           <button
             className="form-submit compact"
@@ -4920,13 +5290,6 @@ function TournamentsPanel({
               {!isLoading && filteredTournaments.length === 0 && (
                 <tr>
                   <td className="empty-table" colSpan={7}>{t.noTournaments}</td>
-                </tr>
-              )}
-              {isLoading && (
-                <tr>
-                  <td className="empty-table" colSpan={7}>
-                    <LoadingSpinner />
-                  </td>
                 </tr>
               )}
             </tbody>
@@ -5427,6 +5790,7 @@ function TournamentDetailsPage({
     { mode: 'finalize', label: t.finalizeSync, copy: t.finalizeSyncCopy },
     { mode: 'results', label: t.resultsSync, copy: t.resultsSyncCopy },
   ]
+  const activeSyncLabel = syncButtons.find((button) => button.mode === activeSyncMode)?.label
 
   const requestTeamSort = (key: TeamSortKey) => {
     if (teamSortKey === key) {
@@ -5506,12 +5870,15 @@ function TournamentDetailsPage({
           <p>{t.tournamentDetailsCopy}</p>
         </div>
 
-        {isLoading ? (
-          <div className="tournament-form-card centered">
-            <LoadingSpinner />
-            <strong>{t.loadingTournament}</strong>
-          </div>
-        ) : tournament && (
+        {isLoading && !activeSyncMode && (
+          <FullPageProcessingOverlay label={t.loadingTournament} />
+        )}
+
+        {activeSyncMode && (
+          <FullPageProcessingOverlay label={activeSyncLabel ?? t.syncOperations} />
+        )}
+
+        {!isLoading && tournament && (
           <>
             <div className="details-top-actions">
               <button type="button" onClick={onBack}>
