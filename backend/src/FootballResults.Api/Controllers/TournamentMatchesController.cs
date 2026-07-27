@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FootballResults.Api.Controllers;
 
 [ApiController]
-[Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+[Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
 [Route("api/tournaments/{tournamentId:int}/matches")]
 public sealed class TournamentMatchesController(
     IMatchQueryService matchQueryService,

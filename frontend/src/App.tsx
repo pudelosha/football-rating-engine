@@ -17,6 +17,8 @@ type View =
   | 'dashboard'
   | 'ratings'
   | 'rating-details'
+  | 'matches'
+  | 'matches-details'
   | 'api'
   | 'admin'
   | 'admin-ratings'
@@ -499,6 +501,7 @@ type TournamentPreview = {
 type TournamentSortKey = 'name' | 'season' | 'country' | 'teams' | 'matches' | 'lastSync'
 type TeamSortKey = 'name' | 'abbreviation'
 type MatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
+type PublicMatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
 type UserSortKey = 'email' | 'displayName' | 'role' | 'status' | 'memberSince'
 type SquadTournamentSortKey = 'name' | 'season' | 'teams' | 'coverage' | 'snapshot'
 type SquadTeamSortKey = 'team' | 'value' | 'mapping' | 'snapshot'
@@ -522,6 +525,8 @@ const routes: Record<View, string> = {
   dashboard: '/dashboard',
   ratings: '/ratings',
   'rating-details': '/ratings/0',
+  matches: '/matches',
+  'matches-details': '/matches/0',
   api: '/api',
   admin: '/admin',
   'admin-ratings': '/admin/ratings',
@@ -554,6 +559,10 @@ function getViewFromPath(pathname: string): View {
     return 'rating-details'
   }
 
+  if (/^\/matches\/\d+$/.test(pathname)) {
+    return 'matches-details'
+  }
+
   if (/^\/admin\/squads\/\d+$/.test(pathname)) {
     return 'admin-squad-details'
   }
@@ -582,6 +591,18 @@ const translations = {
     menuPredictions: 'Predictions',
     menuAdmin: 'Admin',
     menuSoon: 'Soon',
+    userMatchesPanelEyebrow: 'Matches',
+    userMatchesPanelTitle: 'Match center.',
+    userMatchesPanelCopy: 'Select a tournament to browse synchronized fixtures, live matches, and completed results.',
+    userMatchDetailsEyebrow: 'Tournament matches',
+    userMatchDetailsTitle: 'Match list.',
+    userMatchDetailsCopy: 'Browse tournament matches and filter the list by stage, round, or team name.',
+    matchOpenTournament: 'Show matches',
+    matchSearch: 'Search matches',
+    matchSearchPlaceholder: 'Search by team, round, or status',
+    roundFilter: 'Round',
+    allRounds: 'All rounds',
+    backToMatches: 'Back to matches',
     apiPanelEyebrow: 'API access',
     apiPanelTitle: 'Match data API.',
     apiPanelCopy: 'Use your API key to request tournament match lists, results, live matches, and upcoming fixtures from external tools.',
@@ -848,6 +869,12 @@ const translations = {
     syncFailed: 'Sync failed.',
     mode: 'Mode',
     status: 'Status',
+    matchStatusUnknown: 'Unknown',
+    matchStatusUpcoming: 'Upcoming',
+    matchStatusLive: 'Live',
+    matchStatusFinished: 'Finished',
+    matchStatusPostponed: 'Postponed',
+    matchStatusCancelled: 'Cancelled',
     started: 'Started',
     finished: 'Finished',
     inserted: 'Inserted',
@@ -1190,6 +1217,18 @@ const translations = {
     menuPredictions: 'Predykcje',
     menuAdmin: 'Admin',
     menuSoon: 'Wkrótce',
+    userMatchesPanelEyebrow: 'Mecze',
+    userMatchesPanelTitle: 'Centrum meczów.',
+    userMatchesPanelCopy: 'Wybierz turniej, aby przeglądać zsynchronizowane terminarze, mecze live i zakończone wyniki.',
+    userMatchDetailsEyebrow: 'Mecze turnieju',
+    userMatchDetailsTitle: 'Lista meczów.',
+    userMatchDetailsCopy: 'Przeglądaj mecze turnieju i filtruj listę po etapie, rundzie lub nazwie drużyny.',
+    matchOpenTournament: 'Pokaż mecze',
+    matchSearch: 'Szukaj meczów',
+    matchSearchPlaceholder: 'Szukaj po drużynie, rundzie lub statusie',
+    roundFilter: 'Runda',
+    allRounds: 'Wszystkie rundy',
+    backToMatches: 'Wróć do meczów',
     apiPanelEyebrow: 'Dostęp API',
     apiPanelTitle: 'API danych meczowych.',
     apiPanelCopy: 'Użyj swojego API key, aby pobierać listy meczów, wyniki, mecze live i nadchodzące spotkania z zewnętrznych narzędzi.',
@@ -1456,6 +1495,12 @@ const translations = {
     syncFailed: 'Sync nieudany.',
     mode: 'Tryb',
     status: 'Status',
+    matchStatusUnknown: 'Nieznany',
+    matchStatusUpcoming: 'Zaplanowany',
+    matchStatusLive: 'Live',
+    matchStatusFinished: 'Zakończony',
+    matchStatusPostponed: 'Przełożony',
+    matchStatusCancelled: 'Anulowany',
     started: 'Start',
     finished: 'Koniec',
     inserted: 'Dodane',
@@ -2072,6 +2117,25 @@ function formatDate(value: string | null | undefined, fallback: string) {
   return new Date(value).toLocaleString()
 }
 
+function matchStatusText(status: string | number, t: (typeof translations)[Language]) {
+  const labels: Record<string, string> = {
+    '0': t.matchStatusUnknown,
+    Unknown: t.matchStatusUnknown,
+    '1': t.matchStatusUpcoming,
+    Upcoming: t.matchStatusUpcoming,
+    '2': t.matchStatusLive,
+    Live: t.matchStatusLive,
+    '3': t.matchStatusFinished,
+    Finished: t.matchStatusFinished,
+    '4': t.matchStatusPostponed,
+    Postponed: t.matchStatusPostponed,
+    '5': t.matchStatusCancelled,
+    Cancelled: t.matchStatusCancelled,
+  }
+
+  return labels[String(status)] ?? String(status)
+}
+
 function formatEuroValue(value: number | null | undefined, fallback = '-') {
   if (value === null || value === undefined) {
     return fallback
@@ -2158,7 +2222,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'matches' || view === 'matches-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -2375,6 +2439,25 @@ function App() {
         />
       )}
 
+      {view === 'matches' && user && (
+        <UserMatchesPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          onOpen={(id) => navigateTo(`/matches/${id}`)}
+        />
+      )}
+
+      {view === 'matches-details' && user && (
+        <UserMatchDetailsPanel
+          t={t}
+          user={user}
+          tournamentId={Number(location.pathname.match(/^\/matches\/(\d+)$/)?.[1] ?? 0)}
+          onToast={showToast}
+          onBack={() => navigateTo('/matches')}
+        />
+      )}
+
       {view === 'api' && user && (
         <ApiPanel
           t={t}
@@ -2560,7 +2643,6 @@ function AppMenu({
 }) {
   const futureItems: Array<[MenuIconName, string]> = [
     ['teams', t.menuTeams],
-    ['matches', t.menuMatches],
     ['predictions', t.menuPredictions],
   ]
 
@@ -2585,6 +2667,12 @@ function AppMenu({
             <span className="menu-label">
               <MenuIcon name="ratings" />
               <span>{t.menuRatings}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => onNavigate('matches')}>
+            <span className="menu-label">
+              <MenuIcon name="matches" />
+              <span>{t.menuMatches}</span>
             </span>
           </button>
           {futureItems.map(([icon, item]) => (
@@ -3498,6 +3586,423 @@ function ApiPanel({
   )
 }
 
+function UserMatchesPanel({
+  t,
+  user,
+  onToast,
+  onOpen,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onOpen: (id: number) => void
+}) {
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
+  const [search, setSearch] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [sortKey, setSortKey] = useState<TournamentSortKey>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const result = await authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments')
+        if (!isMounted) {
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.genericError, 'error')
+          return
+        }
+
+        setTournaments(result.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.genericError, user.token])
+
+  const sortedTournaments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const filtered = tournaments.filter((tournament) => {
+      if (!normalizedSearch) {
+        return true
+      }
+
+      return [
+        tournament.name,
+        tournament.season,
+        tournament.competitionName,
+        tournament.competitionCountry,
+      ].some((value) => value.toLowerCase().includes(normalizedSearch))
+    })
+
+    return filtered.sort((left, right) => {
+      let comparison = 0
+      if (sortKey === 'name') {
+        comparison = compareText(left.name, right.name)
+      } else if (sortKey === 'season') {
+        comparison = compareText(left.season || '', right.season || '')
+      } else if (sortKey === 'country') {
+        comparison = compareText(left.competitionCountry || left.competitionName, right.competitionCountry || right.competitionName)
+      } else if (sortKey === 'teams') {
+        comparison = left.teamCount - right.teamCount
+      } else if (sortKey === 'matches') {
+        comparison = left.matchCount - right.matchCount
+      } else if (sortKey === 'lastSync') {
+        comparison = new Date(left.lastSyncedAtUtc ?? 0).getTime() - new Date(right.lastSyncedAtUtc ?? 0).getTime()
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.name, right.name)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [search, sortDirection, sortKey, tournaments])
+
+  const requestSort = (key: TournamentSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'teams' || key === 'matches' || key === 'lastSync' ? 'desc' : 'asc')
+  }
+
+  const tournamentHeaders: Array<{ key: TournamentSortKey; label: string }> = [
+    { key: 'name', label: t.tournamentName },
+    { key: 'season', label: t.tournamentSeason },
+    { key: 'country', label: t.tournamentCountry },
+    { key: 'teams', label: t.teams },
+    { key: 'matches', label: t.matches },
+    { key: 'lastSync', label: t.tournamentLastSync },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.userMatchesPanelEyebrow}</p>
+          <h1>{t.userMatchesPanelTitle}</h1>
+          <p>{t.userMatchesPanelCopy}</p>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="matches" />
+              <h2>{t.matches}</h2>
+            </div>
+            <label className="tournament-search compact">
+              <span>{t.tournamentSearch}</span>
+              <input
+                placeholder={t.tournamentSearchPlaceholder}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table ratings-tournament-table">
+              <thead>
+                <tr>
+                  {tournamentHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        {header.label}
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && sortedTournaments.map((tournament) => (
+                  <tr key={tournament.id}>
+                    <td><strong>{tournament.name}</strong></td>
+                    <td>{tournament.season}</td>
+                    <td>{tournament.competitionCountry}</td>
+                    <td>{tournament.teamCount}</td>
+                    <td>{tournament.matchCount}</td>
+                    <td>{formatDate(tournament.lastSyncedAtUtc, '-')}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpen(tournament.id)}>
+                        {t.matchOpenTournament}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && sortedTournaments.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function UserMatchDetailsPanel({
+  t,
+  user,
+  tournamentId,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId: number
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const [tournament, setTournament] = useState<TournamentDetails | null>(null)
+  const [matches, setMatches] = useState<MatchSummary[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [roundFilter, setRoundFilter] = useState('all')
+  const [sortKey, setSortKey] = useState<PublicMatchSortKey>('kickoff')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const [tournamentResult, matchesResult] = await Promise.all([
+          authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`),
+          authorizedRequest<MatchSummary[]>(user.token, `/api/tournaments/${tournamentId}/matches`),
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!tournamentResult.ok || !tournamentResult.data) {
+          onToast(tournamentResult.message || t.tournamentLoadFailed, 'error')
+          return
+        }
+
+        if (!matchesResult.ok || !matchesResult.data) {
+          onToast(matchesResult.message || t.genericError, 'error')
+          return
+        }
+
+        setTournament(tournamentResult.data)
+        setMatches(matchesResult.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.tournamentLoadFailed, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.genericError, t.tournamentLoadFailed, tournamentId, user.token])
+
+  const roundOptions = useMemo(() => {
+    return [...new Set(matches.map((match) => match.roundInfo).filter(Boolean))]
+      .sort((left, right) => compareText(left, right))
+  }, [matches])
+
+  const displayedMatches = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const filtered = matches.filter((match) => {
+      const statusText = matchStatusText(match.status, t)
+      if (roundFilter !== 'all' && match.roundInfo !== roundFilter) {
+        return false
+      }
+
+      if (!normalizedSearch) {
+        return true
+      }
+
+      return [
+        match.roundInfo,
+        match.homeTeam?.name,
+        match.awayTeam?.name,
+        match.homeTeamNameSnapshot,
+        match.awayTeamNameSnapshot,
+        statusText,
+      ].some((value) => (value ?? '').toLowerCase().includes(normalizedSearch))
+    })
+
+    return filtered.sort((left, right) => {
+      let comparison = 0
+      if (sortKey === 'kickoff') {
+        comparison = new Date(left.kickoffUtc || 0).getTime() - new Date(right.kickoffUtc || 0).getTime()
+      } else if (sortKey === 'round') {
+        comparison = compareText(left.roundInfo, right.roundInfo)
+      } else if (sortKey === 'home') {
+        comparison = compareText(left.homeTeam?.name || left.homeTeamNameSnapshot, right.homeTeam?.name || right.homeTeamNameSnapshot)
+      } else if (sortKey === 'away') {
+        comparison = compareText(left.awayTeam?.name || left.awayTeamNameSnapshot, right.awayTeam?.name || right.awayTeamNameSnapshot)
+      } else if (sortKey === 'score') {
+        comparison = (left.homeScore ?? -1) - (right.homeScore ?? -1) || (left.awayScore ?? -1) - (right.awayScore ?? -1)
+      } else if (sortKey === 'status') {
+        comparison = compareText(matchStatusText(left.status, t), matchStatusText(right.status, t))
+      }
+
+      if (comparison === 0) {
+        comparison = new Date(left.kickoffUtc || 0).getTime() - new Date(right.kickoffUtc || 0).getTime()
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [matches, roundFilter, search, sortDirection, sortKey, t])
+
+  const requestSort = (key: PublicMatchSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection('asc')
+  }
+
+  const matchHeaders: Array<{ key: PublicMatchSortKey; label: string }> = [
+    { key: 'kickoff', label: t.kickoff },
+    { key: 'round', label: t.round },
+    { key: 'home', label: t.homeTeam },
+    { key: 'away', label: t.awayTeam },
+    { key: 'score', label: t.score },
+    { key: 'status', label: t.status },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.userMatchDetailsEyebrow}</p>
+          <h1>{tournament?.name || t.userMatchDetailsTitle}</h1>
+          <p>{t.userMatchDetailsCopy}</p>
+        </div>
+
+        <div className="details-top-actions rating-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToMatches}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="matches" />
+              <h2>{t.matches}</h2>
+            </div>
+            <div className="match-filter-bar rating-checkpoint-controls">
+              <label className="tournament-search compact">
+                <span>{t.matchSearch}</span>
+                <input
+                  placeholder={t.matchSearchPlaceholder}
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <label className="label-hidden">
+                <span>{t.roundFilter}</span>
+                <select value={roundFilter} onChange={(event) => setRoundFilter(event.target.value)}>
+                  <option value="all">{t.allRounds}</option>
+                  {roundOptions.map((round) => (
+                    <option value={round} key={round}>{round}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table matches-table public-matches-table">
+              <thead>
+                <tr>
+                  {matchHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        className="table-sort-button"
+                        type="button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        <span>{header.label}</span>
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && displayedMatches.map((match) => (
+                  <tr key={match.id}>
+                    <td>{formatDate(match.kickoffUtc, '-')}</td>
+                    <td>{match.roundInfo || '-'}</td>
+                    <td>{match.homeTeam?.name || match.homeTeamNameSnapshot || '-'}</td>
+                    <td>{match.awayTeam?.name || match.awayTeamNameSnapshot || '-'}</td>
+                    <td>{match.homeScore ?? '-'} : {match.awayScore ?? '-'}</td>
+                    <td>{matchStatusText(match.status, t)}</td>
+                  </tr>
+                ))}
+                {!isLoading && displayedMatches.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={6}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
 function toRecordByTeamId<T extends { teamId: number }>(items: T[]): Record<number, T> {
   return Object.fromEntries(items.map((item) => [item.teamId, item]))
 }
@@ -4347,12 +4852,12 @@ function RatingsPanel({
         )}
 
         <section className="details-panel">
-          <div className="details-panel-heading">
-            <MenuIcon name="tournaments" />
-            <h2>{t.ratingTournamentListTitle}</h2>
-          </div>
-          <div className="rating-table-search">
-            <label className="tournament-search">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="tournaments" />
+              <h2>{t.ratingTournamentListTitle}</h2>
+            </div>
+            <label className="tournament-search compact">
               <span>{t.tournamentSearch}</span>
               <input
                 placeholder={t.tournamentSearchPlaceholder}
@@ -5973,7 +6478,7 @@ function UsersAccessPanel({
         )}
 
         <div className="tournament-toolbar user-toolbar">
-          <label className="tournament-search">
+          <label className="tournament-search compact">
             <span>{t.userSearch}</span>
             <input
               type="search"
@@ -6362,7 +6867,7 @@ function SquadsPanel({
         </div>
 
         <div className="tournament-toolbar squad-toolbar">
-          <label className="tournament-search">
+          <label className="tournament-search compact">
             <span>{t.tournamentSearch}</span>
             <input
               placeholder={t.tournamentSearchPlaceholder}
@@ -7116,7 +7621,7 @@ function TournamentsPanel({
           >
             {t.addTournament}
           </button>
-          <label className="tournament-search">
+          <label className="tournament-search compact">
             <span>{t.tournamentSearch}</span>
             <input
               placeholder={t.tournamentSearchPlaceholder}

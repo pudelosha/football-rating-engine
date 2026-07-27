@@ -1921,6 +1921,39 @@ p {
   gap: 10px;
 }
 
+.match-filter-bar {
+  max-width: 620px;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(160px, 0.7fr);
+  align-items: end;
+}
+
+.match-filter-bar .tournament-search {
+  width: auto;
+}
+
+.match-filter-bar .tournament-search input,
+.match-filter-bar select {
+  min-height: 38px;
+  height: 38px;
+}
+
+.rating-checkpoint-controls .label-hidden {
+  align-self: end;
+}
+
+.rating-checkpoint-controls .label-hidden span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.public-matches-table {
+  min-width: 1020px;
+}
+
 .ratings-team-table {
   min-width: 1080px;
 }
@@ -4117,6 +4150,11 @@ p {
 
   .details-panel-heading.spread > .tournament-search {
     width: 100%;
+  }
+
+  .match-filter-bar {
+    width: 100%;
+    grid-template-columns: 1fr;
   }
 
   .rating-checkpoint-controls {
