@@ -1954,6 +1954,218 @@ p {
   min-width: 1020px;
 }
 
+.predictions-table {
+  min-width: 1180px;
+}
+
+.prediction-cell {
+  display: inline-grid;
+  gap: 3px;
+  min-width: 78px;
+}
+
+.prediction-cell strong {
+  color: #fff9ea;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.prediction-cell small {
+  color: rgba(255, 249, 234, 0.54);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.prediction-scoreboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.72fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.prediction-team-card,
+.prediction-main-call,
+.prediction-outcome-card,
+.prediction-scenario-card {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(176, 216, 107, 0.08);
+}
+
+.prediction-team-card,
+.prediction-main-call {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  align-content: center;
+  padding: 22px;
+}
+
+.prediction-team-card.right {
+  text-align: right;
+}
+
+.prediction-team-card span,
+.prediction-main-call span,
+.prediction-outcome-card span,
+.prediction-scenario-card small,
+.prediction-breakdown-grid small,
+.prediction-layer-table span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.prediction-team-card strong,
+.prediction-main-call strong {
+  color: #fff9ea;
+  font-size: 28px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.prediction-team-card small,
+.prediction-main-call small {
+  color: rgba(255, 249, 234, 0.66);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.prediction-main-call {
+  background: linear-gradient(135deg, rgba(176, 216, 107, 0.22), rgba(255, 255, 255, 0.06));
+  text-align: center;
+}
+
+.prediction-odds-grid,
+.prediction-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.prediction-outcome-card {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+}
+
+.prediction-outcome-card strong {
+  color: #fff9ea;
+  font-size: 36px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.prediction-outcome-card small {
+  color: #b0d86b;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.prediction-bar,
+.prediction-mini-bar i {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.prediction-bar i,
+.prediction-mini-bar b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #b0d86b;
+}
+
+.prediction-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.prediction-breakdown-grid > span {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.prediction-breakdown-grid strong {
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.prediction-layer-table {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-top: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.prediction-layer-table > * {
+  min-width: 0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.prediction-layer-table strong,
+.prediction-layer-table b {
+  color: #fff9ea;
+  font-weight: 950;
+}
+
+.prediction-scenario-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.prediction-scenario-card > strong {
+  color: #fff9ea;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.prediction-scenario-card > span {
+  color: #b0d86b;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.prediction-scenario-card > div {
+  display: grid;
+  gap: 8px;
+}
+
+.prediction-mini-bar {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 42px;
+  gap: 8px;
+  align-items: center;
+}
+
+.prediction-mini-bar small,
+.prediction-mini-bar em {
+  color: rgba(255, 249, 234, 0.72);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.prediction-empty p {
+  max-width: 620px;
+  margin: 0;
+  color: rgba(255, 249, 234, 0.68);
+}
+
 .ratings-team-table {
   min-width: 1080px;
 }
@@ -4150,6 +4362,18 @@ p {
 
   .details-panel-heading.spread > .tournament-search {
     width: 100%;
+  }
+
+  .prediction-scoreboard,
+  .prediction-odds-grid,
+  .prediction-scenario-grid,
+  .prediction-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prediction-team-card.right,
+  .prediction-main-call {
+    text-align: left;
   }
 
   .match-filter-bar {

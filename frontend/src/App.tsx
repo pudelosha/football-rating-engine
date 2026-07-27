@@ -19,6 +19,9 @@ type View =
   | 'rating-details'
   | 'matches'
   | 'matches-details'
+  | 'predictions'
+  | 'predictions-tournament'
+  | 'prediction-details'
   | 'api'
   | 'admin'
   | 'admin-ratings'
@@ -502,6 +505,7 @@ type TournamentSortKey = 'name' | 'season' | 'country' | 'teams' | 'matches' | '
 type TeamSortKey = 'name' | 'abbreviation'
 type MatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
 type PublicMatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
+type PredictionMatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'homeWin' | 'draw' | 'awayWin'
 type UserSortKey = 'email' | 'displayName' | 'role' | 'status' | 'memberSince'
 type SquadTournamentSortKey = 'name' | 'season' | 'teams' | 'coverage' | 'snapshot'
 type SquadTeamSortKey = 'team' | 'value' | 'mapping' | 'snapshot'
@@ -527,6 +531,9 @@ const routes: Record<View, string> = {
   'rating-details': '/ratings/0',
   matches: '/matches',
   'matches-details': '/matches/0',
+  predictions: '/predictions',
+  'predictions-tournament': '/predictions/0',
+  'prediction-details': '/predictions/0/matches/0',
   api: '/api',
   admin: '/admin',
   'admin-ratings': '/admin/ratings',
@@ -561,6 +568,14 @@ function getViewFromPath(pathname: string): View {
 
   if (/^\/matches\/\d+$/.test(pathname)) {
     return 'matches-details'
+  }
+
+  if (/^\/predictions\/\d+\/matches\/\d+$/.test(pathname)) {
+    return 'prediction-details'
+  }
+
+  if (/^\/predictions\/\d+$/.test(pathname)) {
+    return 'predictions-tournament'
   }
 
   if (/^\/admin\/squads\/\d+$/.test(pathname)) {
@@ -603,6 +618,40 @@ const translations = {
     roundFilter: 'Round',
     allRounds: 'All rounds',
     backToMatches: 'Back to matches',
+    predictionsPanelEyebrow: 'Predictions',
+    predictionsPanelTitle: 'Prediction center.',
+    predictionsPanelCopy: 'Select a tournament to inspect model-driven 1X2 probabilities for upcoming and live matches.',
+    predictionsDetailsEyebrow: 'Match predictions',
+    predictionsDetailsTitle: '1X2 model board.',
+    predictionsDetailsCopy: 'Compare home win, draw, and away win chances calculated from the current FTSR rating layers.',
+    predictionMatchEyebrow: 'Prediction detail',
+    predictionMatchTitle: 'Match intelligence.',
+    predictionMatchCopy: 'A deeper view of rating gap, confidence, home advantage, fair odds, and alternate model scenarios.',
+    predictionOpenTournament: 'Show predictions',
+    predictionOpenMatch: 'Open analysis',
+    predictionSearch: 'Search predictions',
+    predictionSearchPlaceholder: 'Search by team or round',
+    backToPredictions: 'Back to predictions',
+    backToPredictionList: 'Back to tournament',
+    homeWin: 'Home win',
+    draw: 'Draw',
+    awayWin: 'Away win',
+    fairOdds: 'Fair odds',
+    modelEdge: 'Model edge',
+    ratingGap: 'Rating gap',
+    modelConfidence: 'Model confidence',
+    strongestSignal: 'Strongest signal',
+    predictedOutcome: 'Predicted outcome',
+    scenarioBoard: 'Scenario board',
+    modelBreakdown: 'Model breakdown',
+    homeAdvantageApplied: 'Home advantage applied',
+    neutralGround: 'Neutral ground',
+    baseEloOnly: 'Base Elo only',
+    formMomentum: 'Form momentum',
+    squadAdjusted: 'Squad adjusted',
+    dataConfidence: 'Data confidence',
+    noPrediction: 'Prediction unavailable',
+    noPredictionCopy: 'Both teams need matched rating data before the model can estimate this fixture.',
     apiPanelEyebrow: 'API access',
     apiPanelTitle: 'Match data API.',
     apiPanelCopy: 'Use your API key to request tournament match lists, results, live matches, and upcoming fixtures from external tools.',
@@ -1229,6 +1278,40 @@ const translations = {
     roundFilter: 'Runda',
     allRounds: 'Wszystkie rundy',
     backToMatches: 'Wróć do meczów',
+    predictionsPanelEyebrow: 'Predykcje',
+    predictionsPanelTitle: 'Centrum predykcji.',
+    predictionsPanelCopy: 'Wybierz turniej, aby sprawdzić modelowe prawdopodobieństwa 1X2 dla nadchodzących i live meczów.',
+    predictionsDetailsEyebrow: 'Predykcje meczów',
+    predictionsDetailsTitle: 'Tablica modelu 1X2.',
+    predictionsDetailsCopy: 'Porównaj szanse gospodarzy, remisu i gości obliczone z aktualnych warstw ratingu FTSR.',
+    predictionMatchEyebrow: 'Szczegóły predykcji',
+    predictionMatchTitle: 'Analiza meczu.',
+    predictionMatchCopy: 'Głębszy widok różnicy ratingów, pewności, przewagi domu, kursów fair i alternatywnych scenariuszy modelu.',
+    predictionOpenTournament: 'Pokaż predykcje',
+    predictionOpenMatch: 'Otwórz analizę',
+    predictionSearch: 'Szukaj predykcji',
+    predictionSearchPlaceholder: 'Szukaj po drużynie lub rundzie',
+    backToPredictions: 'Wróć do predykcji',
+    backToPredictionList: 'Wróć do turnieju',
+    homeWin: 'Wygrana gospodarzy',
+    draw: 'Remis',
+    awayWin: 'Wygrana gości',
+    fairOdds: 'Kurs fair',
+    modelEdge: 'Przewaga modelu',
+    ratingGap: 'Różnica ratingów',
+    modelConfidence: 'Pewność modelu',
+    strongestSignal: 'Najsilniejszy sygnał',
+    predictedOutcome: 'Typ modelu',
+    scenarioBoard: 'Scenariusze',
+    modelBreakdown: 'Rozbicie modelu',
+    homeAdvantageApplied: 'Przewaga domu aktywna',
+    neutralGround: 'Neutralny teren',
+    baseEloOnly: 'Tylko Base Elo',
+    formMomentum: 'Momentum formy',
+    squadAdjusted: 'Korekta kadry',
+    dataConfidence: 'Pewność danych',
+    noPrediction: 'Predykcja niedostępna',
+    noPredictionCopy: 'Obie drużyny muszą mieć ratingi, aby model mógł oszacować ten mecz.',
     apiPanelEyebrow: 'Dostęp API',
     apiPanelTitle: 'API danych meczowych.',
     apiPanelCopy: 'Użyj swojego API key, aby pobierać listy meczów, wyniki, mecze live i nadchodzące spotkania z zewnętrznych narzędzi.',
@@ -2136,6 +2219,79 @@ function matchStatusText(status: string | number, t: (typeof translations)[Langu
   return labels[String(status)] ?? String(status)
 }
 
+type MatchPrediction = {
+  homeWin: number
+  draw: number
+  awayWin: number
+  homeFairOdds: number
+  drawFairOdds: number
+  awayFairOdds: number
+  ratingGap: number
+  confidence: number
+  favoriteLabel: string
+  favoriteChance: number
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`
+}
+
+function formatOdds(value: number) {
+  return Number.isFinite(value) ? value.toFixed(2) : '-'
+}
+
+function calculatePrediction(
+  homeTeam: CombinedTeamRating,
+  awayTeam: CombinedTeamRating,
+  applyHomeAdvantage: boolean,
+  labels: { home: string; draw: string; away: string },
+  options?: { homeRating?: number; awayRating?: number; homeAdvantage?: number },
+): MatchPrediction {
+  const homeAdvantage = options?.homeAdvantage ?? (applyHomeAdvantage ? 65 : 0)
+  const homeRating = options?.homeRating ?? homeTeam.finalRating
+  const awayRating = options?.awayRating ?? awayTeam.finalRating
+  const ratingGap = homeRating + homeAdvantage - awayRating
+  const homeNoDraw = 1 / (1 + 10 ** (-ratingGap / 400))
+  const draw = clamp(0.285 - Math.min(Math.abs(ratingGap), 320) / 320 * 0.105, 0.17, 0.30)
+  const homeWin = (1 - draw) * homeNoDraw
+  const awayWin = 1 - draw - homeWin
+  const outcomes = [
+    { label: labels.home, chance: homeWin },
+    { label: labels.draw, chance: draw },
+    { label: labels.away, chance: awayWin },
+  ].sort((left, right) => right.chance - left.chance)
+
+  return {
+    homeWin,
+    draw,
+    awayWin,
+    homeFairOdds: 1 / homeWin,
+    drawFairOdds: 1 / draw,
+    awayFairOdds: 1 / awayWin,
+    ratingGap,
+    confidence: clamp((homeTeam.ratingConfidence + awayTeam.ratingConfidence) / 2, 0, 1),
+    favoriteLabel: outcomes[0].label,
+    favoriteChance: outcomes[0].chance,
+  }
+}
+
+function getTeamDisplayName(match: MatchSummary, side: 'home' | 'away') {
+  if (side === 'home') {
+    return match.homeTeam?.name || match.homeTeamNameSnapshot || '-'
+  }
+
+  return match.awayTeam?.name || match.awayTeamNameSnapshot || '-'
+}
+
+function isPredictableMatch(match: MatchSummary) {
+  const status = String(match.status)
+  return status === '1' || status === '2' || status === 'Upcoming' || status === 'Live'
+}
+
 function formatEuroValue(value: number | null | undefined, fallback = '-') {
   if (value === null || value === undefined) {
     return fallback
@@ -2222,7 +2378,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'matches' || view === 'matches-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -2458,6 +2614,37 @@ function App() {
         />
       )}
 
+      {view === 'predictions' && user && (
+        <PredictionsPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          onOpen={(id) => navigateTo(`/predictions/${id}`)}
+        />
+      )}
+
+      {view === 'predictions-tournament' && user && (
+        <TournamentPredictionsPanel
+          t={t}
+          user={user}
+          tournamentId={Number(location.pathname.match(/^\/predictions\/(\d+)$/)?.[1] ?? 0)}
+          onToast={showToast}
+          onBack={() => navigateTo('/predictions')}
+          onOpenMatch={(matchId) => navigateTo(`/predictions/${Number(location.pathname.match(/^\/predictions\/(\d+)$/)?.[1] ?? 0)}/matches/${matchId}`)}
+        />
+      )}
+
+      {view === 'prediction-details' && user && (
+        <PredictionDetailsPanel
+          t={t}
+          user={user}
+          tournamentId={Number(location.pathname.match(/^\/predictions\/(\d+)\/matches\/(\d+)$/)?.[1] ?? 0)}
+          matchId={Number(location.pathname.match(/^\/predictions\/(\d+)\/matches\/(\d+)$/)?.[2] ?? 0)}
+          onToast={showToast}
+          onBack={(tournamentId) => navigateTo(`/predictions/${tournamentId}`)}
+        />
+      )}
+
       {view === 'api' && user && (
         <ApiPanel
           t={t}
@@ -2643,7 +2830,6 @@ function AppMenu({
 }) {
   const futureItems: Array<[MenuIconName, string]> = [
     ['teams', t.menuTeams],
-    ['predictions', t.menuPredictions],
   ]
 
   return (
@@ -2673,6 +2859,12 @@ function AppMenu({
             <span className="menu-label">
               <MenuIcon name="matches" />
               <span>{t.menuMatches}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => onNavigate('predictions')}>
+            <span className="menu-label">
+              <MenuIcon name="predictions" />
+              <span>{t.menuPredictions}</span>
             </span>
           </button>
           {futureItems.map(([icon, item]) => (
@@ -4000,6 +4192,693 @@ function UserMatchDetailsPanel({
         </section>
       </div>
     </section>
+  )
+}
+
+function PredictionsPanel({
+  t,
+  user,
+  onToast,
+  onOpen,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onOpen: (id: number) => void
+}) {
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
+  const [search, setSearch] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [sortKey, setSortKey] = useState<TournamentSortKey>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const result = await authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments')
+        if (!isMounted) {
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.genericError, 'error')
+          return
+        }
+
+        setTournaments(result.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.genericError, user.token])
+
+  const sortedTournaments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const filtered = tournaments.filter((tournament) => {
+      if (!normalizedSearch) {
+        return true
+      }
+
+      return [
+        tournament.name,
+        tournament.season,
+        tournament.competitionName,
+        tournament.competitionCountry,
+      ].some((value) => value.toLowerCase().includes(normalizedSearch))
+    })
+
+    return filtered.sort((left, right) => {
+      let comparison = 0
+      if (sortKey === 'name') {
+        comparison = compareText(left.name, right.name)
+      } else if (sortKey === 'season') {
+        comparison = compareText(left.season || '', right.season || '')
+      } else if (sortKey === 'country') {
+        comparison = compareText(left.competitionCountry || left.competitionName, right.competitionCountry || right.competitionName)
+      } else if (sortKey === 'teams') {
+        comparison = left.teamCount - right.teamCount
+      } else if (sortKey === 'matches') {
+        comparison = left.matchCount - right.matchCount
+      } else if (sortKey === 'lastSync') {
+        comparison = new Date(left.lastSyncedAtUtc ?? 0).getTime() - new Date(right.lastSyncedAtUtc ?? 0).getTime()
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [search, sortDirection, sortKey, tournaments])
+
+  const requestSort = (key: TournamentSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'teams' || key === 'matches' || key === 'lastSync' ? 'desc' : 'asc')
+  }
+
+  const tournamentHeaders: Array<{ key: TournamentSortKey; label: string }> = [
+    { key: 'name', label: t.tournamentName },
+    { key: 'season', label: t.tournamentSeason },
+    { key: 'country', label: t.tournamentCountry },
+    { key: 'teams', label: t.teams },
+    { key: 'matches', label: t.matches },
+    { key: 'lastSync', label: t.tournamentLastSync },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.predictionsPanelEyebrow}</p>
+          <h1>{t.predictionsPanelTitle}</h1>
+          <p>{t.predictionsPanelCopy}</p>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="predictions" />
+              <h2>{t.menuPredictions}</h2>
+            </div>
+            <label className="tournament-search compact">
+              <span>{t.tournamentSearch}</span>
+              <input
+                placeholder={t.tournamentSearchPlaceholder}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table ratings-tournament-table">
+              <thead>
+                <tr>
+                  {tournamentHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        {header.label}
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && sortedTournaments.map((tournament) => (
+                  <tr key={tournament.id}>
+                    <td><strong>{tournament.name}</strong></td>
+                    <td>{tournament.season}</td>
+                    <td>{tournament.competitionCountry}</td>
+                    <td>{tournament.teamCount}</td>
+                    <td>{tournament.matchCount}</td>
+                    <td>{formatDate(tournament.lastSyncedAtUtc, '-')}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpen(tournament.id)}>
+                        {t.predictionOpenTournament}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && sortedTournaments.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function TournamentPredictionsPanel({
+  t,
+  user,
+  tournamentId,
+  onToast,
+  onBack,
+  onOpenMatch,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId: number
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+  onOpenMatch: (matchId: number) => void
+}) {
+  const [tournament, setTournament] = useState<TournamentDetails | null>(null)
+  const [matches, setMatches] = useState<MatchSummary[]>([])
+  const [combinedRatings, setCombinedRatings] = useState<CombinedRatingsResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [roundFilter, setRoundFilter] = useState('all')
+  const [sortKey, setSortKey] = useState<PredictionMatchSortKey>('kickoff')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const [tournamentResult, matchesResult, ratingsResult] = await Promise.all([
+          authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`),
+          authorizedRequest<MatchSummary[]>(user.token, `/api/tournaments/${tournamentId}/matches`),
+          authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournamentId}/ratings/combined/teams`),
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!tournamentResult.ok || !tournamentResult.data || !matchesResult.ok || !matchesResult.data || !ratingsResult.ok || !ratingsResult.data) {
+          onToast(t.genericError, 'error')
+          return
+        }
+
+        setTournament(tournamentResult.data)
+        setMatches(matchesResult.data)
+        setCombinedRatings(ratingsResult.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.genericError, tournamentId, user.token])
+
+  const ratingsByTeamId = useMemo(() => toRecordByTeamId(combinedRatings?.teams ?? []), [combinedRatings])
+  const roundOptions = useMemo(() => [...new Set(matches.map((match) => match.roundInfo).filter(Boolean))].sort(compareText), [matches])
+  const predictionLabels = { home: t.homeWin, draw: t.draw, away: t.awayWin }
+
+  const displayedMatches = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const rows = matches
+      .filter(isPredictableMatch)
+      .filter((match) => {
+        if (roundFilter !== 'all' && match.roundInfo !== roundFilter) {
+          return false
+        }
+
+        if (!normalizedSearch) {
+          return true
+        }
+
+        return [
+          match.roundInfo,
+          getTeamDisplayName(match, 'home'),
+          getTeamDisplayName(match, 'away'),
+        ].some((value) => value.toLowerCase().includes(normalizedSearch))
+      })
+      .map((match) => {
+        const homeRating = match.homeTeam ? ratingsByTeamId[match.homeTeam.id] : undefined
+        const awayRating = match.awayTeam ? ratingsByTeamId[match.awayTeam.id] : undefined
+        const prediction = homeRating && awayRating && tournament
+          ? calculatePrediction(homeRating, awayRating, tournament.applyHomeAdvantage, predictionLabels)
+          : null
+
+        return { match, prediction }
+      })
+
+    return rows.sort((left, right) => {
+      let comparison = 0
+      if (sortKey === 'kickoff') {
+        comparison = new Date(left.match.kickoffUtc || 0).getTime() - new Date(right.match.kickoffUtc || 0).getTime()
+      } else if (sortKey === 'round') {
+        comparison = compareText(left.match.roundInfo, right.match.roundInfo)
+      } else if (sortKey === 'home') {
+        comparison = compareText(getTeamDisplayName(left.match, 'home'), getTeamDisplayName(right.match, 'home'))
+      } else if (sortKey === 'away') {
+        comparison = compareText(getTeamDisplayName(left.match, 'away'), getTeamDisplayName(right.match, 'away'))
+      } else if (sortKey === 'homeWin') {
+        comparison = (left.prediction?.homeWin ?? -1) - (right.prediction?.homeWin ?? -1)
+      } else if (sortKey === 'draw') {
+        comparison = (left.prediction?.draw ?? -1) - (right.prediction?.draw ?? -1)
+      } else if (sortKey === 'awayWin') {
+        comparison = (left.prediction?.awayWin ?? -1) - (right.prediction?.awayWin ?? -1)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [matches, predictionLabels, ratingsByTeamId, roundFilter, search, sortDirection, sortKey, tournament])
+
+  const requestSort = (key: PredictionMatchSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'kickoff' || key === 'round' || key === 'home' || key === 'away' ? 'asc' : 'desc')
+  }
+
+  const headers: Array<{ key: PredictionMatchSortKey; label: string }> = [
+    { key: 'kickoff', label: t.kickoff },
+    { key: 'round', label: t.round },
+    { key: 'home', label: t.homeTeam },
+    { key: 'away', label: t.awayTeam },
+    { key: 'homeWin', label: t.homeWin },
+    { key: 'draw', label: t.draw },
+    { key: 'awayWin', label: t.awayWin },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.predictionsDetailsEyebrow}</p>
+          <h1>{tournament?.name || t.predictionsDetailsTitle}</h1>
+          <p>{t.predictionsDetailsCopy}</p>
+        </div>
+
+        <div className="details-top-actions rating-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToPredictions}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel prediction-board">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="predictions" />
+              <h2>{t.predictionsDetailsTitle}</h2>
+            </div>
+            <div className="match-filter-bar rating-checkpoint-controls">
+              <label className="tournament-search compact">
+                <span>{t.predictionSearch}</span>
+                <input
+                  placeholder={t.predictionSearchPlaceholder}
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <label className="label-hidden">
+                <span>{t.roundFilter}</span>
+                <select value={roundFilter} onChange={(event) => setRoundFilter(event.target.value)}>
+                  <option value="all">{t.allRounds}</option>
+                  {roundOptions.map((round) => (
+                    <option value={round} key={round}>{round}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table predictions-table">
+              <thead>
+                <tr>
+                  {headers.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        className="table-sort-button"
+                        type="button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        <span>{header.label}</span>
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && displayedMatches.map(({ match, prediction }) => (
+                  <tr key={match.id}>
+                    <td>{formatDate(match.kickoffUtc, '-')}</td>
+                    <td>{match.roundInfo || '-'}</td>
+                    <td><strong>{getTeamDisplayName(match, 'home')}</strong></td>
+                    <td><strong>{getTeamDisplayName(match, 'away')}</strong></td>
+                    <td>{prediction ? <PredictionCell value={prediction.homeWin} odds={prediction.homeFairOdds} /> : '-'}</td>
+                    <td>{prediction ? <PredictionCell value={prediction.draw} odds={prediction.drawFairOdds} /> : '-'}</td>
+                    <td>{prediction ? <PredictionCell value={prediction.awayWin} odds={prediction.awayFairOdds} /> : '-'}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpenMatch(match.id)}>
+                        {t.predictionOpenMatch}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && displayedMatches.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={8}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function PredictionDetailsPanel({
+  t,
+  user,
+  tournamentId,
+  matchId,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId: number
+  matchId: number
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: (tournamentId: number) => void
+}) {
+  const [tournament, setTournament] = useState<TournamentDetails | null>(null)
+  const [matches, setMatches] = useState<MatchSummary[]>([])
+  const [combinedRatings, setCombinedRatings] = useState<CombinedRatingsResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const [tournamentResult, matchesResult, ratingsResult] = await Promise.all([
+          authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`),
+          authorizedRequest<MatchSummary[]>(user.token, `/api/tournaments/${tournamentId}/matches`),
+          authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournamentId}/ratings/combined/teams`),
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!tournamentResult.ok || !tournamentResult.data || !matchesResult.ok || !matchesResult.data || !ratingsResult.ok || !ratingsResult.data) {
+          onToast(t.genericError, 'error')
+          return
+        }
+
+        setTournament(tournamentResult.data)
+        setMatches(matchesResult.data)
+        setCombinedRatings(ratingsResult.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [matchId, onToast, t.genericError, tournamentId, user.token])
+
+  const match = matches.find((item) => item.id === matchId)
+  const ratingsByTeamId = useMemo(() => toRecordByTeamId(combinedRatings?.teams ?? []), [combinedRatings])
+  const homeTeam = match?.homeTeam ? ratingsByTeamId[match.homeTeam.id] : undefined
+  const awayTeam = match?.awayTeam ? ratingsByTeamId[match.awayTeam.id] : undefined
+  const predictionLabels = { home: t.homeWin, draw: t.draw, away: t.awayWin }
+  const prediction = homeTeam && awayTeam && tournament
+    ? calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels)
+    : null
+
+  const scenarios = homeTeam && awayTeam && tournament
+    ? [
+      {
+        title: tournament.applyHomeAdvantage ? t.homeAdvantageApplied : t.neutralGround,
+        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels),
+      },
+      {
+        title: t.neutralGround,
+        prediction: calculatePrediction(homeTeam, awayTeam, false, predictionLabels, { homeAdvantage: 0 }),
+      },
+      {
+        title: t.baseEloOnly,
+        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo,
+          awayRating: awayTeam.baseElo,
+        }),
+      },
+      {
+        title: t.formMomentum,
+        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo + homeTeam.formAdjustment,
+          awayRating: awayTeam.baseElo + awayTeam.formAdjustment,
+        }),
+      },
+      {
+        title: t.squadAdjusted,
+        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo + homeTeam.squadQualityAdjustment,
+          awayRating: awayTeam.baseElo + awayTeam.squadQualityAdjustment,
+        }),
+      },
+    ]
+    : []
+
+  const strongestSignal = homeTeam && awayTeam
+    ? [
+      { label: t.ratingBaseElo, value: Math.abs(homeTeam.baseElo - awayTeam.baseElo) },
+      { label: t.ratingForm, value: Math.abs(homeTeam.formAdjustment - awayTeam.formAdjustment) },
+      { label: t.ratingPerformance, value: Math.abs(homeTeam.performanceAdjustment - awayTeam.performanceAdjustment) },
+      { label: t.ratingSquad, value: Math.abs(homeTeam.squadQualityAdjustment - awayTeam.squadQualityAdjustment) },
+    ].sort((left, right) => right.value - left.value)[0]
+    : null
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero prediction-hero">
+          <p className="eyebrow">{t.predictionMatchEyebrow}</p>
+          <h1>{match ? `${getTeamDisplayName(match, 'home')} vs ${getTeamDisplayName(match, 'away')}` : t.predictionMatchTitle}</h1>
+          <p>{t.predictionMatchCopy}</p>
+        </div>
+
+        <div className="details-top-actions rating-top-actions">
+          <button type="button" onClick={() => onBack(tournamentId)}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToPredictionList}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        {!isLoading && (!match || !prediction || !homeTeam || !awayTeam) && (
+          <section className="details-panel prediction-empty">
+            <div className="details-panel-heading">
+              <MenuIcon name="predictions" />
+              <h2>{t.noPrediction}</h2>
+            </div>
+            <p>{t.noPredictionCopy}</p>
+          </section>
+        )}
+
+        {!isLoading && match && prediction && homeTeam && awayTeam && (
+          <>
+            <section className="prediction-scoreboard">
+              <div className="prediction-team-card">
+                <span>{t.homeTeam}</span>
+                <strong>{getTeamDisplayName(match, 'home')}</strong>
+                <small>{homeTeam.finalRating.toFixed(2)} FTSR</small>
+              </div>
+              <div className="prediction-main-call">
+                <span>{t.predictedOutcome}</span>
+                <strong>{prediction.favoriteLabel}</strong>
+                <small>{formatPercent(prediction.favoriteChance)} | {t.fairOdds} {formatOdds(1 / prediction.favoriteChance)}</small>
+              </div>
+              <div className="prediction-team-card right">
+                <span>{t.awayTeam}</span>
+                <strong>{getTeamDisplayName(match, 'away')}</strong>
+                <small>{awayTeam.finalRating.toFixed(2)} FTSR</small>
+              </div>
+            </section>
+
+            <section className="prediction-odds-grid">
+              <PredictionOutcomeCard title={t.homeWin} chance={prediction.homeWin} odds={prediction.homeFairOdds} />
+              <PredictionOutcomeCard title={t.draw} chance={prediction.draw} odds={prediction.drawFairOdds} />
+              <PredictionOutcomeCard title={t.awayWin} chance={prediction.awayWin} odds={prediction.awayFairOdds} />
+            </section>
+
+            <section className="details-panel">
+              <div className="details-panel-heading">
+                <MenuIcon name="ratings" />
+                <h2>{t.modelBreakdown}</h2>
+              </div>
+              <div className="prediction-breakdown-grid">
+                <TooltipMetric label={t.ratingGap} value={formatSigned(prediction.ratingGap)} />
+                <TooltipMetric label={t.modelConfidence} value={formatPercent(prediction.confidence)} />
+                <TooltipMetric label={t.strongestSignal} value={strongestSignal ? `${strongestSignal.label} (${strongestSignal.value.toFixed(2)})` : '-'} />
+                <TooltipMetric label={t.ratingUpdated} value={combinedRatings ? formatDate(combinedRatings.runContext.calculatedAtUtc, '-') : '-'} />
+              </div>
+              <div className="prediction-layer-table">
+                <span />
+                <strong>{getTeamDisplayName(match, 'home')}</strong>
+                <strong>{getTeamDisplayName(match, 'away')}</strong>
+                <span>{t.ratingBaseElo}</span>
+                <b>{homeTeam.baseElo.toFixed(2)}</b>
+                <b>{awayTeam.baseElo.toFixed(2)}</b>
+                <span>{t.ratingForm}</span>
+                <b>{formatSigned(homeTeam.formAdjustment)}</b>
+                <b>{formatSigned(awayTeam.formAdjustment)}</b>
+                <span>{t.ratingPerformance}</span>
+                <b>{formatSigned(homeTeam.performanceAdjustment)}</b>
+                <b>{formatSigned(awayTeam.performanceAdjustment)}</b>
+                <span>{t.ratingSquad}</span>
+                <b>{formatSigned(homeTeam.squadQualityAdjustment)}</b>
+                <b>{formatSigned(awayTeam.squadQualityAdjustment)}</b>
+                <span>{t.ratingFinal}</span>
+                <b>{homeTeam.finalRating.toFixed(2)}</b>
+                <b>{awayTeam.finalRating.toFixed(2)}</b>
+              </div>
+            </section>
+
+            <section className="details-panel">
+              <div className="details-panel-heading">
+                <MenuIcon name="predictions" />
+                <h2>{t.scenarioBoard}</h2>
+              </div>
+              <div className="prediction-scenario-grid">
+                {scenarios.map((scenario) => (
+                  <div className="prediction-scenario-card" key={scenario.title}>
+                    <strong>{scenario.title}</strong>
+                    <span>{scenario.prediction.favoriteLabel}</span>
+                    <small>{formatPercent(scenario.prediction.favoriteChance)} | {t.ratingGap} {formatSigned(scenario.prediction.ratingGap)}</small>
+                    <div>
+                      <PredictionMiniBar label="1" value={scenario.prediction.homeWin} />
+                      <PredictionMiniBar label="X" value={scenario.prediction.draw} />
+                      <PredictionMiniBar label="2" value={scenario.prediction.awayWin} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function PredictionCell({ value, odds }: { value: number; odds: number }) {
+  return (
+    <span className="prediction-cell">
+      <strong>{formatPercent(value)}</strong>
+      <small>{formatOdds(odds)}</small>
+    </span>
+  )
+}
+
+function PredictionOutcomeCard({ title, chance, odds }: { title: string; chance: number; odds: number }) {
+  return (
+    <div className="prediction-outcome-card">
+      <span>{title}</span>
+      <strong>{formatPercent(chance)}</strong>
+      <small>{formatOdds(odds)}</small>
+      <div className="prediction-bar" aria-hidden="true">
+        <i style={{ width: `${Math.round(chance * 100)}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function PredictionMiniBar({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="prediction-mini-bar">
+      <small>{label}</small>
+      <i><b style={{ width: `${Math.round(value * 100)}%` }} /></i>
+      <em>{formatPercent(value)}</em>
+    </span>
   )
 }
 
