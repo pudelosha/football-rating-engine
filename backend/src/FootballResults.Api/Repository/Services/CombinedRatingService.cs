@@ -14,6 +14,24 @@ public sealed class CombinedRatingService(
         int tournamentId,
         CancellationToken cancellationToken)
     {
+        var tournamentSetup = await dbContext.Tournaments
+            .Where(tournament => tournament.Id == tournamentId)
+            .Select(tournament => new
+            {
+                tournament.RatingIncludeForm,
+                tournament.RatingIncludePerformance,
+                tournament.RatingIncludeSquad
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (tournamentSetup is null)
+        {
+            return new CombinedTeamRatingsDto(
+                tournamentId,
+                new CombinedRatingRunContextDto(null, null, null, DateTimeOffset.UtcNow),
+                []);
+        }
+
         var latestEloRun = await dbContext.EloRatingRuns
             .Where(run => run.TournamentId == tournamentId && run.Status == EloRatingRunStatus.Succeeded)
             .OrderByDescending(run => run.StartedAtUtc)
@@ -28,23 +46,27 @@ public sealed class CombinedRatingService(
                 []);
         }
 
-        var latestFormRun = await dbContext.FormRatingRuns
-            .Where(run =>
-                run.TournamentId == tournamentId &&
-                run.EloRatingRunId == latestEloRun.Id &&
-                run.Status == EloRatingRunStatus.Succeeded)
-            .OrderByDescending(run => run.StartedAtUtc)
-            .Select(run => new { run.Id, run.EloRatingRunId })
-            .FirstOrDefaultAsync(cancellationToken);
+        var latestFormRun = tournamentSetup.RatingIncludeForm
+            ? await dbContext.FormRatingRuns
+                .Where(run =>
+                    run.TournamentId == tournamentId &&
+                    run.EloRatingRunId == latestEloRun.Id &&
+                    run.Status == EloRatingRunStatus.Succeeded)
+                .OrderByDescending(run => run.StartedAtUtc)
+                .Select(run => new { run.Id, run.EloRatingRunId })
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
 
-        var latestPerformanceRun = await dbContext.PerformanceRatingRuns
-            .Where(run =>
-                run.TournamentId == tournamentId &&
-                run.EloRatingRunId == latestEloRun.Id &&
-                run.Status == EloRatingRunStatus.Succeeded)
-            .OrderByDescending(run => run.StartedAtUtc)
-            .Select(run => new { run.Id, run.EloRatingRunId })
-            .FirstOrDefaultAsync(cancellationToken);
+        var latestPerformanceRun = tournamentSetup.RatingIncludePerformance
+            ? await dbContext.PerformanceRatingRuns
+                .Where(run =>
+                    run.TournamentId == tournamentId &&
+                    run.EloRatingRunId == latestEloRun.Id &&
+                    run.Status == EloRatingRunStatus.Succeeded)
+                .OrderByDescending(run => run.StartedAtUtc)
+                .Select(run => new { run.Id, run.EloRatingRunId })
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         var baseRatings = await dbContext.TeamEloRatings
             .Include(rating => rating.Team)
@@ -63,8 +85,10 @@ public sealed class CombinedRatingService(
                 .Where(rating => rating.PerformanceRatingRunId == latestPerformanceRun.Id)
                 .ToDictionaryAsync(rating => rating.TeamId, cancellationToken);
 
-        var squadRatings = (await squadQualityService.GetTournamentTeamRatingsAsync(tournamentId, cancellationToken))
-            .ToDictionary(rating => rating.TeamId);
+        var squadRatings = tournamentSetup.RatingIncludeSquad
+            ? (await squadQualityService.GetTournamentTeamRatingsAsync(tournamentId, cancellationToken))
+                .ToDictionary(rating => rating.TeamId)
+            : [];
 
         var teams = baseRatings
             .Select(baseRating =>

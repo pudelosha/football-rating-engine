@@ -5,6 +5,10 @@ public sealed class Tournament
     public int Id { get; set; }
     public bool IsActive { get; set; } = true;
     public bool ApplyHomeAdvantage { get; set; } = true;
+    public bool RatingIncludeForm { get; set; } = true;
+    public bool RatingIncludePerformance { get; set; } = true;
+    public bool RatingIncludeSquad { get; set; } = true;
+    public int? RatingSnapshotStartSeasonOffset { get; set; }
     public string LiveScoreCompetitionId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Season { get; set; } = string.Empty;

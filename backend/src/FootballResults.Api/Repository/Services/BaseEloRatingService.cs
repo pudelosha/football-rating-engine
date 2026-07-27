@@ -3,15 +3,14 @@ using FootballResults.Api.Model.Database;
 using FootballResults.Api.Model.Entities;
 using FootballResults.Api.Repository.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace FootballResults.Api.Repository.Services;
 
-public sealed class BaseEloRatingService(
+public sealed partial class BaseEloRatingService(
     AppDbContext dbContext,
     ILiveScoreClient liveScoreClient) : IBaseEloRatingService
 {
-    private const string PremierLeagueName = "Premier League";
-
     public async Task<RebuildBaseEloResponse> RebuildAsync(
         int tournamentId,
         RebuildBaseEloRequest request,
@@ -32,12 +31,13 @@ public sealed class BaseEloRatingService(
         {
             TournamentId = tournamentId,
             Name = $"{tournament.Name} Base Elo {now:yyyy-MM-dd HH:mm:ss} UTC",
-            Scope = string.IsNullOrWhiteSpace(request.Scope) ? "PremierLeague" : request.Scope,
+            Scope = string.IsNullOrWhiteSpace(request.Scope) ? TournamentScope(tournament) : request.Scope,
             BaseRating = request.BaseRating,
             PromotedBaselineRating = request.PromotedBaselineRating,
             KFactor = request.KFactor,
             HomeAdvantage = request.HomeAdvantage,
             BootstrapSeasonCount = Math.Max(1, request.BootstrapSeasonCount),
+            SnapshotStartSeasonOffset = request.SnapshotStartSeasonOffset,
             Status = EloRatingRunStatus.Running,
             StartedAtUtc = now
         };
@@ -48,7 +48,7 @@ public sealed class BaseEloRatingService(
         try
         {
             var imported = await ImportHistoricalMatchesAsync(tournament, cancellationToken);
-            var processed = await CalculateBaseEloAsync(tournament, run, cancellationToken);
+            var processed = await CalculateBaseEloAsync(tournament, run, request.SnapshotStartSeasonOffset, cancellationToken);
 
             run.ImportedHistoricalMatches = imported;
             run.ProcessedMatches = processed;
@@ -168,7 +168,7 @@ public sealed class BaseEloRatingService(
             }
 
             var rows = await liveScoreClient.GetTeamDetailsRowsAsync(tournament, team, cancellationToken);
-            foreach (var row in rows.Where(IsPremierLeagueRow))
+            foreach (var row in rows.Where(row => IsTournamentCompetitionRow(row, tournament)))
             {
                 if (string.IsNullOrWhiteSpace(row.EventId))
                 {
@@ -201,13 +201,16 @@ public sealed class BaseEloRatingService(
     private async Task<int> CalculateBaseEloAsync(
         Tournament tournament,
         EloRatingRun run,
+        int? snapshotStartSeasonOffset,
         CancellationToken cancellationToken)
     {
         var targetTeamIds = tournament.TournamentTeams
             .Select(tournamentTeam => tournamentTeam.TeamId)
             .ToHashSet();
+        var competitionFamilyName = CompetitionFamilyName(tournament.CompetitionName);
+        var competitionCountry = tournament.CompetitionCountry;
 
-        var matches = await dbContext.HistoricalMatches
+        var allCompetitionMatches = await dbContext.HistoricalMatches
             .Where(match =>
                 match.Status == MatchStatus.Finished &&
                 match.KickoffUtc.HasValue &&
@@ -215,18 +218,24 @@ public sealed class BaseEloRatingService(
                 match.AwayTeamId.HasValue &&
                 match.RegularTimeHomeScore.HasValue &&
                 match.RegularTimeAwayScore.HasValue &&
-                match.CompetitionName.StartsWith(PremierLeagueName))
+                match.CompetitionName.StartsWith(competitionFamilyName) &&
+                (string.IsNullOrWhiteSpace(competitionCountry) ||
+                    string.IsNullOrWhiteSpace(match.CompetitionCountry) ||
+                    match.CompetitionCountry == competitionCountry))
             .OrderBy(match => match.KickoffUtc)
             .ThenBy(match => match.LiveScoreEventId)
             .ToListAsync(cancellationToken);
+        allCompetitionMatches = allCompetitionMatches
+            .Where(match => IsTournamentCompetitionMatch(match, tournament))
+            .ToList();
 
-        matches = KeepBootstrapWindow(matches, run.BootstrapSeasonCount);
+        var matches = KeepSnapshotWindow(allCompetitionMatches, tournament, run.BootstrapSeasonCount, snapshotStartSeasonOffset);
         if (matches.Count == 0)
         {
             return 0;
         }
 
-        var promotedTargetTeamIds = GetPromotedTargetTeamIds(matches, targetTeamIds);
+        var promotedTargetTeamIds = GetPromotedTargetTeamIds(allCompetitionMatches, targetTeamIds, tournament);
         var firstKickoff = matches[0].KickoffUtc!.Value;
         var ratings = new Dictionary<int, decimal>();
         var matchesPlayed = new Dictionary<int, int>();
@@ -340,11 +349,18 @@ public sealed class BaseEloRatingService(
 
     private static HashSet<int> GetPromotedTargetTeamIds(
         IReadOnlyList<HistoricalMatch> matches,
-        HashSet<int> targetTeamIds)
+        HashSet<int> targetTeamIds,
+        Tournament tournament)
     {
+        var tournamentSeasonStart = SeasonSortKey(tournament.Season);
         var latestCompletedSeason = matches
             .Select(match => match.SeasonName)
-            .Where(season => SeasonSortKey(season) != int.MaxValue)
+            .Where(season =>
+            {
+                var seasonStart = SeasonSortKey(season);
+                return seasonStart != int.MaxValue &&
+                    (tournamentSeasonStart == int.MaxValue || seasonStart < tournamentSeasonStart);
+            })
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(SeasonSortKey)
             .FirstOrDefault();
@@ -364,10 +380,25 @@ public sealed class BaseEloRatingService(
             .ToHashSet();
     }
 
-    private static List<HistoricalMatch> KeepBootstrapWindow(
+    private static List<HistoricalMatch> KeepSnapshotWindow(
         List<HistoricalMatch> matches,
-        int bootstrapSeasonCount)
+        Tournament tournament,
+        int bootstrapSeasonCount,
+        int? snapshotStartSeasonOffset)
     {
+        var tournamentSeasonStart = SeasonSortKey(tournament.Season);
+        if (tournamentSeasonStart != int.MaxValue)
+        {
+            var offset = snapshotStartSeasonOffset ?? -Math.Max(0, bootstrapSeasonCount);
+            var minSeasonStart = tournamentSeasonStart + Math.Min(offset, 0);
+
+            return matches
+                .Where(match =>
+                    IsCurrentTournamentSeason(match, tournament) ||
+                    (SeasonSortKey(match.SeasonName) != int.MaxValue && SeasonSortKey(match.SeasonName) >= minSeasonStart))
+                .ToList();
+        }
+
         var seasonNames = matches
             .Select(match => match.SeasonName)
             .Where(season => !string.IsNullOrWhiteSpace(season))
@@ -383,6 +414,13 @@ public sealed class BaseEloRatingService(
 
     private static int SeasonSortKey(string seasonName)
     {
+        var shortSeasonMatch = ShortSeasonRegex().Match(seasonName);
+        if (shortSeasonMatch.Success &&
+            int.TryParse(shortSeasonMatch.Groups[1].Value, out var shortStartYear))
+        {
+            return 2000 + shortStartYear;
+        }
+
         var digits = new string(seasonName.Where(char.IsDigit).ToArray());
         if (digits.Length >= 4 && int.TryParse(digits[..4], out var year))
         {
@@ -467,11 +505,53 @@ public sealed class BaseEloRatingService(
         match.UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 
-    private static bool IsPremierLeagueRow(LiveScoreHistoricalMatchRow row)
+    private static bool IsTournamentCompetitionRow(LiveScoreHistoricalMatchRow row, Tournament tournament)
     {
-        return row.CompetitionName.StartsWith(PremierLeagueName, StringComparison.OrdinalIgnoreCase) &&
-            row.CompetitionCountry.Equals("England", StringComparison.OrdinalIgnoreCase);
+        return IsSameCompetitionFamily(row.CompetitionName, row.CompetitionCountry, tournament);
     }
+
+    private static bool IsTournamentCompetitionMatch(HistoricalMatch match, Tournament tournament)
+    {
+        return IsSameCompetitionFamily(match.CompetitionName, match.CompetitionCountry, tournament);
+    }
+
+    private static bool IsSameCompetitionFamily(string competitionName, string competitionCountry, Tournament tournament)
+    {
+        var tournamentCompetitionName = CompetitionFamilyName(tournament.CompetitionName);
+        var rowCompetitionName = CompetitionFamilyName(competitionName);
+        if (string.IsNullOrWhiteSpace(tournamentCompetitionName) ||
+            string.IsNullOrWhiteSpace(rowCompetitionName) ||
+            !rowCompetitionName.StartsWith(tournamentCompetitionName, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(tournament.CompetitionCountry) ||
+            string.IsNullOrWhiteSpace(competitionCountry) ||
+            competitionCountry.Equals(tournament.CompetitionCountry, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string CompetitionFamilyName(string value)
+    {
+        var cleaned = value.Trim();
+        if (string.IsNullOrWhiteSpace(cleaned))
+        {
+            return string.Empty;
+        }
+
+        return SeasonSuffixRegex().Replace(cleaned, string.Empty).Trim();
+    }
+
+    private static string TournamentScope(Tournament tournament)
+    {
+        return string.IsNullOrWhiteSpace(tournament.CompetitionName) ? "Tournament" : tournament.CompetitionName;
+    }
+
+    [GeneratedRegex(@"\s+(?:\d{2}/\d{2}|\d{4}/\d{4}|\d{4})$")]
+    private static partial Regex SeasonSuffixRegex();
+
+    [GeneratedRegex(@"(?:^|\s)(\d{2})/\d{2}(?:\s|$)")]
+    private static partial Regex ShortSeasonRegex();
 
     private static decimal GetOrCreateRating(
         int teamId,
@@ -541,6 +621,7 @@ public sealed class BaseEloRatingService(
             run.KFactor,
             run.HomeAdvantage,
             run.BootstrapSeasonCount,
+            run.SnapshotStartSeasonOffset,
             run.Status,
             run.StartedAtUtc,
             run.FinishedAtUtc,

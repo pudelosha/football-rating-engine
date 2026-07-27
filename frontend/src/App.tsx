@@ -200,6 +200,7 @@ type EloRatingRun = {
   kFactor: number
   homeAdvantage: number
   bootstrapSeasonCount: number
+  snapshotStartSeasonOffset?: number | null
   status: string | number
   startedAtUtc: string
   finishedAtUtc?: string | null
@@ -255,6 +256,15 @@ type CombinedRatingsResponse = {
     calculatedAtUtc: string
   }
   teams: CombinedTeamRating[]
+}
+
+type TournamentRatingSetup = {
+  tournamentId: number
+  includeForm: boolean
+  includePerformance: boolean
+  includeSquad: boolean
+  snapshotStartSeasonOffset?: number | null
+  updatedAtUtc: string
 }
 
 type TournamentDetails = {
@@ -415,6 +425,9 @@ type TournamentSortKey = 'name' | 'season' | 'country' | 'teams' | 'matches' | '
 type TeamSortKey = 'name' | 'abbreviation'
 type MatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
 type UserSortKey = 'email' | 'displayName' | 'role' | 'status' | 'memberSince'
+type SquadTournamentSortKey = 'name' | 'season' | 'teams' | 'coverage' | 'snapshot'
+type SquadTeamSortKey = 'team' | 'value' | 'mapping' | 'snapshot'
+type RatingTeamSortKey = 'team' | 'baseElo' | 'form' | 'performance' | 'squad' | 'finalRating' | 'confidence'
 type SortDirection = 'asc' | 'desc'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -512,6 +525,19 @@ const translations = {
     ratingDetailsCopy: 'Inspect latest rating runs and refresh snapshots manually for the selected tournament.',
     backToRatings: 'Back to ratings',
     ratingRunSnapshots: 'Snapshot runs',
+    ratingModelSetup: 'Model setup',
+    ratingIncludedLayers: 'Included layers',
+    ratingIncludedLayersCopy: 'Choose which calculated layers contribute to the displayed final rating. Base Elo stays locked because it is the foundation for the model.',
+    ratingUpdateModelSetup: 'Update model setup',
+    ratingModelSetupUpdated: 'Model setup updated.',
+    ratingSnapshotStart: 'Snapshot start',
+    ratingSnapshotStartCurrent: 'Current season only',
+    ratingSnapshotStartOneBack: '1 season back',
+    ratingSnapshotStartTwoBack: '2 seasons back',
+    ratingSnapshotStartThreeBack: '3 seasons back',
+    ratingSnapshotStartFourBack: '4 seasons back',
+    ratingSnapshotStartFiveBack: '5 seasons back',
+    ratingSnapshotStartCopy: 'Controls which seasons Base Elo imports into the next rebuild. Use current season only when reliable historic data is missing.',
     ratingTeamRatings: 'Team ratings',
     ratingRefreshBase: 'Refresh Base Elo',
     ratingRefreshForm: 'Refresh Form',
@@ -603,6 +629,7 @@ const translations = {
     transfermarktUrl: 'Transfermarkt URL',
     transfermarktMapping: 'Transfermarkt mapping',
     latestSnapshot: 'Latest snapshot',
+    totalTeamValue: 'Team value',
     linked: 'Linked',
     notLinked: 'Not linked',
     importRunning: 'Importing...',
@@ -1081,6 +1108,19 @@ const translations = {
     ratingDetailsCopy: 'Sprawdzaj ostatnie runy ratingowe i ręcznie odświeżaj snapshoty dla wybranego turnieju.',
     backToRatings: 'Wróć do ratingów',
     ratingRunSnapshots: 'Snapshot runy',
+    ratingModelSetup: 'Ustawienia modelu',
+    ratingIncludedLayers: 'Aktywne warstwy',
+    ratingIncludedLayersCopy: 'Wybierz, które warstwy wchodzą do wyświetlanego ratingu końcowego. Base Elo jest zablokowane, bo stanowi fundament modelu.',
+    ratingUpdateModelSetup: 'Zaktualizuj ustawienia modelu',
+    ratingModelSetupUpdated: 'Ustawienia modelu zaktualizowane.',
+    ratingSnapshotStart: 'Start snapshotu',
+    ratingSnapshotStartCurrent: 'Tylko aktualny sezon',
+    ratingSnapshotStartOneBack: '1 sezon wstecz',
+    ratingSnapshotStartTwoBack: '2 sezony wstecz',
+    ratingSnapshotStartThreeBack: '3 sezony wstecz',
+    ratingSnapshotStartFourBack: '4 sezony wstecz',
+    ratingSnapshotStartFiveBack: '5 sezonów wstecz',
+    ratingSnapshotStartCopy: 'Steruje tym, które sezony Base Elo pobierze przy następnym rebuildzie. Użyj aktualnego sezonu, gdy historia jest niepełna.',
     ratingTeamRatings: 'Ratingi drużyn',
     ratingRefreshBase: 'Odśwież Base Elo',
     ratingRefreshForm: 'Odśwież Formę',
@@ -1172,6 +1212,7 @@ const translations = {
     transfermarktUrl: 'URL Transfermarkt',
     transfermarktMapping: 'Mapowanie Transfermarkt',
     latestSnapshot: 'Ostatni snapshot',
+    totalTeamValue: 'Wartość drużyny',
     linked: 'Połączono',
     notLinked: 'Brak mapowania',
     importRunning: 'Import...',
@@ -1898,6 +1939,19 @@ function formatDate(value: string | null | undefined, fallback: string) {
   }
 
   return new Date(value).toLocaleString()
+}
+
+function formatEuroValue(value: number | null | undefined, fallback = '-') {
+  if (value === null || value === undefined) {
+    return fallback
+  }
+
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'EUR',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
 }
 
 function formatMinutes(minutes: number) {
@@ -3234,8 +3288,11 @@ function RatingsPanel({
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
   const [config, setConfig] = useState<RatingConfiguration | null>(null)
   const [draft, setDraft] = useState<RatingConfiguration | null>(null)
+  const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [sortKey, setSortKey] = useState<TournamentSortKey>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   useEffect(() => {
     let isMounted = true
@@ -3345,6 +3402,65 @@ function RatingsPanel({
     ? draft.baseEloWeight + draft.formWeight + draft.performanceWeight + draft.squadQualityWeight + draft.leagueStrengthWeight - draft.uncertaintyPenaltyWeight
     : 0
 
+  const sortedTournaments = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const filtered = tournaments.filter((tournament) => {
+      if (!normalizedSearch) {
+        return true
+      }
+
+      return [
+        tournament.name,
+        tournament.season,
+        tournament.competitionName,
+        tournament.competitionCountry,
+      ].some((value) => value.toLowerCase().includes(normalizedSearch))
+    })
+
+    return filtered.sort((left, right) => {
+      let comparison = 0
+
+      if (sortKey === 'name') {
+        comparison = compareText(left.name, right.name)
+      } else if (sortKey === 'season') {
+        comparison = compareText(left.season || '', right.season || '')
+      } else if (sortKey === 'country') {
+        comparison = compareText(left.competitionCountry || left.competitionName, right.competitionCountry || right.competitionName)
+      } else if (sortKey === 'teams') {
+        comparison = left.teamCount - right.teamCount
+      } else if (sortKey === 'matches') {
+        comparison = left.matchCount - right.matchCount
+      } else if (sortKey === 'lastSync') {
+        comparison = new Date(left.lastSyncedAtUtc ?? 0).getTime() - new Date(right.lastSyncedAtUtc ?? 0).getTime()
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.name, right.name)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [search, sortDirection, sortKey, tournaments])
+
+  const requestSort = (key: TournamentSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'teams' || key === 'matches' || key === 'lastSync' ? 'desc' : 'asc')
+  }
+
+  const tournamentHeaders: Array<{ key: TournamentSortKey; label: string }> = [
+    { key: 'name', label: t.tournamentName },
+    { key: 'season', label: t.tournamentSeason },
+    { key: 'country', label: t.tournamentCountry },
+    { key: 'teams', label: t.teams },
+    { key: 'matches', label: t.matches },
+    { key: 'lastSync', label: t.tournamentLastSync },
+  ]
+
   const weightFields: Array<{ key: keyof RatingConfiguration; label: string }> = [
     { key: 'baseEloWeight', label: t.ratingConfigBaseEloWeight },
     { key: 'formWeight', label: t.ratingConfigFormWeight },
@@ -3387,6 +3503,68 @@ function RatingsPanel({
         {isLoading && (
           <FullPageProcessingOverlay label={t.loading} />
         )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="tournaments" />
+            <h2>{t.ratingTournamentListTitle}</h2>
+          </div>
+          <div className="rating-table-search">
+            <label className="tournament-search">
+              <span>{t.tournamentSearch}</span>
+              <input
+                placeholder={t.tournamentSearchPlaceholder}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table ratings-tournament-table">
+              <thead>
+                <tr>
+                  {tournamentHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        {header.label}
+                        <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && sortedTournaments.map((tournament) => (
+                  <tr key={tournament.id}>
+                    <td><strong>{tournament.name}</strong></td>
+                    <td>{tournament.season}</td>
+                    <td>{tournament.competitionCountry}</td>
+                    <td>{tournament.teamCount}</td>
+                    <td>{tournament.matchCount}</td>
+                    <td>{formatDate(tournament.lastSyncedAtUtc, '-')}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpen(tournament.id)}>
+                        {t.ratingOpenTournament}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && sortedTournaments.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         {draft && (
           <div className="rating-admin-grid rating-control-grid">
@@ -3450,50 +3628,6 @@ function RatingsPanel({
           </div>
         )}
 
-        <section className="details-panel">
-          <div className="details-panel-heading">
-            <MenuIcon name="tournaments" />
-            <h2>{t.ratingTournamentListTitle}</h2>
-          </div>
-          <p className="panel-copy">{t.ratingTournamentListCopy}</p>
-          <div className="tournament-table-shell compact-table-shell">
-            <table className="tournament-table ratings-tournament-table">
-              <thead>
-                <tr>
-                  <th>{t.tournamentName}</th>
-                  <th>{t.tournamentSeason}</th>
-                  <th>{t.tournamentCountry}</th>
-                  <th>{t.teams}</th>
-                  <th>{t.matches}</th>
-                  <th>{t.tournamentLastSync}</th>
-                  <th>{t.actions}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!isLoading && tournaments.map((tournament) => (
-                  <tr key={tournament.id}>
-                    <td><strong>{tournament.name}</strong></td>
-                    <td>{tournament.season}</td>
-                    <td>{tournament.competitionCountry}</td>
-                    <td>{tournament.teamCount}</td>
-                    <td>{tournament.matchCount}</td>
-                    <td>{formatDate(tournament.lastSyncedAtUtc, '-')}</td>
-                    <td>
-                      <button type="button" onClick={() => onOpen(tournament.id)}>
-                        {t.ratingOpenTournament}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!isLoading && tournaments.length === 0 && (
-                  <tr>
-                    <td className="empty-table" colSpan={7}>-</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </div>
     </section>
   )
@@ -3520,17 +3654,32 @@ function RatingTournamentDetailsPanel({
   const [combinedRatings, setCombinedRatings] = useState<CombinedRatingsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeRebuild, setActiveRebuild] = useState<'base' | 'form' | 'performance' | null>(null)
+  const [snapshotStartSeasonOffset, setSnapshotStartSeasonOffset] = useState<number | null>(null)
+  const [draftSnapshotStartSeasonOffset, setDraftSnapshotStartSeasonOffset] = useState<number | null>(null)
+  const [includedLayers, setIncludedLayers] = useState({
+    form: true,
+    performance: true,
+    squad: true,
+  })
+  const [draftIncludedLayers, setDraftIncludedLayers] = useState({
+    form: true,
+    performance: true,
+    squad: true,
+  })
+  const [ratingSortKey, setRatingSortKey] = useState<RatingTeamSortKey>('finalRating')
+  const [ratingSortDirection, setRatingSortDirection] = useState<SortDirection>('desc')
 
   const loadDetails = async () => {
     setIsLoading(true)
     try {
-      const [tournamentResult, configResult, baseResult, formResult, performanceResult, combinedResult] = await Promise.all([
+      const [tournamentResult, configResult, baseResult, formResult, performanceResult, combinedResult, setupResult] = await Promise.all([
         authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`),
         authorizedRequest<RatingConfiguration>(user.token, '/api/admin/ratings/configuration'),
         authorizedRequest<EloRatingRun>(user.token, `/api/tournaments/${tournamentId}/ratings/base-elo/latest-run`),
         authorizedRequest<LayerRatingRun>(user.token, `/api/tournaments/${tournamentId}/ratings/form/latest-run`),
         authorizedRequest<LayerRatingRun>(user.token, `/api/tournaments/${tournamentId}/ratings/performance/latest-run`),
         authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournamentId}/ratings/combined/teams`),
+        authorizedRequest<TournamentRatingSetup>(user.token, `/api/tournaments/${tournamentId}/rating-setup`),
       ])
 
       if (!tournamentResult.ok || !tournamentResult.data) {
@@ -3543,8 +3692,27 @@ function RatingTournamentDetailsPanel({
         return
       }
 
+      const nextConfig = configResult.data
+      const setup = setupResult.ok && setupResult.data
+        ? setupResult.data
+        : {
+            includeForm: true,
+            includePerformance: true,
+            includeSquad: true,
+            snapshotStartSeasonOffset: -Math.max(0, nextConfig.bootstrapSeasonCount),
+          }
+      const nextLayers = {
+        form: setup.includeForm,
+        performance: setup.includePerformance,
+        squad: setup.includeSquad,
+      }
+      const nextSnapshotOffset = setup.snapshotStartSeasonOffset ?? -Math.max(0, nextConfig.bootstrapSeasonCount)
       setTournament(tournamentResult.data)
-      setConfig(configResult.data)
+      setConfig(nextConfig)
+      setIncludedLayers(nextLayers)
+      setDraftIncludedLayers(nextLayers)
+      setSnapshotStartSeasonOffset(nextSnapshotOffset)
+      setDraftSnapshotStartSeasonOffset(nextSnapshotOffset)
       setBaseRun(baseResult.ok && baseResult.data ? baseResult.data : null)
       setFormRun(formResult.ok && formResult.data ? formResult.data : null)
       setPerformanceRun(performanceResult.ok && performanceResult.data ? performanceResult.data : null)
@@ -3581,6 +3749,7 @@ function RatingTournamentDetailsPanel({
             homeAdvantage: tournament?.applyHomeAdvantage ? config.homeAdvantage : 0,
             bootstrapSeasonCount: config.bootstrapSeasonCount,
             scope: tournament?.competitionName || 'Tournament',
+            snapshotStartSeasonOffset: snapshotStartSeasonOffset ?? -Math.max(0, config.bootstrapSeasonCount),
           }
         : layer === 'form'
           ? {
@@ -3614,10 +3783,137 @@ function RatingTournamentDetailsPanel({
   }
 
   const runCards = [
-    { key: 'base', icon: 'ratings' as MenuIconName, title: 'Base Elo', run: baseRun, action: t.ratingRefreshBase, onClick: () => rebuild('base'), processed: baseRun?.processedMatches ?? 0 },
-    { key: 'form', icon: 'predictions' as MenuIconName, title: 'Form', run: formRun, action: t.ratingRefreshForm, onClick: () => rebuild('form'), processed: formRun?.processedTeams ?? 0 },
-    { key: 'performance', icon: 'matches' as MenuIconName, title: 'Performance', run: performanceRun, action: t.ratingRefreshPerformance, onClick: () => rebuild('performance'), processed: performanceRun?.processedTeams ?? 0 },
+    { key: 'base', title: 'Base Elo', run: baseRun, action: t.ratingRefreshBase, onClick: () => rebuild('base'), processed: baseRun?.processedMatches ?? 0 },
+    { key: 'form', title: 'Form', run: formRun, action: t.ratingRefreshForm, onClick: () => rebuild('form'), processed: formRun?.processedTeams ?? 0 },
+    { key: 'performance', title: 'Performance', run: performanceRun, action: t.ratingRefreshPerformance, onClick: () => rebuild('performance'), processed: performanceRun?.processedTeams ?? 0 },
   ]
+
+  const displayedTeams = useMemo(() => {
+    return (combinedRatings?.teams ?? [])
+      .map((team) => {
+        const formAdjustment = includedLayers.form ? team.formAdjustment : 0
+        const performanceAdjustment = includedLayers.performance ? team.performanceAdjustment : 0
+        const squadQualityAdjustment = includedLayers.squad ? team.squadQualityAdjustment : 0
+        const totalAdjustment = formAdjustment + performanceAdjustment + squadQualityAdjustment
+
+        return {
+          ...team,
+          formAdjustment,
+          performanceAdjustment,
+          squadQualityAdjustment,
+          totalAdjustment,
+          finalRating: team.baseElo + totalAdjustment,
+        }
+      })
+      .sort((left, right) => {
+        let comparison = 0
+        if (ratingSortKey === 'team') {
+          comparison = compareText(left.teamName, right.teamName)
+        } else if (ratingSortKey === 'baseElo') {
+          comparison = left.baseElo - right.baseElo
+        } else if (ratingSortKey === 'form') {
+          comparison = left.formAdjustment - right.formAdjustment
+        } else if (ratingSortKey === 'performance') {
+          comparison = left.performanceAdjustment - right.performanceAdjustment
+        } else if (ratingSortKey === 'squad') {
+          comparison = left.squadQualityAdjustment - right.squadQualityAdjustment
+        } else if (ratingSortKey === 'finalRating') {
+          comparison = left.finalRating - right.finalRating
+        } else if (ratingSortKey === 'confidence') {
+          comparison = left.ratingConfidence - right.ratingConfidence
+        }
+
+        if (comparison === 0) {
+          comparison = compareText(left.teamName, right.teamName)
+        }
+
+        return ratingSortDirection === 'asc' ? comparison : -comparison
+      })
+  }, [combinedRatings, includedLayers, ratingSortDirection, ratingSortKey])
+
+  const requestRatingSort = (key: RatingTeamSortKey) => {
+    if (ratingSortKey === key) {
+      setRatingSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setRatingSortKey(key)
+    setRatingSortDirection(key === 'team' ? 'asc' : 'desc')
+  }
+
+  const layerToggles: Array<{ key: keyof typeof includedLayers; label: string }> = [
+    { key: 'form', label: t.ratingForm },
+    { key: 'performance', label: t.ratingPerformance },
+    { key: 'squad', label: t.ratingSquad },
+  ]
+
+  const snapshotStartOptions = [
+    { value: 0, label: t.ratingSnapshotStartCurrent },
+    { value: -1, label: t.ratingSnapshotStartOneBack },
+    { value: -2, label: t.ratingSnapshotStartTwoBack },
+    { value: -3, label: t.ratingSnapshotStartThreeBack },
+    { value: -4, label: t.ratingSnapshotStartFourBack },
+    { value: -5, label: t.ratingSnapshotStartFiveBack },
+  ]
+
+  const ratingTeamHeaders: Array<{ key: RatingTeamSortKey; label: string }> = [
+    { key: 'team', label: t.ratingTeam },
+    { key: 'baseElo', label: t.ratingBaseElo },
+    { key: 'form', label: t.ratingForm },
+    { key: 'performance', label: t.ratingPerformance },
+    { key: 'squad', label: t.ratingSquad },
+    { key: 'finalRating', label: t.ratingFinal },
+    { key: 'confidence', label: t.ratingConfidence },
+  ]
+
+  const snapshotStartLabel = (offset: number | null | undefined) => {
+    if (offset === null || offset === undefined) {
+      return '-'
+    }
+
+    return snapshotStartOptions.find((option) => option.value === offset)?.label ?? String(offset)
+  }
+
+  const effectiveDraftSnapshotStart = draftSnapshotStartSeasonOffset ?? -Math.max(0, config?.bootstrapSeasonCount ?? 3)
+  const effectiveSnapshotStart = snapshotStartSeasonOffset ?? -Math.max(0, config?.bootstrapSeasonCount ?? 3)
+  const hasModelSetupChanges =
+    effectiveDraftSnapshotStart !== effectiveSnapshotStart ||
+    draftIncludedLayers.form !== includedLayers.form ||
+    draftIncludedLayers.performance !== includedLayers.performance ||
+    draftIncludedLayers.squad !== includedLayers.squad
+
+  const updateModelSetup = async () => {
+    try {
+      const result = await authorizedRequest<TournamentRatingSetup>(user.token, `/api/tournaments/${tournamentId}/rating-setup`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          includeForm: draftIncludedLayers.form,
+          includePerformance: draftIncludedLayers.performance,
+          includeSquad: draftIncludedLayers.squad,
+          snapshotStartSeasonOffset: effectiveDraftSnapshotStart,
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      const nextLayers = {
+        form: result.data.includeForm,
+        performance: result.data.includePerformance,
+        squad: result.data.includeSquad,
+      }
+      const nextSnapshotOffset = result.data.snapshotStartSeasonOffset ?? -Math.max(0, config?.bootstrapSeasonCount ?? 3)
+      setSnapshotStartSeasonOffset(nextSnapshotOffset)
+      setDraftSnapshotStartSeasonOffset(nextSnapshotOffset)
+      setIncludedLayers(nextLayers)
+      setDraftIncludedLayers(nextLayers)
+      onToast(t.ratingModelSetupUpdated, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    }
+  }
 
   return (
     <section className="admin-dashboard">
@@ -3639,7 +3935,64 @@ function RatingTournamentDetailsPanel({
           <FullPageProcessingOverlay label={activeRebuild ? t.ratingRefreshing : t.loading} />
         )}
 
-        <section className="data-quality-live-checks">
+        <section className="details-panel rating-model-setup-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="admin" />
+            <h2>{t.ratingModelSetup}</h2>
+          </div>
+          <div className="rating-model-setup-grid">
+            <div className="rating-model-box">
+              <span>{t.ratingIncludedLayers}</span>
+              <p>{t.ratingIncludedLayersCopy}</p>
+              <div className="rating-layer-toggle-grid">
+                <label className="rating-layer-toggle locked">
+                  <input type="checkbox" checked readOnly />
+                  <strong>{t.ratingBaseElo}</strong>
+                </label>
+                {layerToggles.map((layer) => (
+                  <label className="rating-layer-toggle" key={layer.key}>
+                    <input
+                      type="checkbox"
+                      checked={draftIncludedLayers[layer.key]}
+                      onChange={() => setDraftIncludedLayers((current) => ({
+                        ...current,
+                        [layer.key]: !current[layer.key],
+                      }))}
+                    />
+                    <strong>{layer.label}</strong>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="rating-model-box">
+              <span>{t.ratingSnapshotStart}</span>
+              <p>{t.ratingSnapshotStartCopy}</p>
+              <div className="rating-snapshot-selector">
+                {snapshotStartOptions.map((option) => (
+                  <button
+                    type="button"
+                    className={effectiveDraftSnapshotStart === option.value ? 'active' : ''}
+                    key={option.value}
+                    onClick={() => setDraftSnapshotStartSeasonOffset(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="rating-config-footer">
+            <div>
+              <span>{t.ratingSnapshotStart}</span>
+              <strong>{snapshotStartLabel(effectiveSnapshotStart)}</strong>
+            </div>
+            <button type="button" onClick={updateModelSetup} disabled={!hasModelSetupChanges}>
+              {t.ratingUpdateModelSetup}
+            </button>
+          </div>
+        </section>
+
+        <section className="details-panel rating-snapshot-runs-panel">
           <div className="details-panel-heading">
             <MenuIcon name="ratings" />
             <h2>{t.ratingRunSnapshots}</h2>
@@ -3648,7 +4001,6 @@ function RatingTournamentDetailsPanel({
             {runCards.map((card) => (
               <article className="rating-run-card" key={card.key}>
                 <div className="rating-run-card-head">
-                  <MenuIcon name={card.icon} />
                   <div>
                     <h3>{card.title}</h3>
                     <span>{card.run ? `${t.ratingRunId}: ${card.run.id}` : t.ratingNoRun}</span>
@@ -3667,6 +4019,12 @@ function RatingTournamentDetailsPanel({
                     <dt>{t.ratingProcessed}</dt>
                     <dd>{card.processed}</dd>
                   </div>
+                  {card.key === 'base' && (
+                    <div>
+                      <dt>{t.ratingSnapshotStart}</dt>
+                      <dd>{snapshotStartLabel((card.run as EloRatingRun | null)?.snapshotStartSeasonOffset)}</dd>
+                    </div>
+                  )}
                 </dl>
                 <button type="button" onClick={card.onClick} disabled={Boolean(activeRebuild) || !config}>
                   {card.action}
@@ -3691,17 +4049,23 @@ function RatingTournamentDetailsPanel({
             <table className="tournament-table ratings-team-table">
               <thead>
                 <tr>
-                  <th>{t.ratingTeam}</th>
-                  <th>{t.ratingBaseElo}</th>
-                  <th>{t.ratingForm}</th>
-                  <th>{t.ratingPerformance}</th>
-                  <th>{t.ratingSquad}</th>
-                  <th>{t.ratingFinal}</th>
-                  <th>{t.ratingConfidence}</th>
+                  {ratingTeamHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={ratingSortKey === header.key ? (ratingSortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestRatingSort(header.key)}
+                      >
+                        <span>{header.label}</span>
+                        <span aria-hidden="true">{ratingSortKey === header.key ? (ratingSortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {!isLoading && combinedRatings?.teams.map((team) => (
+                {!isLoading && displayedTeams.map((team) => (
                   <tr key={team.teamId}>
                     <td><strong>{team.teamName}</strong><span>{team.teamAbbreviation}</span></td>
                     <td>{team.baseElo.toFixed(2)}</td>
@@ -3712,7 +4076,7 @@ function RatingTournamentDetailsPanel({
                     <td>{(team.ratingConfidence * 100).toFixed(0)}%</td>
                   </tr>
                 ))}
-                {!isLoading && (!combinedRatings || combinedRatings.teams.length === 0) && (
+                {!isLoading && displayedTeams.length === 0 && (
                   <tr>
                     <td className="empty-table" colSpan={7}>{t.ratingNoRun}</td>
                   </tr>
@@ -4907,6 +5271,8 @@ function SquadsPanel({
   const [isLoading, setIsLoading] = useState(true)
   const [bulkImportingTournamentId, setBulkImportingTournamentId] = useState<number | null>(null)
   const [coverageByTournamentId, setCoverageByTournamentId] = useState<Record<number, SquadTournamentCoverage>>({})
+  const [sortKey, setSortKey] = useState<SquadTournamentSortKey>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   const toCoverageMap = (items: TournamentSquadCoverageResponse[]) => Object.fromEntries(
     items.map((item) => [
@@ -5010,10 +5376,10 @@ function SquadsPanel({
     }
   }, [t, user.token])
 
-  const filteredTournaments = useMemo(() => {
+  const sortedTournaments = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 
-    return tournaments
+    const filtered = tournaments
       .filter((tournament) => {
         const matchesSearch = !normalizedSearch ||
           [
@@ -5034,8 +5400,49 @@ function SquadsPanel({
 
         return matchesSearch && matchesFilter
       })
-      .sort((left, right) => compareText(left.name, right.name))
-  }, [coverageByTournamentId, search, squadFilter, tournaments])
+
+    return filtered.sort((left, right) => {
+      const leftCoverage = coverageByTournamentId[left.id]
+      const rightCoverage = coverageByTournamentId[right.id]
+      let comparison = 0
+
+      if (sortKey === 'name') {
+        comparison = compareText(left.name, right.name)
+      } else if (sortKey === 'season') {
+        comparison = compareText(left.season || '', right.season || '')
+      } else if (sortKey === 'teams') {
+        comparison = left.teamCount - right.teamCount
+      } else if (sortKey === 'coverage') {
+        comparison = (leftCoverage?.linkedTeams ?? 0) - (rightCoverage?.linkedTeams ?? 0)
+      } else if (sortKey === 'snapshot') {
+        comparison = new Date(leftCoverage?.lastSnapshotUtc ?? 0).getTime() - new Date(rightCoverage?.lastSnapshotUtc ?? 0).getTime()
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.name, right.name)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [coverageByTournamentId, search, sortDirection, sortKey, squadFilter, tournaments])
+
+  const requestSort = (key: SquadTournamentSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'coverage' || key === 'snapshot' ? 'desc' : 'asc')
+  }
+
+  const squadTournamentHeaders: Array<{ key: SquadTournamentSortKey; label: string }> = [
+    { key: 'name', label: t.tournamentName },
+    { key: 'season', label: t.tournamentSeason },
+    { key: 'teams', label: t.squadTeamCount },
+    { key: 'coverage', label: t.squadCoverage },
+    { key: 'snapshot', label: t.squadLastImport },
+  ]
 
   const importTournamentSnapshots = async (tournament: TournamentSummary) => {
     setBulkImportingTournamentId(tournament.id)
@@ -5153,16 +5560,24 @@ function SquadsPanel({
             <table className="tournament-table squads-table">
               <thead>
                 <tr>
-                  <th>{t.tournamentName}</th>
-                  <th>{t.tournamentSeason}</th>
-                  <th>{t.squadTeamCount}</th>
-                  <th>{t.squadCoverage}</th>
-                  <th>{t.squadLastImport}</th>
+                  {squadTournamentHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        {header.label}
+                        <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                      </button>
+                    </th>
+                  ))}
                   <th>{t.squadActions}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTournaments.map((tournament) => (
+                {sortedTournaments.map((tournament) => (
                   <tr key={tournament.id}>
                     <td>
                       <strong>{tournament.name}</strong>
@@ -5192,7 +5607,7 @@ function SquadsPanel({
                     </td>
                   </tr>
                 ))}
-                {filteredTournaments.length === 0 && (
+                {sortedTournaments.length === 0 && (
                   <tr>
                     <td colSpan={6}>{t.noSquadTournaments}</td>
                   </tr>
@@ -5224,6 +5639,8 @@ function SquadDetailsPanel({
   const [isLoading, setIsLoading] = useState(true)
   const [importingTeamId, setImportingTeamId] = useState<number | null>(null)
   const [squadEditCandidate, setSquadEditCandidate] = useState<SquadTeamRow | null>(null)
+  const [sortKey, setSortKey] = useState<SquadTeamSortKey>('team')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   useEffect(() => {
     let isMounted = true
@@ -5353,6 +5770,44 @@ function SquadDetailsPanel({
     }
   }
 
+  const requestSort = (key: SquadTeamSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'value' ? 'desc' : 'asc')
+  }
+
+  const sortedSquadRows = useMemo(() => {
+    return [...squadRows].sort((left, right) => {
+      let comparison = 0
+      if (sortKey === 'team') {
+        comparison = compareText(left.team.name, right.team.name)
+      } else if (sortKey === 'value') {
+        comparison = (left.snapshot?.totalMarketValueEur ?? -1) - (right.snapshot?.totalMarketValueEur ?? -1)
+      } else if (sortKey === 'mapping') {
+        comparison = Number(Boolean(left.mapping)) - Number(Boolean(right.mapping))
+      } else if (sortKey === 'snapshot') {
+        comparison = new Date(left.snapshot?.fetchedAtUtc ?? 0).getTime() - new Date(right.snapshot?.fetchedAtUtc ?? 0).getTime()
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.team.name, right.team.name)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [sortDirection, sortKey, squadRows])
+
+  const squadHeaders: Array<{ key: SquadTeamSortKey; label: string }> = [
+    { key: 'team', label: t.teamName },
+    { key: 'value', label: t.totalTeamValue },
+    { key: 'mapping', label: t.transfermarktMapping },
+    { key: 'snapshot', label: t.latestSnapshot },
+  ]
+
   return (
     <section className="admin-dashboard">
       <div className="admin-dashboard-content squads-panel tournaments-panel">
@@ -5388,18 +5843,34 @@ function SquadDetailsPanel({
               <table className="tournament-table squads-table squad-team-table">
                 <thead>
                   <tr>
-                    <th>{t.teamName}</th>
-                    <th>{t.transfermarktMapping}</th>
-                    <th>{t.latestSnapshot}</th>
+                    {squadHeaders.map((header) => (
+                      <th key={header.key}>
+                        <button
+                          type="button"
+                          className="table-sort-button"
+                          aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          onClick={() => requestSort(header.key)}
+                        >
+                          <span>{header.label}</span>
+                          <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                        </button>
+                      </th>
+                    ))}
                     <th>{t.squadActions}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {squadRows.map((row) => (
+                  {sortedSquadRows.map((row) => (
                     <tr key={row.team.id}>
                       <td>
                         <strong>{row.team.name}</strong>
                         <small>{row.team.abbreviation || '-'}</small>
+                      </td>
+                      <td>
+                        <strong>{formatEuroValue(row.snapshot?.totalMarketValueEur, t.notImported)}</strong>
+                        {row.snapshot?.topElevenMarketValueEur !== null && row.snapshot?.topElevenMarketValueEur !== undefined && (
+                          <small>Top XI {formatEuroValue(row.snapshot.topElevenMarketValueEur)}</small>
+                        )}
                       </td>
                       <td>
                         <span className={`squad-coverage-pill ${row.mapping ? 'linked' : 'missing'}`}>

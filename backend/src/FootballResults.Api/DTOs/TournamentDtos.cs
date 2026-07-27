@@ -19,6 +19,20 @@ public sealed record UpdateTournamentRequest(
     string? Locale,
     string? TimezoneOffset);
 
+public sealed record TournamentRatingSetupDto(
+    int TournamentId,
+    bool IncludeForm,
+    bool IncludePerformance,
+    bool IncludeSquad,
+    int? SnapshotStartSeasonOffset,
+    DateTimeOffset UpdatedAtUtc);
+
+public sealed record UpdateTournamentRatingSetupRequest(
+    bool IncludeForm,
+    bool IncludePerformance,
+    bool IncludeSquad,
+    int? SnapshotStartSeasonOffset);
+
 public sealed record TournamentPreviewDto(
     string Name,
     string Season,

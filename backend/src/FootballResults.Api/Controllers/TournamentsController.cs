@@ -1,8 +1,11 @@
 using FootballResults.Api.DTOs;
 using FootballResults.Api.Extensions;
+using FootballResults.Api.Model.Database;
+using FootballResults.Api.Model.Entities;
 using FootballResults.Api.Repository.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FootballResults.Api.Controllers;
 
@@ -11,7 +14,8 @@ namespace FootballResults.Api.Controllers;
 public sealed class TournamentsController(
     ITournamentCreationService tournamentCreationService,
     ITournamentQueryService tournamentQueryService,
-    ILiveScoreTournamentDiscoveryService discoveryService) : ControllerBase
+    ILiveScoreTournamentDiscoveryService discoveryService,
+    AppDbContext dbContext) : ControllerBase
 {
     [HttpPost("preview")]
     [Authorize(Policy = AuthExtensions.AdminPolicy)]
@@ -58,6 +62,43 @@ public sealed class TournamentsController(
         return tournament is null ? NotFound() : Ok(tournament);
     }
 
+    [HttpGet("{id:int}/rating-setup")]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [ProducesResponseType(typeof(TournamentRatingSetupDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TournamentRatingSetupDto>> GetRatingSetup(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var tournament = await dbContext.Tournaments.FirstOrDefaultAsync(tournament => tournament.Id == id, cancellationToken);
+        return tournament is null ? NotFound() : Ok(ToRatingSetupDto(tournament));
+    }
+
+    [HttpPut("{id:int}/rating-setup")]
+    [Authorize(Policy = AuthExtensions.AdminPolicy)]
+    [ProducesResponseType(typeof(TournamentRatingSetupDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TournamentRatingSetupDto>> UpdateRatingSetup(
+        int id,
+        UpdateTournamentRatingSetupRequest request,
+        CancellationToken cancellationToken)
+    {
+        var tournament = await dbContext.Tournaments.FirstOrDefaultAsync(tournament => tournament.Id == id, cancellationToken);
+        if (tournament is null)
+        {
+            return NotFound();
+        }
+
+        tournament.RatingIncludeForm = request.IncludeForm;
+        tournament.RatingIncludePerformance = request.IncludePerformance;
+        tournament.RatingIncludeSquad = request.IncludeSquad;
+        tournament.RatingSnapshotStartSeasonOffset = request.SnapshotStartSeasonOffset;
+        tournament.UpdatedAtUtc = DateTimeOffset.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(ToRatingSetupDto(tournament));
+    }
+
     [HttpPut("{id:int}")]
     [Authorize(Policy = AuthExtensions.AdminPolicy)]
     [ProducesResponseType(typeof(TournamentDetailsDto), StatusCodes.Status200OK)]
@@ -88,5 +129,16 @@ public sealed class TournamentsController(
     {
         var deleted = await tournamentQueryService.DeleteAsync(id, cancellationToken);
         return deleted ? NoContent() : NotFound();
+    }
+
+    private static TournamentRatingSetupDto ToRatingSetupDto(Tournament tournament)
+    {
+        return new TournamentRatingSetupDto(
+            tournament.Id,
+            tournament.RatingIncludeForm,
+            tournament.RatingIncludePerformance,
+            tournament.RatingIncludeSquad,
+            tournament.RatingSnapshotStartSeasonOffset,
+            tournament.UpdatedAtUtc);
     }
 }

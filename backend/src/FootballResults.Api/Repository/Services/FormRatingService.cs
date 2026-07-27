@@ -184,7 +184,9 @@ public sealed class FormRatingService(AppDbContext dbContext) : IFormRatingServi
             var weightedExpected = teamMatches.Sum(match => match.Expected * match.Weight);
             var weightedDelta = teamMatches.Sum(match => match.WeightedDelta);
             var averageDelta = weightSum == 0 ? 0 : weightedDelta / weightSum;
-            var adjustment = Clamp(averageDelta * run.Scale, -run.MaxAdjustment, run.MaxAdjustment);
+            var sampleCoverage = SampleCoverage(teamMatches.Count, run.MatchCount);
+            var adjustmentCap = run.MaxAdjustment * sampleCoverage;
+            var adjustment = Clamp(averageDelta * run.Scale * sampleCoverage, -adjustmentCap, adjustmentCap);
 
             dbContext.TeamFormMatchSnapshots.AddRange(teamMatches);
             dbContext.TeamFormRatings.Add(new TeamFormRating
@@ -247,6 +249,18 @@ public sealed class FormRatingService(AppDbContext dbContext) : IFormRatingServi
             4 => 0.40m,
             _ => Math.Max(0.10m, 0.40m - ((index - 4) * 0.05m))
         };
+    }
+
+    private static decimal SampleCoverage(int matchCount, int requestedMatchCount)
+    {
+        if (matchCount <= 0 || requestedMatchCount <= 0)
+        {
+            return 0;
+        }
+
+        var actualWeight = Enumerable.Range(0, matchCount).Sum(WeightForIndex);
+        var targetWeight = Enumerable.Range(0, requestedMatchCount).Sum(WeightForIndex);
+        return targetWeight == 0 ? 0 : Math.Min(actualWeight / targetWeight, 1);
     }
 
     private static decimal Clamp(decimal value, decimal min, decimal max)

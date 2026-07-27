@@ -8,7 +8,8 @@ public sealed record RebuildBaseEloRequest(
     decimal KFactor = 20,
     decimal HomeAdvantage = 55,
     int BootstrapSeasonCount = 3,
-    string Scope = "PremierLeague");
+    string Scope = "Tournament",
+    int? SnapshotStartSeasonOffset = null);
 
 public sealed record RebuildBaseEloResponse(
     int RunId,
@@ -28,6 +29,7 @@ public sealed record EloRatingRunDto(
     decimal KFactor,
     decimal HomeAdvantage,
     int BootstrapSeasonCount,
+    int? SnapshotStartSeasonOffset,
     EloRatingRunStatus Status,
     DateTimeOffset StartedAtUtc,
     DateTimeOffset? FinishedAtUtc,

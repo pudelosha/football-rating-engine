@@ -5,12 +5,13 @@ public sealed class EloRatingRun
     public int Id { get; set; }
     public int TournamentId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Scope { get; set; } = "PremierLeague";
+    public string Scope { get; set; } = "Tournament";
     public decimal BaseRating { get; set; }
     public decimal PromotedBaselineRating { get; set; }
     public decimal KFactor { get; set; }
     public decimal HomeAdvantage { get; set; }
     public int BootstrapSeasonCount { get; set; }
+    public int? SnapshotStartSeasonOffset { get; set; }
     public EloRatingRunStatus Status { get; set; }
     public DateTimeOffset StartedAtUtc { get; set; }
     public DateTimeOffset? FinishedAtUtc { get; set; }

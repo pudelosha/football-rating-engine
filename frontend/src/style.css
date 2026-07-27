@@ -1644,7 +1644,7 @@ p {
 }
 
 .rating-config-footer button,
-.ratings-tournament-table button,
+.ratings-tournament-table td:last-child button,
 .rating-run-card button {
   min-height: 40px;
   padding: 0 14px;
@@ -1670,8 +1670,12 @@ p {
   width: 180px;
 }
 
-.ratings-tournament-table button {
+.ratings-tournament-table td:last-child button {
   width: 100%;
+}
+
+.rating-table-search {
+  width: min(460px, 100%);
 }
 
 .rating-run-grid {
@@ -1680,8 +1684,96 @@ p {
   gap: 12px;
 }
 
+.rating-model-setup-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.rating-snapshot-runs-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.rating-model-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 12px;
+}
+
+.rating-model-box {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.rating-model-box > span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.rating-model-box p {
+  margin: 0;
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.rating-layer-toggle-grid,
+.rating-snapshot-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rating-layer-toggle {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.rating-layer-toggle.locked {
+  cursor: default;
+}
+
+.rating-layer-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: #b0d86b;
+}
+
+.rating-layer-toggle strong {
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.rating-snapshot-selector button {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: rgba(255, 249, 234, 0.76);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.rating-snapshot-selector button.active {
+  color: #101915;
+  background: #b0d86b;
+}
+
 .rating-run-card {
   display: grid;
+  grid-template-rows: 58px minmax(0, 1fr) 40px;
   gap: 16px;
   min-height: 250px;
   padding: 20px;
@@ -1694,6 +1786,7 @@ p {
   grid-template-columns: auto 1fr;
   gap: 12px;
   align-items: center;
+  min-height: 58px;
 }
 
 .rating-run-card-head .menu-icon {
@@ -1716,6 +1809,7 @@ p {
 
 .rating-run-card dl {
   display: grid;
+  align-content: start;
   gap: 8px;
   margin: 0;
 }
