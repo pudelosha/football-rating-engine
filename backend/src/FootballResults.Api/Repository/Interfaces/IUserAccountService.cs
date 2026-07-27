@@ -16,4 +16,6 @@ public interface IUserAccountService
     Task<bool> SuspendUserAsync(string userId);
     Task<bool> UnsuspendUserAsync(string userId);
     Task<bool> DeleteUserAsync(string userId);
+    Task<AdminUserDto?> ChangeRoleAsync(string userId, ChangeUserRoleRequest request);
+    Task<bool> ResendConfirmationEmailAsync(string userId, AdminResendConfirmationEmailRequest request);
 }

@@ -8,6 +8,8 @@ namespace FootballResults.Api.Repository.Services;
 
 public sealed class UserAccountService(
     UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager,
+    IEmailService emailService,
     IApiKeyService apiKeyService) : IUserAccountService
 {
     public string? GetUserId(ClaimsPrincipal principal)
@@ -126,6 +128,48 @@ public sealed class UserAccountService(
     {
         var user = await userManager.FindByIdAsync(userId);
         return user is not null && (await userManager.DeleteAsync(user)).Succeeded;
+    }
+
+    public async Task<AdminUserDto?> ChangeRoleAsync(string userId, ChangeUserRoleRequest request)
+    {
+        var role = request.Role.Trim();
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            return null;
+        }
+
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var currentRoles = await userManager.GetRolesAsync(user);
+        var removeResult = await userManager.RemoveFromRolesAsync(user, currentRoles);
+        if (!removeResult.Succeeded)
+        {
+            return null;
+        }
+
+        var addResult = await userManager.AddToRoleAsync(user, role);
+        return addResult.Succeeded ? await ToAdminDtoAsync(user) : null;
+    }
+
+    public async Task<bool> ResendConfirmationEmailAsync(string userId, AdminResendConfirmationEmailRequest request)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+        {
+            return false;
+        }
+
+        if (await userManager.IsEmailConfirmedAsync(user))
+        {
+            return true;
+        }
+
+        await emailService.SendConfirmationEmailAsync(user, request.Language);
+        return true;
     }
 
     private static UserProfileDto ToProfileDto(ApplicationUser user)

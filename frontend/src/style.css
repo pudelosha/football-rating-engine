@@ -1572,6 +1572,224 @@ p {
   font-weight: 950;
 }
 
+.users-panel-layout {
+  gap: 18px;
+}
+
+.users-access-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 18px;
+}
+
+.users-table {
+  min-width: 1080px;
+}
+
+.user-filter {
+  justify-content: flex-end;
+}
+
+.user-filter button {
+  padding: 0 10px;
+}
+
+.user-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(88px, 1fr));
+  gap: 8px;
+}
+
+.user-action-row button {
+  min-height: 34px;
+  padding: 0 10px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.user-action-row button:nth-child(2) {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.user-action-row button.danger {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.92);
+}
+
+.user-action-row button:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
+.access-role-pill,
+.access-status-pill {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.access-role-pill {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.access-status-pill.active {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.access-status-pill.pending {
+  color: #101915;
+  background: #e6c85f;
+}
+
+.access-status-pill.locked {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.92);
+}
+
+.users-audit-grid span {
+  border-radius: 8px;
+}
+
+.user-modal {
+  width: min(620px, 100%);
+}
+
+.user-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.user-detail-grid div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.user-detail-grid span {
+  color: rgba(255, 249, 234, 0.56);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.user-detail-grid strong {
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.user-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.user-actions-grid .form-field {
+  grid-column: 1 / -1;
+}
+
+.user-actions-grid .form-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 46px;
+  padding: 0 42px 0 12px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: none;
+  background:
+    linear-gradient(45deg, transparent 50%, #fff9ea 50%) calc(100% - 19px) 50% / 5px 5px no-repeat,
+    linear-gradient(135deg, #fff9ea 50%, transparent 50%) calc(100% - 14px) 50% / 5px 5px no-repeat,
+    rgba(255, 255, 255, 0.08);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.user-actions-grid .form-field select:focus {
+  box-shadow: 0 0 0 4px rgba(176, 216, 107, 0.14);
+}
+
+.user-actions-grid .form-field select option {
+  color: #fff9ea;
+  background: #1f2a23;
+  font-weight: 800;
+}
+
+.user-actions-grid button,
+.user-action-confirm button {
+  min-height: 42px;
+  padding: 0 12px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.user-actions-grid button:nth-of-type(2),
+.user-actions-grid button:nth-of-type(3),
+.user-action-confirm button:first-child {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.user-actions-grid button.danger,
+.user-action-confirm button.danger {
+  color: #fff9ea;
+  background: rgba(142, 49, 43, 0.92);
+}
+
+.user-actions-grid button:disabled,
+.user-action-confirm button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.user-action-confirm {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.user-action-confirm strong {
+  color: #fff9ea;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.user-action-confirm span {
+  color: rgba(255, 249, 234, 0.66);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.user-action-confirm div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delete-modal-actions.single {
+  grid-template-columns: 1fr;
+}
+
 .admin-expansion-panel {
   position: relative;
   display: grid;
@@ -1694,6 +1912,11 @@ p {
 
 .squad-toolbar {
   grid-template-columns: minmax(260px, 1fr) auto;
+  align-items: end;
+}
+
+.tournament-toolbar.user-toolbar {
+  grid-template-columns: minmax(460px, 1fr) auto;
   align-items: end;
 }
 
@@ -2822,12 +3045,20 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .users-access-grid {
+    grid-template-columns: 1fr;
+  }
+
   .tournament-toolbar {
     grid-template-columns: 1fr;
   }
 
   .tournament-filter {
     flex-wrap: wrap;
+  }
+
+  .user-filter {
+    justify-content: flex-start;
   }
 
   .tournament-url-row,

@@ -19,6 +19,7 @@ type View =
   | 'admin-ratings'
   | 'admin-squads'
   | 'admin-squad-details'
+  | 'admin-users'
   | 'admin-tournaments'
   | 'admin-tournament-form'
   | 'admin-tournament-details'
@@ -55,6 +56,16 @@ type UserProfile = {
   email: string
   displayName?: string | null
   memberSinceUtc: string
+}
+
+type AdminUser = {
+  id: string
+  email: string
+  displayName?: string | null
+  memberSinceUtc: string
+  emailConfirmed: boolean
+  isLockedOut: boolean
+  roles: string[]
 }
 
 type RotateApiKeyResponse = {
@@ -240,6 +251,7 @@ type TournamentPreview = {
 type TournamentSortKey = 'name' | 'season' | 'country' | 'teams' | 'matches' | 'lastSync'
 type TeamSortKey = 'name' | 'abbreviation'
 type MatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
+type UserSortKey = 'email' | 'displayName' | 'role' | 'status' | 'memberSince'
 type SortDirection = 'asc' | 'desc'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -261,6 +273,7 @@ const routes: Record<View, string> = {
   'admin-ratings': '/admin/ratings',
   'admin-squads': '/admin/squads',
   'admin-squad-details': '/admin/squads/0',
+  'admin-users': '/admin/users',
   'admin-tournaments': '/admin/tournaments',
   'admin-tournament-form': '/admin/tournaments/new',
   'admin-tournament-details': '/admin/tournaments/0',
@@ -544,6 +557,65 @@ const translations = {
     adminQualityOpsCopy: 'Review missing match statistics, stale squad snapshots, unfinished fixtures, and other data gaps before rating rebuilds run.',
     adminUsersOps: 'Users and access',
     adminUsersOpsCopy: 'Review users, account status, access level, lockouts, and future role-based visibility controls.',
+    usersPanelEyebrow: 'Users and access',
+    usersPanelTitle: 'Access control.',
+    usersPanelCopy:
+      'A future admin workspace for account review, role assignment, activation state, lockouts, API keys, and access audit checks. This screen is UI-only for now.',
+    usersDirectoryTitle: 'User directory',
+    usersAccessTitle: 'Access model',
+    usersAuditTitle: 'Audit signals',
+    userEmail: 'Email',
+    userDisplayName: 'Display name',
+    userRole: 'Role',
+    userStatus: 'Status',
+    userLastSeen: 'Last seen',
+    userActions: 'Actions',
+    userSearch: 'Search users',
+    userSearchPlaceholder: 'Search by email, display name, or role',
+    userFilterAll: 'All',
+    userFilterActive: 'Active',
+    userFilterPending: 'Pending',
+    userFilterLocked: 'Locked',
+    userDetailsTitle: 'User details.',
+    userDetailsCopy: 'Review account identity, access status, roles, and confirmation state.',
+    userSuspendTitle: 'Suspend user.',
+    userSuspendCopy: 'Suspended users are locked out and cannot access protected application views until access is restored.',
+    userUnsuspendTitle: 'Unsuspend user.',
+    userUnsuspendCopy: 'This restores access for the selected user if their account credentials are otherwise valid.',
+    userDeleteTitle: 'Delete user.',
+    userDeleteCopy: 'This removes the user account from the system. This action cannot be undone.',
+    userSuspendSuccess: 'User suspended.',
+    userUnsuspendSuccess: 'User unsuspended.',
+    userDeleteSuccess: 'User deleted.',
+    userRoleChangeSuccess: 'User role updated.',
+    userConfirmationResent: 'Confirmation email sent.',
+    emailConfirmed: 'Email confirmed',
+    yes: 'Yes',
+    no: 'No',
+    details: 'Details',
+    actions: 'Actions',
+    suspend: 'Suspend',
+    unsuspend: 'Unsuspend',
+    changeRole: 'Change role',
+    resendConfirmation: 'Resend confirmation email',
+    adminUserActionsTitle: 'User actions.',
+    adminUserActionsCopy: 'Choose an account operation. Destructive access actions ask for confirmation before they are executed.',
+    confirmAction: 'Confirm action',
+    accessPrepared: 'Prepared',
+    accessActive: 'Active',
+    accessPending: 'Pending',
+    accessLocked: 'Locked',
+    accessRoleItems: [
+      'Admin users can manage tournaments, squads, rating rebuilds, and future system jobs.',
+      'Regular users can browse dashboards, public rating outputs, and their own profile.',
+      'Future super admin controls can be reserved for destructive maintenance and role changes.',
+    ],
+    accessAuditItems: ['Email confirmation state', 'Password reset events', 'API key rotation', 'Failed login attempts', 'Account lockouts', 'Role changes'],
+    sampleUsers: [
+      { email: 'pudel1985@gmail.com', name: 'pudel1985', role: 'Admin', status: 'Active', lastSeen: 'Current session' },
+      { email: 'analyst@example.com', name: 'League Analyst', role: 'User', status: 'Pending', lastSeen: 'Not yet active' },
+      { email: 'operator@example.com', name: 'Data Operator', role: 'Admin', status: 'Locked', lastSeen: 'Static preview' },
+    ],
     adminSystemJobsOps: 'System jobs',
     adminSystemJobsOpsCopy: 'Monitor scheduled sync services, intervals, recent runs, failures, and background processing health.',
     adminPlaceholder: 'Not wired yet',
@@ -927,6 +999,65 @@ const translations = {
     adminQualityOpsCopy: 'Sprawdzaj brakujące statystyki meczowe, stare snapshoty kadr, niezakończone fixtures i inne luki danych przed rebuildami ratingów.',
     adminUsersOps: 'Użytkownicy i dostęp',
     adminUsersOpsCopy: 'Przeglądaj użytkowników, status kont, poziom dostępu, blokady i przyszłe ustawienia widoczności według ról.',
+    usersPanelEyebrow: 'Użytkownicy i dostęp',
+    usersPanelTitle: 'Kontrola dostępu.',
+    usersPanelCopy:
+      'Przyszły workspace admina do przeglądu kont, przypisywania ról, aktywacji, blokad, kluczy API i audytu dostępu. Na razie jest to tylko UI.',
+    usersDirectoryTitle: 'Katalog użytkowników',
+    usersAccessTitle: 'Model dostępu',
+    usersAuditTitle: 'Sygnały audytu',
+    userEmail: 'Email',
+    userDisplayName: 'Nazwa',
+    userRole: 'Rola',
+    userStatus: 'Status',
+    userLastSeen: 'Ostatnio aktywny',
+    userActions: 'Akcje',
+    userSearch: 'Szukaj użytkowników',
+    userSearchPlaceholder: 'Szukaj po emailu, nazwie lub roli',
+    userFilterAll: 'Wszyscy',
+    userFilterActive: 'Aktywni',
+    userFilterPending: 'Oczekujący',
+    userFilterLocked: 'Zablokowani',
+    userDetailsTitle: 'Szczegóły użytkownika.',
+    userDetailsCopy: 'Sprawdź tożsamość konta, status dostępu, role i stan potwierdzenia emaila.',
+    userSuspendTitle: 'Zawieś użytkownika.',
+    userSuspendCopy: 'Zawieszeni użytkownicy są blokowani i nie mogą korzystać z chronionych widoków aplikacji do czasu przywrócenia dostępu.',
+    userUnsuspendTitle: 'Przywróć użytkownika.',
+    userUnsuspendCopy: 'To przywraca dostęp wybranemu użytkownikowi, jeśli jego dane logowania są poprawne.',
+    userDeleteTitle: 'Usuń użytkownika.',
+    userDeleteCopy: 'To usuwa konto użytkownika z systemu. Tej akcji nie można cofnąć.',
+    userSuspendSuccess: 'Użytkownik zawieszony.',
+    userUnsuspendSuccess: 'Użytkownik przywrócony.',
+    userDeleteSuccess: 'Użytkownik usunięty.',
+    userRoleChangeSuccess: 'Rola użytkownika zaktualizowana.',
+    userConfirmationResent: 'Email potwierdzający wysłany.',
+    emailConfirmed: 'Email potwierdzony',
+    yes: 'Tak',
+    no: 'Nie',
+    details: 'Szczegóły',
+    actions: 'Akcje',
+    suspend: 'Zawieś',
+    unsuspend: 'Przywróć',
+    changeRole: 'Zmień rolę',
+    resendConfirmation: 'Wyślij email potwierdzający',
+    adminUserActionsTitle: 'Akcje użytkownika.',
+    adminUserActionsCopy: 'Wybierz operację na koncie. Destrukcyjne akcje dostępu wymagają potwierdzenia przed wykonaniem.',
+    confirmAction: 'Potwierdź akcję',
+    accessPrepared: 'Przygotowane',
+    accessActive: 'Aktywny',
+    accessPending: 'Oczekuje',
+    accessLocked: 'Zablokowany',
+    accessRoleItems: [
+      'Administratorzy mogą zarządzać turniejami, kadrami, rebuildami ratingów i przyszłymi jobami systemowymi.',
+      'Zwykli użytkownicy mogą przeglądać dashboardy, publiczne wyniki ratingów i własny profil.',
+      'Przyszłe kontrole super admina mogą obsługiwać operacje destrukcyjne i zmiany ról.',
+    ],
+    accessAuditItems: ['Status potwierdzenia emaila', 'Reset hasła', 'Rotacja klucza API', 'Nieudane logowania', 'Blokady kont', 'Zmiany ról'],
+    sampleUsers: [
+      { email: 'pudel1985@gmail.com', name: 'pudel1985', role: 'Admin', status: 'Aktywny', lastSeen: 'Bieżąca sesja' },
+      { email: 'analyst@example.com', name: 'League Analyst', role: 'Użytkownik', status: 'Oczekuje', lastSeen: 'Jeszcze nieaktywny' },
+      { email: 'operator@example.com', name: 'Data Operator', role: 'Admin', status: 'Zablokowany', lastSeen: 'Statyczny preview' },
+    ],
     adminSystemJobsOps: 'System jobs',
     adminSystemJobsOpsCopy: 'Monitoruj zaplanowane sync serwisy, interwały, ostatnie uruchomienia, błędy i zdrowie procesów w tle.',
     adminPlaceholder: 'Jeszcze nie podpięte',
@@ -1406,7 +1537,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -1635,6 +1766,16 @@ function App() {
           tournamentId={location.pathname.match(/^\/admin\/squads\/(\d+)$/)?.[1] ?? ''}
           onToast={showToast}
           onBack={() => navigateTo('/admin/squads')}
+        />
+      )}
+
+      {view === 'admin-users' && user && (
+        <UsersAccessPanel
+          t={t}
+          user={user}
+          language={language}
+          onToast={showToast}
+          onBack={() => navigate('admin')}
         />
       )}
 
@@ -2558,6 +2699,7 @@ function AdminDashboard({
       icon: 'profile',
       title: t.adminUsersOps,
       description: t.adminUsersOpsCopy,
+      action: () => onNavigate('admin-users'),
     },
     {
       icon: 'matches',
@@ -2722,6 +2864,394 @@ function RatingsPanel({
             </div>
           </section>
         </div>
+      </div>
+    </section>
+  )
+}
+
+function UsersAccessPanel({
+  t,
+  user,
+  language,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  language: Language
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [detailsUser, setDetailsUser] = useState<AdminUser | null>(null)
+  const [actionUser, setActionUser] = useState<AdminUser | null>(null)
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'locked'>('all')
+  const [sortKey, setSortKey] = useState<UserSortKey>('email')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadUsers() {
+      setIsLoading(true)
+      try {
+        const result = await authorizedRequest<AdminUser[]>(user.token, '/api/admin/users')
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!result.ok || !result.data) {
+          onToast(result.message || t.genericError, 'error')
+          return
+        }
+
+        setUsers(result.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadUsers()
+
+    return () => {
+      isMounted = false
+    }
+  }, [t, user.token])
+
+  const userStatusKey = (adminUser: AdminUser): 'active' | 'pending' | 'locked' => {
+    if (adminUser.isLockedOut) {
+      return 'locked'
+    }
+
+    if (!adminUser.emailConfirmed) {
+      return 'pending'
+    }
+
+    return 'active'
+  }
+
+  const userStatus = (adminUser: AdminUser) => {
+    const key = userStatusKey(adminUser)
+
+    if (key === 'locked') {
+      return { className: key, label: t.accessLocked }
+    }
+
+    if (key === 'pending') {
+      return { className: key, label: t.accessPending }
+    }
+
+    return { className: key, label: t.accessActive }
+  }
+
+  const visibleUsers = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+
+    return users
+      .filter((adminUser) => {
+        const statusKey = userStatusKey(adminUser)
+
+        if (statusFilter !== 'all' && statusKey !== statusFilter) {
+          return false
+        }
+
+        if (!normalizedSearch) {
+          return true
+        }
+
+        const searchable = [
+          adminUser.email,
+          adminUser.displayName || '',
+          adminUser.roles.join(', '),
+          userStatus(adminUser).label,
+        ].join(' ').toLowerCase()
+
+        return searchable.includes(normalizedSearch)
+      })
+      .sort((left, right) => {
+        let comparison = 0
+
+        if (sortKey === 'email') {
+          comparison = compareText(left.email, right.email)
+        } else if (sortKey === 'displayName') {
+          comparison = compareText(left.displayName || '', right.displayName || '')
+        } else if (sortKey === 'role') {
+          comparison = compareText(left.roles.join(', '), right.roles.join(', '))
+        } else if (sortKey === 'status') {
+          comparison = compareText(userStatus(left).label, userStatus(right).label)
+        } else {
+          comparison = new Date(left.memberSinceUtc).getTime() - new Date(right.memberSinceUtc).getTime()
+        }
+
+        return sortDirection === 'asc' ? comparison : -comparison
+      })
+  }, [search, sortDirection, sortKey, statusFilter, t, users])
+
+  const requestUserSort = (key: UserSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection('asc')
+  }
+
+  const userHeaders: Array<{ key: UserSortKey; label: string }> = [
+    { key: 'email', label: t.userEmail },
+    { key: 'displayName', label: t.userDisplayName },
+    { key: 'role', label: t.userRole },
+    { key: 'status', label: t.userStatus },
+    { key: 'memberSince', label: t.memberSince },
+  ]
+
+  const toggleUserSuspension = async (target: AdminUser) => {
+    const nextIsLockedOut = !target.isLockedOut
+    setProcessingUserId(target.id)
+
+    try {
+      const result = await authorizedRequest<void>(
+        user.token,
+        `/api/admin/users/${target.id}/${nextIsLockedOut ? 'suspend' : 'unsuspend'}`,
+        { method: 'POST' },
+      )
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setUsers((current) => current.map((adminUser) => adminUser.id === target.id
+        ? { ...adminUser, isLockedOut: nextIsLockedOut }
+        : adminUser))
+      setActionUser(null)
+      onToast(nextIsLockedOut ? t.userSuspendSuccess : t.userUnsuspendSuccess, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  const deleteUser = async (target: AdminUser) => {
+    setProcessingUserId(target.id)
+
+    try {
+      const result = await authorizedRequest<void>(user.token, `/api/admin/users/${target.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setUsers((current) => current.filter((adminUser) => adminUser.id !== target.id))
+      setActionUser(null)
+      onToast(t.userDeleteSuccess, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  const changeUserRole = async (target: AdminUser, role: string) => {
+    setProcessingUserId(target.id)
+
+    try {
+      const result = await authorizedRequest<AdminUser>(user.token, `/api/admin/users/${target.id}/role`, {
+        method: 'POST',
+        body: JSON.stringify({
+          role,
+          language,
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setUsers((current) => current.map((adminUser) => adminUser.id === target.id ? result.data! : adminUser))
+      setActionUser(result.data)
+      onToast(t.userRoleChangeSuccess, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  const resendConfirmation = async (target: AdminUser) => {
+    setProcessingUserId(target.id)
+
+    try {
+      const result = await authorizedRequest<void>(user.token, `/api/admin/users/${target.id}/resend-confirmation`, {
+        method: 'POST',
+        body: JSON.stringify({ language }),
+      })
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      onToast(t.userConfirmationResent, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content users-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.usersPanelEyebrow}</p>
+          <h1>{t.usersPanelTitle}</h1>
+          <p>{t.usersPanelCopy}</p>
+        </div>
+
+        <div className="details-top-actions panel-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToAdmin}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <div className="tournament-toolbar user-toolbar">
+          <label className="tournament-search">
+            <span>{t.userSearch}</span>
+            <input
+              type="search"
+              value={search}
+              placeholder={t.userSearchPlaceholder}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <div className="tournament-filter user-filter" aria-label={t.userStatus}>
+            {([
+              ['all', t.userFilterAll],
+              ['active', t.userFilterActive],
+              ['pending', t.userFilterPending],
+              ['locked', t.userFilterLocked],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={statusFilter === key ? 'active' : ''}
+                onClick={() => setStatusFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="profile" />
+            <h2>{t.usersDirectoryTitle}</h2>
+          </div>
+          <div className="tournament-table-shell users-table-shell">
+            <table className="tournament-table users-table">
+              <thead>
+                <tr>
+                  {userHeaders.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        type="button"
+                        className="table-sort-button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestUserSort(header.key)}
+                      >
+                        <span>{header.label}</span>
+                        <span aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.userActions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && visibleUsers.map((adminUser) => {
+                  const status = userStatus(adminUser)
+                  return (
+                  <tr key={adminUser.id}>
+                    <td>
+                      <strong>{adminUser.email}</strong>
+                    </td>
+                    <td>{adminUser.displayName || '-'}</td>
+                    <td>
+                      <span className="access-role-pill">{adminUser.roles.join(', ') || '-'}</span>
+                    </td>
+                    <td>
+                      <span className={`access-status-pill ${status.className}`}>
+                        {status.label}
+                      </span>
+                    </td>
+                    <td>{formatDate(adminUser.memberSinceUtc, '-')}</td>
+                    <td>
+                      <div className="user-action-row">
+                        <button type="button" onClick={() => setDetailsUser(adminUser)}>
+                          {t.details}
+                        </button>
+                        <button type="button" disabled={processingUserId === adminUser.id} onClick={() => setActionUser(adminUser)}>
+                          {t.actions}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  )
+                })}
+                {!isLoading && visibleUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={6}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {detailsUser && (
+          <UserDetailsModal
+            t={t}
+            user={detailsUser}
+            status={userStatus(detailsUser).label}
+            onCancel={() => setDetailsUser(null)}
+          />
+        )}
+
+        {actionUser && (
+          <UserActionsModal
+            t={t}
+            user={actionUser}
+            currentUserEmail={user.email}
+            isProcessing={processingUserId === actionUser.id}
+            onCancel={() => setActionUser(null)}
+            onChangeRole={(role) => changeUserRole(actionUser, role)}
+            onResendConfirmation={() => resendConfirmation(actionUser)}
+            onToggleSuspension={() => toggleUserSuspension(actionUser)}
+            onDelete={() => deleteUser(actionUser)}
+          />
+        )}
       </div>
     </section>
   )
@@ -3292,6 +3822,179 @@ function FullPageProcessingOverlay({ label }: { label: string }) {
         <LoadingSpinner />
         <strong>{label}</strong>
       </div>
+    </div>,
+    document.body,
+  )
+}
+
+function UserDetailsModal({
+  t,
+  user,
+  status,
+  onCancel,
+}: {
+  t: (typeof translations)[Language]
+  user: AdminUser
+  status: string
+  onCancel: () => void
+}) {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onCancel])
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        className="delete-modal user-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-details-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="profile" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.details}</p>
+          <h2 id="user-details-title">{t.userDetailsTitle}</h2>
+          <p>{t.userDetailsCopy}</p>
+          <div className="user-detail-grid">
+            <div><span>{t.userEmail}</span><strong>{user.email}</strong></div>
+            <div><span>{t.userDisplayName}</span><strong>{user.displayName || '-'}</strong></div>
+            <div><span>{t.userRole}</span><strong>{user.roles.join(', ') || '-'}</strong></div>
+            <div><span>{t.userStatus}</span><strong>{status}</strong></div>
+            <div><span>{t.memberSince}</span><strong>{formatDate(user.memberSinceUtc, '-')}</strong></div>
+            <div><span>{t.emailConfirmed}</span><strong>{user.emailConfirmed ? t.yes : t.no}</strong></div>
+          </div>
+        </div>
+        <div className="delete-modal-actions single">
+          <button type="button" onClick={onCancel}>
+            {t.cancel}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
+  )
+}
+
+function UserActionsModal({
+  t,
+  user,
+  currentUserEmail,
+  isProcessing,
+  onCancel,
+  onChangeRole,
+  onResendConfirmation,
+  onToggleSuspension,
+  onDelete,
+}: {
+  t: (typeof translations)[Language]
+  user: AdminUser
+  currentUserEmail: string
+  isProcessing: boolean
+  onCancel: () => void
+  onChangeRole: (role: string) => void
+  onResendConfirmation: () => void
+  onToggleSuspension: () => void
+  onDelete: () => void
+}) {
+  const [role, setRole] = useState(user.roles.includes('Admin') ? 'Admin' : 'User')
+  const [confirmAction, setConfirmAction] = useState<'access' | 'delete' | null>(null)
+  const isCurrentUser = user.email.toLowerCase() === currentUserEmail.toLowerCase()
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isProcessing) {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isProcessing, onCancel])
+
+  const confirmedActionLabel = confirmAction === 'delete'
+    ? t.delete
+    : user.isLockedOut ? t.unsuspend : t.suspend
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isProcessing && onCancel()}>
+      <section
+        className="delete-modal user-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-actions-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="profile" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.actions}</p>
+          <h2 id="user-actions-title">{t.adminUserActionsTitle}</h2>
+          <p>{t.adminUserActionsCopy}</p>
+          <div className="delete-modal-target">
+            <strong>{user.email}</strong>
+            <span>{user.displayName || '-'}</span>
+          </div>
+        </div>
+
+        <div className="user-actions-grid">
+          <label className="form-field">
+            <span>{t.userRole}</span>
+            <select value={role} disabled={isProcessing} onChange={(event) => setRole(event.target.value)}>
+              <option value="User">User</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </label>
+          <button type="button" disabled={isProcessing || user.roles.includes(role)} onClick={() => onChangeRole(role)}>
+            {t.changeRole}
+          </button>
+          <button type="button" disabled={isProcessing || user.emailConfirmed} onClick={onResendConfirmation}>
+            {t.resendConfirmation}
+          </button>
+          <button type="button" disabled={isProcessing || isCurrentUser} onClick={() => setConfirmAction('access')}>
+            {user.isLockedOut ? t.unsuspend : t.suspend}
+          </button>
+          <button className="danger" type="button" disabled={isProcessing || isCurrentUser} onClick={() => setConfirmAction('delete')}>
+            {t.delete}
+          </button>
+        </div>
+
+        {confirmAction && (
+          <div className="user-action-confirm">
+            <strong>{t.confirmAction}</strong>
+            <span>{confirmAction === 'delete' ? t.userDeleteCopy : user.isLockedOut ? t.userUnsuspendCopy : t.userSuspendCopy}</span>
+            <div>
+              <button type="button" disabled={isProcessing} onClick={() => setConfirmAction(null)}>
+                {t.cancel}
+              </button>
+              <button
+                className={confirmAction === 'delete' ? 'danger' : ''}
+                type="button"
+                disabled={isProcessing}
+                onClick={confirmAction === 'delete' ? onDelete : onToggleSuspension}
+              >
+                {isProcessing ? '...' : confirmedActionLabel}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="delete-modal-actions single">
+          <button type="button" disabled={isProcessing} onClick={onCancel}>
+            {t.cancel}
+          </button>
+        </div>
+      </section>
     </div>,
     document.body,
   )

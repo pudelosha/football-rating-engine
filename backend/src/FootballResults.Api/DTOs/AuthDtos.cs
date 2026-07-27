@@ -14,6 +14,8 @@ public sealed record UpdateUserProfileRequest(string? DisplayName, string? Langu
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, string? Language = null);
 public sealed record ChangeEmailRequest(string NewEmail, string Password, string? Language = null);
 public sealed record RotateApiKeyResponse(string ApiKey, string? Message = null);
+public sealed record ChangeUserRoleRequest(string Role, string? Language = null);
+public sealed record AdminResendConfirmationEmailRequest(string? Language = null);
 public sealed record AdminUserDto(
     string Id,
     string Email,

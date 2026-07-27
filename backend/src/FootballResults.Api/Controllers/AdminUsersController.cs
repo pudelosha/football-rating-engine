@@ -43,6 +43,23 @@ public sealed class AdminUsersController(IUserAccountService userAccountService)
         return await userAccountService.UnsuspendUserAsync(id) ? NoContent() : NotFound();
     }
 
+    [HttpPost("{id}/role")]
+    [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AdminUserDto>> ChangeRole(string id, ChangeUserRoleRequest request)
+    {
+        var user = await userAccountService.ChangeRoleAsync(id, request);
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    [HttpPost("{id}/resend-confirmation")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResendConfirmationEmail(string id, AdminResendConfirmationEmailRequest request)
+    {
+        return await userAccountService.ResendConfirmationEmailAsync(id, request) ? NoContent() : NotFound();
+    }
+
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
