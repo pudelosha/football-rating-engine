@@ -1861,6 +1861,66 @@ p {
   font-weight: 950;
 }
 
+.api-panel-layout {
+  gap: 18px;
+}
+
+.api-doc-card {
+  align-content: start;
+}
+
+.api-doc-card > p {
+  max-width: 760px;
+  margin: 0;
+  color: rgba(255, 249, 234, 0.66);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.api-doc-card > button {
+  min-height: 42px;
+  width: min(180px, 100%);
+  padding: 0 14px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.api-key-example,
+.api-endpoint-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.api-key-example span,
+.api-endpoint-row span {
+  color: rgba(255, 249, 234, 0.62);
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.api-key-example code,
+.api-endpoint-row code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.api-endpoint-list {
+  display: grid;
+  gap: 10px;
+}
+
 .ratings-team-table {
   min-width: 1080px;
 }
@@ -3398,6 +3458,67 @@ p {
   width: min(460px, 46%);
 }
 
+.rating-checkpoint-controls {
+  display: flex;
+  flex: 1;
+  max-width: 720px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: -4px;
+}
+
+.rating-checkpoint-controls label,
+.rating-updated-control {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.rating-checkpoint-controls label span,
+.rating-updated-control span {
+  color: rgba(255, 249, 234, 0.54);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.rating-checkpoint-controls select,
+.rating-updated-control strong {
+  min-height: 34px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.rating-checkpoint-controls select {
+  padding-right: 34px;
+  background:
+    linear-gradient(45deg, transparent 50%, #b0d86b 50%) calc(100% - 17px) 50% / 7px 7px no-repeat,
+    linear-gradient(135deg, #b0d86b 50%, transparent 50%) calc(100% - 12px) 50% / 7px 7px no-repeat,
+    rgba(255, 255, 255, 0.08);
+  appearance: none;
+}
+
+.rating-checkpoint-controls select:focus {
+  box-shadow: 0 0 0 2px rgba(176, 216, 107, 0.25);
+}
+
+.rating-checkpoint-controls select option {
+  color: #fff9ea;
+  background: #1f2a23;
+  font-weight: 850;
+}
+
 .rating-updated-badge {
   display: inline-flex;
   min-height: 34px;
@@ -3996,6 +4117,12 @@ p {
 
   .details-panel-heading.spread > .tournament-search {
     width: 100%;
+  }
+
+  .rating-checkpoint-controls {
+    width: 100%;
+    max-width: none;
+    justify-content: stretch;
   }
 
   .rating-table-search.align-right {

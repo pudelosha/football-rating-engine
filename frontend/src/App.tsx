@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 
 type Language = 'en' | 'pl'
-type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'tournaments' | 'predictions' | 'admin' | 'profile' | 'logout' | 'arrow-left'
+type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'api' | 'tournaments' | 'predictions' | 'admin' | 'profile' | 'logout' | 'arrow-left'
 type View =
   | 'landing'
   | 'login'
@@ -17,6 +17,7 @@ type View =
   | 'dashboard'
   | 'ratings'
   | 'rating-details'
+  | 'api'
   | 'admin'
   | 'admin-ratings'
   | 'admin-rating-details'
@@ -521,6 +522,7 @@ const routes: Record<View, string> = {
   dashboard: '/dashboard',
   ratings: '/ratings',
   'rating-details': '/ratings/0',
+  api: '/api',
   admin: '/admin',
   'admin-ratings': '/admin/ratings',
   'admin-rating-details': '/admin/ratings/0',
@@ -576,10 +578,22 @@ const translations = {
     menuRatings: 'Ratings',
     menuTeams: 'Teams',
     menuMatches: 'Matches',
-    menuTournaments: 'Tournaments',
+    menuApi: 'API',
     menuPredictions: 'Predictions',
     menuAdmin: 'Admin',
     menuSoon: 'Soon',
+    apiPanelEyebrow: 'API access',
+    apiPanelTitle: 'Match data API.',
+    apiPanelCopy: 'Use your API key to request tournament match lists, results, live matches, and upcoming fixtures from external tools.',
+    apiHeaderTitle: 'Authentication',
+    apiHeaderCopy: 'Send your key in the request header below. You can rotate the key from your profile.',
+    apiEndpointsTitle: 'Match endpoints',
+    apiEndpointAll: 'All tournament matches',
+    apiEndpointResults: 'Completed results',
+    apiEndpointLive: 'Live matches',
+    apiEndpointUpcoming: 'Upcoming matches',
+    apiEndpointSingle: 'Single match details',
+    apiKeyHeader: 'Header',
     adminPanelEyebrow: 'Admin panel',
     adminPanelTitle: 'Operational control room.',
     adminPanelCopy:
@@ -625,6 +639,13 @@ const translations = {
     ratingSnapshotStartFiveBack: '5 seasons back',
     ratingSnapshotStartCopy: 'Controls which seasons Base Elo imports into the next rebuild. Use current season only when reliable historic data is missing.',
     ratingTeamRatings: 'Team ratings',
+    ratingCheckpoint: 'Checkpoint',
+    ratingCheckpointLatest: 'Latest',
+    ratingCheckpointRoundOne: 'After Round 1',
+    ratingCheckpointRoundTwo: 'After Round 2',
+    ratingCompare: 'Compare',
+    ratingComparePrevious: 'Previous checkpoint',
+    ratingCompareSeasonStart: 'Before season',
     ratingRefreshBase: 'Refresh Base Elo',
     ratingRefreshForm: 'Refresh Form',
     ratingRefreshPerformance: 'Refresh Performance',
@@ -1165,10 +1186,22 @@ const translations = {
     menuRatings: 'Ratingi',
     menuTeams: 'Drużyny',
     menuMatches: 'Mecze',
-    menuTournaments: 'Turnieje',
+    menuApi: 'API',
     menuPredictions: 'Predykcje',
     menuAdmin: 'Admin',
     menuSoon: 'Wkrótce',
+    apiPanelEyebrow: 'Dostęp API',
+    apiPanelTitle: 'API danych meczowych.',
+    apiPanelCopy: 'Użyj swojego API key, aby pobierać listy meczów, wyniki, mecze live i nadchodzące spotkania z zewnętrznych narzędzi.',
+    apiHeaderTitle: 'Autoryzacja',
+    apiHeaderCopy: 'Przekaż klucz w poniższym nagłówku requestu. Klucz możesz zmienić w profilu.',
+    apiEndpointsTitle: 'Endpointy meczowe',
+    apiEndpointAll: 'Wszystkie mecze turnieju',
+    apiEndpointResults: 'Zakończone wyniki',
+    apiEndpointLive: 'Mecze live',
+    apiEndpointUpcoming: 'Nadchodzące mecze',
+    apiEndpointSingle: 'Szczegóły jednego meczu',
+    apiKeyHeader: 'Nagłówek',
     adminPanelEyebrow: 'Panel administratora',
     adminPanelTitle: 'Centrum operacyjne.',
     adminPanelCopy:
@@ -1214,6 +1247,13 @@ const translations = {
     ratingSnapshotStartFiveBack: '5 sezonów wstecz',
     ratingSnapshotStartCopy: 'Steruje tym, które sezony Base Elo pobierze przy następnym rebuildzie. Użyj aktualnego sezonu, gdy historia jest niepełna.',
     ratingTeamRatings: 'Ratingi drużyn',
+    ratingCheckpoint: 'Punkt kontrolny',
+    ratingCheckpointLatest: 'Najnowszy',
+    ratingCheckpointRoundOne: 'Po 1. kolejce',
+    ratingCheckpointRoundTwo: 'Po 2. kolejce',
+    ratingCompare: 'Porównaj',
+    ratingComparePrevious: 'Poprzedni punkt',
+    ratingCompareSeasonStart: 'Przed sezonem',
     ratingRefreshBase: 'Odśwież Base Elo',
     ratingRefreshForm: 'Odśwież Formę',
     ratingRefreshPerformance: 'Odśwież Performance',
@@ -2118,7 +2158,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -2335,6 +2375,13 @@ function App() {
         />
       )}
 
+      {view === 'api' && user && (
+        <ApiPanel
+          t={t}
+          onProfile={() => navigate('profile')}
+        />
+      )}
+
       {view === 'admin' && user && (
         <AdminDashboard
           t={t}
@@ -2480,6 +2527,7 @@ function MenuIcon({ name }: { name: MenuIconName }) {
     ratings: ['M5 19V9', 'M12 19V5', 'M19 19v-7', 'M4 19h16'],
     teams: ['M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M3.8 19a4.2 4.2 0 0 1 8.4 0', 'M11.8 19a4.2 4.2 0 0 1 8.4 0'],
     matches: ['M7 3v4', 'M17 3v4', 'M4 8h16', 'M5 5h14v15H5Z', 'M8 12h3', 'M13 12h3', 'M8 16h3'],
+    api: ['M8 8l-4 4 4 4', 'M16 8l4 4-4 4', 'M14 5l-4 14'],
     tournaments: ['M7 4h10v3a5 5 0 0 1-10 0Z', 'M9 19h6', 'M12 12v7', 'M5 5H3v2a3 3 0 0 0 4 2.8', 'M19 5h2v2a3 3 0 0 1-4 2.8'],
     predictions: ['M4 17c4-8 12-8 16 0', 'M8 17c2.7-4.4 5.3-4.4 8 0', 'M12 17v-4', 'M12 4v3', 'M18 6l-2 2', 'M6 6l2 2'],
     admin: ['M12 3l7 3v5c0 4.5-2.8 7.6-7 9-4.2-1.4-7-4.5-7-9V6Z', 'M9.5 12.2l1.7 1.7 3.4-4'],
@@ -2513,7 +2561,6 @@ function AppMenu({
   const futureItems: Array<[MenuIconName, string]> = [
     ['teams', t.menuTeams],
     ['matches', t.menuMatches],
-    ['tournaments', t.menuTournaments],
     ['predictions', t.menuPredictions],
   ]
 
@@ -2549,6 +2596,12 @@ function AppMenu({
               <small>{t.menuSoon}</small>
             </button>
           ))}
+          <button type="button" onClick={() => onNavigate('api')}>
+            <span className="menu-label">
+              <MenuIcon name="api" />
+              <span>{t.menuApi}</span>
+            </span>
+          </button>
           <button type="button" onClick={() => onNavigate('admin')}>
             <span className="menu-label">
               <MenuIcon name="admin" />
@@ -3387,6 +3440,64 @@ function AdminDashboard({
   )
 }
 
+function ApiPanel({
+  t,
+  onProfile,
+}: {
+  t: (typeof translations)[Language]
+  onProfile: () => void
+}) {
+  const endpoints = [
+    [t.apiEndpointAll, 'GET /api/tournaments/{tournamentId}/matches'],
+    [t.apiEndpointResults, 'GET /api/tournaments/{tournamentId}/matches/results'],
+    [t.apiEndpointLive, 'GET /api/tournaments/{tournamentId}/matches/live'],
+    [t.apiEndpointUpcoming, 'GET /api/tournaments/{tournamentId}/matches/upcoming'],
+    [t.apiEndpointSingle, 'GET /api/tournaments/{tournamentId}/matches/{matchId}'],
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content api-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.apiPanelEyebrow}</p>
+          <h1>{t.apiPanelTitle}</h1>
+          <p>{t.apiPanelCopy}</p>
+        </div>
+
+        <section className="details-panel api-doc-card">
+          <div className="details-panel-heading">
+            <MenuIcon name="api" />
+            <h2>{t.apiHeaderTitle}</h2>
+          </div>
+          <p>{t.apiHeaderCopy}</p>
+          <div className="api-key-example">
+            <span>{t.apiKeyHeader}</span>
+            <code>X-Api-Key: &lt;your-api-key&gt;</code>
+          </div>
+          <button type="button" onClick={onProfile}>
+            {t.profile}
+          </button>
+        </section>
+
+        <section className="details-panel api-doc-card">
+          <div className="details-panel-heading">
+            <MenuIcon name="matches" />
+            <h2>{t.apiEndpointsTitle}</h2>
+          </div>
+          <div className="api-endpoint-list">
+            {endpoints.map(([label, endpoint]) => (
+              <div className="api-endpoint-row" key={endpoint}>
+                <span>{label}</span>
+                <code>{endpoint}</code>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
 function toRecordByTeamId<T extends { teamId: number }>(items: T[]): Record<number, T> {
   return Object.fromEntries(items.map((item) => [item.teamId, item]))
 }
@@ -3658,6 +3769,8 @@ function UserRatingDetailsPanel({
   const [isLoading, setIsLoading] = useState(true)
   const [sortKey, setSortKey] = useState<RatingTeamSortKey>('finalRating')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [checkpoint, setCheckpoint] = useState('latest')
+  const [comparison, setComparison] = useState('previous')
 
   useEffect(() => {
     let isMounted = true
@@ -3907,9 +4020,27 @@ function UserRatingDetailsPanel({
               <MenuIcon name="teams" />
               <h2>{t.ratingTeamRatings}</h2>
             </div>
-            <span className="rating-updated-badge">
-              {t.ratingUpdated}: {combinedRatings ? formatDate(combinedRatings.runContext.calculatedAtUtc, '-') : '-'}
-            </span>
+            <div className="rating-checkpoint-controls" aria-label="Rating checkpoint controls">
+              <label>
+                <span>{t.ratingCheckpoint}</span>
+                <select value={checkpoint} onChange={(event) => setCheckpoint(event.target.value)}>
+                  <option value="latest">{t.ratingCheckpointLatest}</option>
+                  <option value="round-1">{t.ratingCheckpointRoundOne}</option>
+                  <option value="round-2">{t.ratingCheckpointRoundTwo}</option>
+                </select>
+              </label>
+              <label>
+                <span>{t.ratingCompare}</span>
+                <select value={comparison} onChange={(event) => setComparison(event.target.value)}>
+                  <option value="previous">{t.ratingComparePrevious}</option>
+                  <option value="season-start">{t.ratingCompareSeasonStart}</option>
+                </select>
+              </label>
+              <div className="rating-updated-control">
+                <span>{t.ratingUpdated}</span>
+                <strong>{combinedRatings ? formatDate(combinedRatings.runContext.calculatedAtUtc, '-') : '-'}</strong>
+              </div>
+            </div>
           </div>
           <div className="tournament-table-shell compact-table-shell rating-tooltip-table-shell">
             <table className="tournament-table ratings-team-table">
