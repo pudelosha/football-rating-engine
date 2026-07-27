@@ -747,10 +747,6 @@ p {
   animation-delay: 300ms;
 }
 
-.compact {
-  padding-top: 36px;
-}
-
 .view-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1425,7 +1421,7 @@ p {
 
 .rating-admin-grid {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr 0.95fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -1570,6 +1566,213 @@ p {
   color: #b0d86b;
   font-size: 11px;
   font-weight: 950;
+}
+
+.rating-config-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.rating-config-form.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rating-config-form .form-field {
+  align-content: start;
+  gap: 8px;
+}
+
+.rating-config-form .form-field > span {
+  display: flex;
+  min-height: 24px;
+  align-items: flex-end;
+  color: rgba(255, 249, 234, 0.86);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.rating-config-form .form-field input {
+  height: 52px;
+  min-height: 52px;
+  padding: 0 16px;
+  color: #fff9ea;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 52px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.rating-config-form .form-field input::-webkit-outer-spin-button,
+.rating-config-form .form-field input::-webkit-inner-spin-button {
+  margin: 0;
+}
+
+.rating-config-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rating-config-footer div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 14px;
+  min-width: 0;
+}
+
+.rating-config-footer span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.rating-config-footer strong {
+  color: #fff9ea;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.rating-config-footer button,
+.ratings-tournament-table button,
+.rating-run-card button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.rating-config-footer button:disabled,
+.rating-run-card button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ratings-tournament-table {
+  min-width: 980px;
+}
+
+.ratings-tournament-table th:last-child,
+.ratings-tournament-table td:last-child {
+  width: 180px;
+}
+
+.ratings-tournament-table button {
+  width: 100%;
+}
+
+.rating-run-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rating-run-card {
+  display: grid;
+  gap: 16px;
+  min-height: 250px;
+  padding: 20px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.095);
+}
+
+.rating-run-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.rating-run-card-head .menu-icon {
+  width: 28px;
+  height: 28px;
+  color: #b0d86b;
+}
+
+.rating-run-card h3 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 22px;
+}
+
+.rating-run-card span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.rating-run-card dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.rating-run-card dl div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.rating-run-card dt {
+  color: rgba(255, 249, 234, 0.52);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.rating-run-card dd {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 12px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.rating-context-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.rating-context-strip span {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: rgba(255, 249, 234, 0.78);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.ratings-team-table {
+  min-width: 1080px;
+}
+
+.ratings-team-table td span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 249, 234, 0.5);
+  font-size: 11px;
+  font-weight: 850;
 }
 
 .system-jobs-panel-layout {
@@ -3494,12 +3697,18 @@ p {
   .rating-rebuild-grid,
   .rating-layer-grid,
   .rating-version-grid,
+  .rating-run-grid,
   .system-job-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .rating-admin-grid {
+  .rating-admin-grid,
+  .rating-context-strip {
     grid-template-columns: 1fr;
+  }
+
+  .rating-config-form.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .data-quality-check-card {
@@ -3649,6 +3858,9 @@ p {
   .rating-rebuild-grid,
   .rating-layer-grid,
   .rating-version-grid,
+  .rating-run-grid,
+  .rating-config-form,
+  .rating-config-form.compact,
   .system-job-grid,
   .data-quality-check-grid,
   .pipeline {

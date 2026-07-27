@@ -29,6 +29,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<TeamPerformanceRating> TeamPerformanceRatings => Set<TeamPerformanceRating>();
     public DbSet<TeamPerformanceMatchSnapshot> TeamPerformanceMatchSnapshots => Set<TeamPerformanceMatchSnapshot>();
     public DbSet<SyncServiceConfiguration> SyncServiceConfigurations => Set<SyncServiceConfiguration>();
+    public DbSet<RatingConfiguration> RatingConfigurations => Set<RatingConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.Property(tournament => tournament.ApiBaseUrl).HasMaxLength(500);
             entity.Property(tournament => tournament.Locale).HasMaxLength(16);
             entity.Property(tournament => tournament.TimezoneOffset).HasMaxLength(16);
+        });
+
+        modelBuilder.Entity<RatingConfiguration>(entity =>
+        {
+            entity.HasIndex(configuration => configuration.Key).IsUnique();
+            entity.Property(configuration => configuration.Key).HasMaxLength(64);
+            entity.Property(configuration => configuration.BaseEloWeight).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.FormWeight).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.PerformanceWeight).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.SquadQualityWeight).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.LeagueStrengthWeight).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.UncertaintyPenaltyWeight).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.BaseRating).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.PromotedBaselineRating).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.KFactor).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.HomeAdvantage).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.FormScale).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.FormMaxAdjustment).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.PerformanceScale).HasPrecision(8, 2);
+            entity.Property(configuration => configuration.PerformanceMaxAdjustment).HasPrecision(8, 2);
         });
 
         modelBuilder.Entity<TournamentStage>(entity =>

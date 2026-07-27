@@ -17,6 +17,7 @@ type View =
   | 'dashboard'
   | 'admin'
   | 'admin-ratings'
+  | 'admin-rating-details'
   | 'admin-squads'
   | 'admin-squad-details'
   | 'admin-users'
@@ -164,6 +165,96 @@ type TournamentSquadCoverageResponse = {
   transfermarktMappedTeams: number
   snapshotTeams: number
   lastSnapshotUtc?: string | null
+}
+
+type RatingConfiguration = {
+  id: number
+  key: string
+  baseEloWeight: number
+  formWeight: number
+  performanceWeight: number
+  squadQualityWeight: number
+  leagueStrengthWeight: number
+  uncertaintyPenaltyWeight: number
+  baseRating: number
+  promotedBaselineRating: number
+  kFactor: number
+  homeAdvantage: number
+  bootstrapSeasonCount: number
+  formMatchCount: number
+  formScale: number
+  formMaxAdjustment: number
+  performanceMatchCount: number
+  performanceScale: number
+  performanceMaxAdjustment: number
+  updatedAtUtc: string
+}
+
+type EloRatingRun = {
+  id: number
+  tournamentId: number
+  name: string
+  scope: string
+  baseRating: number
+  promotedBaselineRating: number
+  kFactor: number
+  homeAdvantage: number
+  bootstrapSeasonCount: number
+  status: string | number
+  startedAtUtc: string
+  finishedAtUtc?: string | null
+  importedHistoricalMatches: number
+  processedMatches: number
+  errorMessage: string
+}
+
+type LayerRatingRun = {
+  id: number
+  tournamentId: number
+  eloRatingRunId: number
+  matchCount: number
+  scale: number
+  maxAdjustment: number
+  status: string | number
+  startedAtUtc: string
+  finishedAtUtc?: string | null
+  processedTeams: number
+  errorMessage: string
+}
+
+type CombinedTeamRating = {
+  teamId: number
+  teamName: string
+  teamAbbreviation: string
+  baseElo: number
+  formAdjustment: number
+  performanceAdjustment: number
+  squadQualityAdjustment: number
+  totalAdjustment: number
+  finalRating: number
+  ratingConfidence: number
+  hasFormRating: boolean
+  hasPerformanceRating: boolean
+  hasSquadQualityRating: boolean
+  baseEloMatchesPlayed: number
+  formMatchesPlayed: number
+  performanceMatchesPlayed: number
+  squadPlayerCount: number
+  lastBaseEloMatchUtc?: string | null
+  lastFormMatchUtc?: string | null
+  lastPerformanceMatchUtc?: string | null
+  squadSnapshotFetchedAtUtc?: string | null
+}
+
+type CombinedRatingsResponse = {
+  tournamentId: number
+  runContext: {
+    baseEloRunId?: number | null
+    formRatingRunId?: number | null
+    performanceRatingRunId?: number | null
+    calculatedAtUtc: string
+  }
+  teams: CombinedTeamRating[]
 }
 
 type TournamentDetails = {
@@ -343,6 +434,7 @@ const routes: Record<View, string> = {
   dashboard: '/dashboard',
   admin: '/admin',
   'admin-ratings': '/admin/ratings',
+  'admin-rating-details': '/admin/ratings/0',
   'admin-squads': '/admin/squads',
   'admin-squad-details': '/admin/squads/0',
   'admin-users': '/admin/users',
@@ -361,6 +453,10 @@ function getViewFromPath(pathname: string): View {
 
   if (pathname === '/admin/tournaments/new' || /^\/admin\/tournaments\/\d+\/edit$/.test(pathname)) {
     return 'admin-tournament-form'
+  }
+
+  if (/^\/admin\/ratings\/\d+$/.test(pathname)) {
+    return 'admin-rating-details'
   }
 
   if (/^\/admin\/squads\/\d+$/.test(pathname)) {
@@ -399,12 +495,60 @@ const translations = {
     ratingsPanelEyebrow: 'Rating operations',
     ratingsPanelTitle: 'Ratings panel.',
     ratingsPanelCopy:
-      'A structured control surface for FTSR rebuilds, model inputs, rating layers, and future explainability checks. This screen is a static admin shell for now.',
+      'Manage model configuration and open tournament rating snapshots for Base Elo, form, performance, squad quality, and combined FTSR layers.',
     ratingRebuildsTitle: 'Rating rebuilds',
     ratingConfigTitle: 'Rating configuration',
     ratingHistoryTitle: 'Rating history',
     ratingActiveVersionsTitle: 'Active rating versions',
     ratingActionPrepared: 'Prepared',
+    ratingTournamentListTitle: 'Tournament ratings',
+    ratingTournamentListCopy: 'Open a tournament to inspect current rating snapshots, layer runs, and team ratings.',
+    ratingWeightsTitle: 'Layer weights',
+    ratingParametersTitle: 'Snapshot defaults',
+    ratingSaveConfig: 'Save configuration',
+    ratingConfigSaved: 'Rating configuration saved.',
+    ratingOpenTournament: 'Open ratings',
+    ratingDetailsEyebrow: 'Tournament ratings',
+    ratingDetailsCopy: 'Inspect latest rating runs and refresh snapshots manually for the selected tournament.',
+    backToRatings: 'Back to ratings',
+    ratingRunSnapshots: 'Snapshot runs',
+    ratingTeamRatings: 'Team ratings',
+    ratingRefreshBase: 'Refresh Base Elo',
+    ratingRefreshForm: 'Refresh Form',
+    ratingRefreshPerformance: 'Refresh Performance',
+    ratingRefreshing: 'Refreshing rating snapshot.',
+    ratingRefreshDone: 'Rating snapshot refreshed.',
+    ratingNoRun: 'No successful run yet',
+    ratingRunId: 'Run ID',
+    ratingStarted: 'Started',
+    ratingFinished: 'Finished',
+    ratingProcessed: 'Processed',
+    ratingTeam: 'Team',
+    ratingBaseElo: 'Base Elo',
+    ratingForm: 'Form',
+    ratingPerformance: 'Performance',
+    ratingSquad: 'Squad',
+    ratingFinal: 'Final rating',
+    ratingConfidence: 'Confidence',
+    ratingUpdated: 'Updated',
+    ratingWeightTotal: 'Weight total',
+    ratingConfigBaseEloWeight: 'Base Elo weight',
+    ratingConfigFormWeight: 'Form weight',
+    ratingConfigPerformanceWeight: 'Performance weight',
+    ratingConfigSquadWeight: 'Squad quality weight',
+    ratingConfigLeagueWeight: 'League strength weight',
+    ratingConfigUncertaintyWeight: 'Uncertainty penalty weight',
+    ratingConfigBaseRating: 'Base rating',
+    ratingConfigPromotedBaseline: 'Promoted baseline',
+    ratingConfigKFactor: 'K-factor',
+    ratingConfigHomeAdvantage: 'Home advantage',
+    ratingConfigBootstrapSeasons: 'Bootstrap seasons',
+    ratingConfigFormMatches: 'Form matches',
+    ratingConfigFormScale: 'Form scale',
+    ratingConfigFormMax: 'Form max adjustment',
+    ratingConfigPerformanceMatches: 'Performance matches',
+    ratingConfigPerformanceScale: 'Performance scale',
+    ratingConfigPerformanceMax: 'Performance max adjustment',
     backToAdmin: 'Back to admin',
     ratingRebuildActions: [
       { title: 'Rebuild Base Elo', copy: 'Recalculate long-term team strength from completed matches, opponent quality, goal difference, competition weight, and home advantage rules.', meta: 'Matches + historical matches' },
@@ -920,12 +1064,60 @@ const translations = {
     ratingsPanelEyebrow: 'Operacje ratingów',
     ratingsPanelTitle: 'Panel ratingów.',
     ratingsPanelCopy:
-      'Strukturalny panel dla rebuildów FTSR, danych wejściowych modelu, warstw ratingu i przyszłych kontroli explainability. Na razie jest to statyczny szkielet admina.',
+      'Zarządzaj konfiguracją modelu i otwieraj snapshoty ratingowe turniejów dla Base Elo, formy, performance, jakości kadry i łącznego FTSR.',
     ratingRebuildsTitle: 'Rebuildy ratingów',
     ratingConfigTitle: 'Konfiguracja ratingów',
     ratingHistoryTitle: 'Historia ratingów',
     ratingActiveVersionsTitle: 'Aktywne wersje ratingów',
     ratingActionPrepared: 'Przygotowane',
+    ratingTournamentListTitle: 'Ratingi turniejów',
+    ratingTournamentListCopy: 'Otwórz turniej, aby sprawdzić aktualne snapshoty ratingów, runy warstw i ratingi drużyn.',
+    ratingWeightsTitle: 'Wagi warstw',
+    ratingParametersTitle: 'Domyślne snapshotów',
+    ratingSaveConfig: 'Zapisz konfigurację',
+    ratingConfigSaved: 'Konfiguracja ratingów zapisana.',
+    ratingOpenTournament: 'Otwórz ratingi',
+    ratingDetailsEyebrow: 'Ratingi turnieju',
+    ratingDetailsCopy: 'Sprawdzaj ostatnie runy ratingowe i ręcznie odświeżaj snapshoty dla wybranego turnieju.',
+    backToRatings: 'Wróć do ratingów',
+    ratingRunSnapshots: 'Snapshot runy',
+    ratingTeamRatings: 'Ratingi drużyn',
+    ratingRefreshBase: 'Odśwież Base Elo',
+    ratingRefreshForm: 'Odśwież Formę',
+    ratingRefreshPerformance: 'Odśwież Performance',
+    ratingRefreshing: 'Odświeżanie snapshotu ratingowego.',
+    ratingRefreshDone: 'Snapshot ratingowy odświeżony.',
+    ratingNoRun: 'Brak udanego runu',
+    ratingRunId: 'Run ID',
+    ratingStarted: 'Start',
+    ratingFinished: 'Koniec',
+    ratingProcessed: 'Przetworzone',
+    ratingTeam: 'Drużyna',
+    ratingBaseElo: 'Base Elo',
+    ratingForm: 'Forma',
+    ratingPerformance: 'Performance',
+    ratingSquad: 'Kadra',
+    ratingFinal: 'Rating końcowy',
+    ratingConfidence: 'Pewność',
+    ratingUpdated: 'Aktualizacja',
+    ratingWeightTotal: 'Suma wag',
+    ratingConfigBaseEloWeight: 'Waga Base Elo',
+    ratingConfigFormWeight: 'Waga formy',
+    ratingConfigPerformanceWeight: 'Waga performance',
+    ratingConfigSquadWeight: 'Waga jakości kadry',
+    ratingConfigLeagueWeight: 'Waga siły ligi',
+    ratingConfigUncertaintyWeight: 'Waga kary niepewności',
+    ratingConfigBaseRating: 'Rating bazowy',
+    ratingConfigPromotedBaseline: 'Baseline beniaminków',
+    ratingConfigKFactor: 'K-factor',
+    ratingConfigHomeAdvantage: 'Przewaga domu',
+    ratingConfigBootstrapSeasons: 'Sezony bootstrap',
+    ratingConfigFormMatches: 'Mecze formy',
+    ratingConfigFormScale: 'Skala formy',
+    ratingConfigFormMax: 'Maks. korekta formy',
+    ratingConfigPerformanceMatches: 'Mecze performance',
+    ratingConfigPerformanceScale: 'Skala performance',
+    ratingConfigPerformanceMax: 'Maks. korekta performance',
     backToAdmin: 'Wróć do admina',
     ratingRebuildActions: [
       { title: 'Przelicz Base Elo', copy: 'Przelicz długoterminową siłę drużyn z zakończonych meczów, jakości przeciwnika, różnicy bramek, wagi rozgrywek i zasad przewagi gospodarza.', meta: 'Mecze + historia' },
@@ -1781,7 +1973,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -1989,7 +2181,20 @@ function App() {
       {view === 'admin-ratings' && user && (
         <RatingsPanel
           t={t}
+          user={user}
+          onToast={showToast}
           onBack={() => navigate('admin')}
+          onOpen={(id) => navigateTo(`/admin/ratings/${id}`)}
+        />
+      )}
+
+      {view === 'admin-rating-details' && user && (
+        <RatingTournamentDetailsPanel
+          t={t}
+          user={user}
+          tournamentId={Number(location.pathname.match(/^\/admin\/ratings\/(\d+)$/)?.[1] ?? 0)}
+          onToast={showToast}
+          onBack={() => navigateTo('/admin/ratings')}
         />
       )}
 
@@ -3015,26 +3220,152 @@ function AdminDashboard({
 
 function RatingsPanel({
   t,
+  user,
+  onToast,
   onBack,
+  onOpen,
 }: {
   t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
   onBack: () => void
+  onOpen: (id: number) => void
 }) {
-  const rebuildIcons: MenuIconName[] = ['ratings', 'predictions', 'matches', 'teams', 'admin']
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
+  const [config, setConfig] = useState<RatingConfiguration | null>(null)
+  const [draft, setDraft] = useState<RatingConfiguration | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
-  const versionIcons: MenuIconName[] = ['ratings', 'predictions', 'matches', 'teams', 'admin']
+  useEffect(() => {
+    let isMounted = true
 
-  const versionBadges = ['v1', 'v1.5', 'v2', 'v3', 'v3.5']
+    const load = async () => {
+      setIsLoading(true)
+      try {
+        const [tournamentsResult, configResult] = await Promise.all([
+          authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments'),
+          authorizedRequest<RatingConfiguration>(user.token, '/api/admin/ratings/configuration'),
+        ])
 
-  const historyIcons: MenuIconName[] = ['admin', 'teams', 'ratings']
+        if (!isMounted) {
+          return
+        }
 
-  const configIcons: MenuIconName[] = [
-    'ratings',
-    'tournaments',
-    'predictions',
-    'matches',
-    'teams',
-    'admin',
+        if (!tournamentsResult.ok || !tournamentsResult.data) {
+          onToast(tournamentsResult.message || t.genericError, 'error')
+          return
+        }
+
+        if (!configResult.ok || !configResult.data) {
+          onToast(configResult.message || t.genericError, 'error')
+          return
+        }
+
+        setTournaments(tournamentsResult.data)
+        setConfig(configResult.data)
+        setDraft(configResult.data)
+      } catch {
+        if (isMounted) {
+          onToast(t.genericError, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [t.genericError, user.token])
+
+  const updateDraft = (key: keyof RatingConfiguration, value: string) => {
+    if (!draft) {
+      return
+    }
+
+    setDraft({
+      ...draft,
+      [key]: key === 'bootstrapSeasonCount' || key === 'formMatchCount' || key === 'performanceMatchCount'
+        ? Math.max(0, Number(value) || 0)
+        : Number(value) || 0,
+    })
+  }
+
+  const saveConfig = async () => {
+    if (!draft) {
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await authorizedRequest<RatingConfiguration>(user.token, '/api/admin/ratings/configuration', {
+        method: 'PUT',
+        body: JSON.stringify({
+          baseEloWeight: draft.baseEloWeight,
+          formWeight: draft.formWeight,
+          performanceWeight: draft.performanceWeight,
+          squadQualityWeight: draft.squadQualityWeight,
+          leagueStrengthWeight: draft.leagueStrengthWeight,
+          uncertaintyPenaltyWeight: draft.uncertaintyPenaltyWeight,
+          baseRating: draft.baseRating,
+          promotedBaselineRating: draft.promotedBaselineRating,
+          kFactor: draft.kFactor,
+          homeAdvantage: draft.homeAdvantage,
+          bootstrapSeasonCount: draft.bootstrapSeasonCount,
+          formMatchCount: draft.formMatchCount,
+          formScale: draft.formScale,
+          formMaxAdjustment: draft.formMaxAdjustment,
+          performanceMatchCount: draft.performanceMatchCount,
+          performanceScale: draft.performanceScale,
+          performanceMaxAdjustment: draft.performanceMaxAdjustment,
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setConfig(result.data)
+      setDraft(result.data)
+      onToast(t.ratingConfigSaved, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const weightTotal = draft
+    ? draft.baseEloWeight + draft.formWeight + draft.performanceWeight + draft.squadQualityWeight + draft.leagueStrengthWeight - draft.uncertaintyPenaltyWeight
+    : 0
+
+  const weightFields: Array<{ key: keyof RatingConfiguration; label: string }> = [
+    { key: 'baseEloWeight', label: t.ratingConfigBaseEloWeight },
+    { key: 'formWeight', label: t.ratingConfigFormWeight },
+    { key: 'performanceWeight', label: t.ratingConfigPerformanceWeight },
+    { key: 'squadQualityWeight', label: t.ratingConfigSquadWeight },
+    { key: 'leagueStrengthWeight', label: t.ratingConfigLeagueWeight },
+    { key: 'uncertaintyPenaltyWeight', label: t.ratingConfigUncertaintyWeight },
+  ]
+
+  const parameterFields: Array<{ key: keyof RatingConfiguration; label: string }> = [
+    { key: 'baseRating', label: t.ratingConfigBaseRating },
+    { key: 'promotedBaselineRating', label: t.ratingConfigPromotedBaseline },
+    { key: 'kFactor', label: t.ratingConfigKFactor },
+    { key: 'homeAdvantage', label: t.ratingConfigHomeAdvantage },
+    { key: 'bootstrapSeasonCount', label: t.ratingConfigBootstrapSeasons },
+    { key: 'formMatchCount', label: t.ratingConfigFormMatches },
+    { key: 'formScale', label: t.ratingConfigFormScale },
+    { key: 'formMaxAdjustment', label: t.ratingConfigFormMax },
+    { key: 'performanceMatchCount', label: t.ratingConfigPerformanceMatches },
+    { key: 'performanceScale', label: t.ratingConfigPerformanceScale },
+    { key: 'performanceMaxAdjustment', label: t.ratingConfigPerformanceMax },
   ]
 
   return (
@@ -3053,81 +3384,343 @@ function RatingsPanel({
           </button>
         </div>
 
-        <section className="details-panel rating-rebuild-panel">
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        {draft && (
+          <div className="rating-admin-grid rating-control-grid">
+            <section className="details-panel">
+              <div className="details-panel-heading">
+                <MenuIcon name="ratings" />
+                <h2>{t.ratingWeightsTitle}</h2>
+              </div>
+              <div className="rating-config-form compact">
+                {weightFields.map((field) => (
+                  <label className="form-field" key={field.key}>
+                    <span>{field.label}</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={String(draft[field.key])}
+                      onChange={(event) => updateDraft(field.key, event.target.value)}
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="rating-config-footer">
+                <div>
+                  <span>{t.ratingWeightTotal}</span>
+                  <strong>{weightTotal.toFixed(2)}</strong>
+                </div>
+                <button type="button" onClick={saveConfig} disabled={isSaving}>
+                  {t.ratingSaveConfig}
+                </button>
+              </div>
+            </section>
+
+            <section className="details-panel">
+              <div className="details-panel-heading">
+                <MenuIcon name="admin" />
+                <h2>{t.ratingParametersTitle}</h2>
+              </div>
+              <div className="rating-config-form">
+                {parameterFields.map((field) => (
+                  <label className="form-field" key={field.key}>
+                    <span>{field.label}</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={String(draft[field.key])}
+                      onChange={(event) => updateDraft(field.key, event.target.value)}
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="rating-config-footer">
+                <div>
+                  <span>{t.ratingUpdated}</span>
+                  <strong>{config ? formatDate(config.updatedAtUtc, '-') : '-'}</strong>
+                </div>
+                <button type="button" onClick={saveConfig} disabled={isSaving}>
+                  {t.ratingSaveConfig}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="tournaments" />
+            <h2>{t.ratingTournamentListTitle}</h2>
+          </div>
+          <p className="panel-copy">{t.ratingTournamentListCopy}</p>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table ratings-tournament-table">
+              <thead>
+                <tr>
+                  <th>{t.tournamentName}</th>
+                  <th>{t.tournamentSeason}</th>
+                  <th>{t.tournamentCountry}</th>
+                  <th>{t.teams}</th>
+                  <th>{t.matches}</th>
+                  <th>{t.tournamentLastSync}</th>
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && tournaments.map((tournament) => (
+                  <tr key={tournament.id}>
+                    <td><strong>{tournament.name}</strong></td>
+                    <td>{tournament.season}</td>
+                    <td>{tournament.competitionCountry}</td>
+                    <td>{tournament.teamCount}</td>
+                    <td>{tournament.matchCount}</td>
+                    <td>{formatDate(tournament.lastSyncedAtUtc, '-')}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpen(tournament.id)}>
+                        {t.ratingOpenTournament}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && tournaments.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function RatingTournamentDetailsPanel({
+  t,
+  user,
+  tournamentId,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  tournamentId: number
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const [tournament, setTournament] = useState<TournamentDetails | null>(null)
+  const [config, setConfig] = useState<RatingConfiguration | null>(null)
+  const [baseRun, setBaseRun] = useState<EloRatingRun | null>(null)
+  const [formRun, setFormRun] = useState<LayerRatingRun | null>(null)
+  const [performanceRun, setPerformanceRun] = useState<LayerRatingRun | null>(null)
+  const [combinedRatings, setCombinedRatings] = useState<CombinedRatingsResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeRebuild, setActiveRebuild] = useState<'base' | 'form' | 'performance' | null>(null)
+
+  const loadDetails = async () => {
+    setIsLoading(true)
+    try {
+      const [tournamentResult, configResult, baseResult, formResult, performanceResult, combinedResult] = await Promise.all([
+        authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournamentId}`),
+        authorizedRequest<RatingConfiguration>(user.token, '/api/admin/ratings/configuration'),
+        authorizedRequest<EloRatingRun>(user.token, `/api/tournaments/${tournamentId}/ratings/base-elo/latest-run`),
+        authorizedRequest<LayerRatingRun>(user.token, `/api/tournaments/${tournamentId}/ratings/form/latest-run`),
+        authorizedRequest<LayerRatingRun>(user.token, `/api/tournaments/${tournamentId}/ratings/performance/latest-run`),
+        authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournamentId}/ratings/combined/teams`),
+      ])
+
+      if (!tournamentResult.ok || !tournamentResult.data) {
+        onToast(tournamentResult.message || t.genericError, 'error')
+        return
+      }
+
+      if (!configResult.ok || !configResult.data) {
+        onToast(configResult.message || t.genericError, 'error')
+        return
+      }
+
+      setTournament(tournamentResult.data)
+      setConfig(configResult.data)
+      setBaseRun(baseResult.ok && baseResult.data ? baseResult.data : null)
+      setFormRun(formResult.ok && formResult.data ? formResult.data : null)
+      setPerformanceRun(performanceResult.ok && performanceResult.data ? performanceResult.data : null)
+      setCombinedRatings(combinedResult.ok && combinedResult.data ? combinedResult.data : null)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadDetails()
+  }, [tournamentId, user.token])
+
+  const rebuild = async (layer: 'base' | 'form' | 'performance') => {
+    if (!config) {
+      return
+    }
+
+    setActiveRebuild(layer)
+    try {
+      const endpoint = layer === 'base'
+        ? `/api/tournaments/${tournamentId}/ratings/base-elo/rebuild`
+        : layer === 'form'
+          ? `/api/tournaments/${tournamentId}/ratings/form/rebuild`
+          : `/api/tournaments/${tournamentId}/ratings/performance/rebuild`
+
+      const body = layer === 'base'
+        ? {
+            baseRating: config.baseRating,
+            promotedBaselineRating: config.promotedBaselineRating,
+            kFactor: config.kFactor,
+            homeAdvantage: tournament?.applyHomeAdvantage ? config.homeAdvantage : 0,
+            bootstrapSeasonCount: config.bootstrapSeasonCount,
+            scope: tournament?.competitionName || 'Tournament',
+          }
+        : layer === 'form'
+          ? {
+              matchCount: config.formMatchCount,
+              scale: config.formScale,
+              maxAdjustment: config.formMaxAdjustment,
+            }
+          : {
+              matchCount: config.performanceMatchCount,
+              scale: config.performanceScale,
+              maxAdjustment: config.performanceMaxAdjustment,
+            }
+
+      const result = await authorizedRequest<unknown>(user.token, endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      onToast(t.ratingRefreshDone, 'success')
+      await loadDetails()
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setActiveRebuild(null)
+    }
+  }
+
+  const runCards = [
+    { key: 'base', icon: 'ratings' as MenuIconName, title: 'Base Elo', run: baseRun, action: t.ratingRefreshBase, onClick: () => rebuild('base'), processed: baseRun?.processedMatches ?? 0 },
+    { key: 'form', icon: 'predictions' as MenuIconName, title: 'Form', run: formRun, action: t.ratingRefreshForm, onClick: () => rebuild('form'), processed: formRun?.processedTeams ?? 0 },
+    { key: 'performance', icon: 'matches' as MenuIconName, title: 'Performance', run: performanceRun, action: t.ratingRefreshPerformance, onClick: () => rebuild('performance'), processed: performanceRun?.processedTeams ?? 0 },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.ratingDetailsEyebrow}</p>
+          <h1>{tournament?.name ?? t.ratingDetailsEyebrow}</h1>
+          <p>{t.ratingDetailsCopy}</p>
+        </div>
+
+        <div className="details-top-actions rating-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToRatings}</span>
+          </button>
+        </div>
+
+        {(isLoading || activeRebuild) && (
+          <FullPageProcessingOverlay label={activeRebuild ? t.ratingRefreshing : t.loading} />
+        )}
+
+        <section className="data-quality-live-checks">
           <div className="details-panel-heading">
             <MenuIcon name="ratings" />
-            <h2>{t.ratingRebuildsTitle}</h2>
+            <h2>{t.ratingRunSnapshots}</h2>
           </div>
-          <div className="rating-rebuild-grid">
-            {t.ratingRebuildActions.map((action, index) => (
-              <article className="rating-action-card" key={action.title}>
-                <div>
-                  <MenuIcon name={rebuildIcons[index]} />
-                  <span>{action.meta}</span>
+          <div className="rating-run-grid">
+            {runCards.map((card) => (
+              <article className="rating-run-card" key={card.key}>
+                <div className="rating-run-card-head">
+                  <MenuIcon name={card.icon} />
+                  <div>
+                    <h3>{card.title}</h3>
+                    <span>{card.run ? `${t.ratingRunId}: ${card.run.id}` : t.ratingNoRun}</span>
+                  </div>
                 </div>
-                <h3>{action.title}</h3>
-                <p>{action.copy}</p>
-                <button type="button" disabled>{t.ratingActionPrepared}</button>
+                <dl>
+                  <div>
+                    <dt>{t.ratingStarted}</dt>
+                    <dd>{card.run ? formatDate(card.run.startedAtUtc, '-') : '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.ratingFinished}</dt>
+                    <dd>{card.run ? formatDate(card.run.finishedAtUtc, '-') : '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.ratingProcessed}</dt>
+                    <dd>{card.processed}</dd>
+                  </div>
+                </dl>
+                <button type="button" onClick={card.onClick} disabled={Boolean(activeRebuild) || !config}>
+                  {card.action}
+                </button>
               </article>
             ))}
           </div>
         </section>
 
-        <div className="rating-admin-grid rating-control-grid">
-          <section className="details-panel">
-            <div className="details-panel-heading">
-              <MenuIcon name="admin" />
-              <h2>{t.ratingConfigTitle}</h2>
-            </div>
-            <ol className="rating-step-list rating-config-list">
-              {t.ratingConfigItems.map((item, index) => (
-                <li key={item}>
-                  <span><MenuIcon name={configIcons[index]} /></span>
-                  <strong>{item}</strong>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          <section className="details-panel">
-            <div className="details-panel-heading">
-              <MenuIcon name="matches" />
-              <h2>{t.ratingHistoryTitle}</h2>
-            </div>
-            <div className="rating-history-list">
-              {t.ratingHistoryItems.map((item, index) => (
-                <article key={`${item.name}-${item.type}`}>
-                  <MenuIcon name={historyIcons[index]} />
-                  <div>
-                    <strong>{item.type}</strong>
-                    <span>{item.name}</span>
-                    <small>{item.date}</small>
-                  </div>
-                  <em>{item.status}</em>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="details-panel">
-            <div className="details-panel-heading">
-              <MenuIcon name="predictions" />
-              <h2>{t.ratingActiveVersionsTitle}</h2>
-            </div>
-            <div className="rating-version-grid">
-              {t.ratingActiveVersionItems.map((item, index) => (
-                <article key={item.label}>
-                  <div>
-                    <MenuIcon name={versionIcons[index]} />
-                    <span>{versionBadges[index]}</span>
-                  </div>
-                  <strong>{item.label}</strong>
-                  <small>{item.value}</small>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="teams" />
+            <h2>{t.ratingTeamRatings}</h2>
+          </div>
+          <div className="rating-context-strip">
+            <span>{t.ratingBaseElo}: {combinedRatings?.runContext.baseEloRunId ?? '-'}</span>
+            <span>{t.ratingForm}: {combinedRatings?.runContext.formRatingRunId ?? '-'}</span>
+            <span>{t.ratingPerformance}: {combinedRatings?.runContext.performanceRatingRunId ?? '-'}</span>
+            <span>{t.ratingUpdated}: {combinedRatings ? formatDate(combinedRatings.runContext.calculatedAtUtc, '-') : '-'}</span>
+          </div>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table ratings-team-table">
+              <thead>
+                <tr>
+                  <th>{t.ratingTeam}</th>
+                  <th>{t.ratingBaseElo}</th>
+                  <th>{t.ratingForm}</th>
+                  <th>{t.ratingPerformance}</th>
+                  <th>{t.ratingSquad}</th>
+                  <th>{t.ratingFinal}</th>
+                  <th>{t.ratingConfidence}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && combinedRatings?.teams.map((team) => (
+                  <tr key={team.teamId}>
+                    <td><strong>{team.teamName}</strong><span>{team.teamAbbreviation}</span></td>
+                    <td>{team.baseElo.toFixed(2)}</td>
+                    <td>{team.formAdjustment.toFixed(2)}</td>
+                    <td>{team.performanceAdjustment.toFixed(2)}</td>
+                    <td>{team.squadQualityAdjustment.toFixed(2)}</td>
+                    <td><strong>{team.finalRating.toFixed(2)}</strong></td>
+                    <td>{(team.ratingConfidence * 100).toFixed(0)}%</td>
+                  </tr>
+                ))}
+                {!isLoading && (!combinedRatings || combinedRatings.teams.length === 0) && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>{t.ratingNoRun}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </section>
   )
