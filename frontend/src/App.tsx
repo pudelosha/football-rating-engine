@@ -1,5 +1,6 @@
 ﻿import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
 type Language = 'en' | 'pl'
@@ -607,10 +608,10 @@ const translations = {
     menuAdmin: 'Admin',
     menuSoon: 'Soon',
     userMatchesPanelEyebrow: 'Matches',
-    userMatchesPanelTitle: 'Match center.',
+    userMatchesPanelTitle: 'Match center',
     userMatchesPanelCopy: 'Select a tournament to browse synchronized fixtures, live matches, and completed results.',
     userMatchDetailsEyebrow: 'Tournament matches',
-    userMatchDetailsTitle: 'Match list.',
+    userMatchDetailsTitle: 'Match list',
     userMatchDetailsCopy: 'Browse tournament matches and filter the list by stage, round, or team name.',
     matchOpenTournament: 'Show matches',
     matchSearch: 'Search matches',
@@ -619,13 +620,13 @@ const translations = {
     allRounds: 'All rounds',
     backToMatches: 'Back to matches',
     predictionsPanelEyebrow: 'Predictions',
-    predictionsPanelTitle: 'Prediction center.',
+    predictionsPanelTitle: 'Prediction center',
     predictionsPanelCopy: 'Select a tournament to inspect model-driven 1X2 probabilities for upcoming and live matches.',
     predictionsDetailsEyebrow: 'Match predictions',
-    predictionsDetailsTitle: '1X2 model board.',
+    predictionsDetailsTitle: '1X2 model board',
     predictionsDetailsCopy: 'Compare home win, draw, and away win chances calculated from the current FTSR rating layers.',
     predictionMatchEyebrow: 'Prediction detail',
-    predictionMatchTitle: 'Match intelligence.',
+    predictionMatchTitle: 'Match intelligence',
     predictionMatchCopy: 'A deeper view of rating gap, confidence, home advantage, fair odds, and alternate model scenarios.',
     predictionOpenTournament: 'Show predictions',
     predictionOpenMatch: 'Open analysis',
@@ -644,6 +645,7 @@ const translations = {
     predictedOutcome: 'Predicted outcome',
     scenarioBoard: 'Scenario board',
     modelBreakdown: 'Model breakdown',
+    actualModelScenario: 'Actual model scenario',
     homeAdvantageApplied: 'Home advantage applied',
     neutralGround: 'Neutral ground',
     baseEloOnly: 'Base Elo only',
@@ -652,8 +654,10 @@ const translations = {
     dataConfidence: 'Data confidence',
     noPrediction: 'Prediction unavailable',
     noPredictionCopy: 'Both teams need matched rating data before the model can estimate this fixture.',
-    apiPanelEyebrow: 'API access',
-    apiPanelTitle: 'Match data API.',
+    noFuturePredictions: 'No predictionable matches',
+    noFuturePredictionsCopy: 'Predictions are available only for upcoming or live matches. Finished matches are excluded from this view.',
+    apiPanelEyebrow: 'API',
+    apiPanelTitle: 'Match data API',
     apiPanelCopy: 'Use your API key to request tournament match lists, results, live matches, and upcoming fixtures from external tools.',
     apiHeaderTitle: 'Authentication',
     apiHeaderCopy: 'Send your key in the request header below. You can rotate the key from your profile.',
@@ -664,13 +668,13 @@ const translations = {
     apiEndpointUpcoming: 'Upcoming matches',
     apiEndpointSingle: 'Single match details',
     apiKeyHeader: 'Header',
-    adminPanelEyebrow: 'Admin panel',
-    adminPanelTitle: 'Operational control room.',
+    adminPanelEyebrow: 'Admin',
+    adminPanelTitle: 'Operational control room',
     adminPanelCopy:
       'A structured workspace for sync jobs, rating rebuilds, squad imports, and data quality checks. The controls are placeholders for now, ready to be wired to backend endpoints.',
     adminOverview: 'Overview',
-    ratingsPanelEyebrow: 'Rating operations',
-    ratingsPanelTitle: 'Ratings panel.',
+    ratingsPanelEyebrow: 'Ratings',
+    ratingsPanelTitle: 'Ratings panel',
     ratingsPanelCopy:
       'Manage model configuration and open tournament rating snapshots for Base Elo, form, performance, squad quality, and combined FTSR layers.',
     ratingRebuildsTitle: 'Rating rebuilds',
@@ -681,10 +685,10 @@ const translations = {
     ratingTournamentListTitle: 'Tournament ratings',
     ratingTournamentListCopy: 'Open a tournament to inspect current rating snapshots, layer runs, and team ratings.',
     userRatingsPanelEyebrow: 'Ratings',
-    userRatingsPanelTitle: 'Team ratings.',
+    userRatingsPanelTitle: 'Team ratings',
     userRatingsPanelCopy: 'Browse tournament rating tables built from Base Elo, form, performance, and squad quality signals.',
     userRatingDetailsEyebrow: 'Tournament ratings',
-    userRatingDetailsTitle: 'Team rating table.',
+    userRatingDetailsTitle: 'Team rating table',
     userRatingDetailsCopy: 'Explore the latest team strength ratings for the selected tournament.',
     ratingWeightsTitle: 'Layer weights',
     ratingParametersTitle: 'Snapshot defaults',
@@ -780,8 +784,8 @@ const translations = {
       { label: 'Squad Quality', value: 'Latest imported snapshot' },
       { label: 'Combined Rating', value: 'Draft until published' },
     ],
-    squadsPanelEyebrow: 'Squad administration',
-    squadsPanelTitle: 'Squads panel.',
+    squadsPanelEyebrow: 'Squads',
+    squadsPanelTitle: 'Squads panel',
     squadsPanelCopy:
       'Map tournament teams to Transfermarkt sources, review squad coverage, and prepare squad quality inputs for the rating model.',
     squadsTableTitle: 'Tournament squad coverage',
@@ -815,7 +819,7 @@ const translations = {
     squadBulkImportSuccess: 'Squad snapshots import finished.',
     squadBulkImportNoMappings: 'No Transfermarkt mappings found for this tournament.',
     loading: 'Loading',
-    editSquadMappingTitle: 'Edit squad source.',
+    editSquadMappingTitle: 'Edit squad source',
     editSquadMappingCopy: 'Paste the Transfermarkt club page URL. Import will normalize it to the detailed squad page for the tournament season.',
     saveAndImportSnapshot: 'Save and import snapshot',
     squadSeason: 'Snapshot season',
@@ -824,8 +828,8 @@ const translations = {
     adminCreateTournament: 'Create new tournament',
     adminListTournaments: 'List tournaments',
     adminTournamentsPanel: 'Tournaments panel',
-    tournamentsPanelEyebrow: 'Tournament administration',
-    tournamentsPanelTitle: 'Tournaments panel.',
+    tournamentsPanelEyebrow: 'Tournaments',
+    tournamentsPanelTitle: 'Tournaments panel',
     tournamentsPanelCopy:
       'Manage competitions defined in the app. Search the current tournament database, review sync coverage, and open edit or delete actions for each tournament.',
     addTournament: 'Add new tournament',
@@ -850,17 +854,17 @@ const translations = {
     tournamentLoadFailed: 'Could not load tournaments.',
     tournamentDeleteSuccess: 'Tournament deleted.',
     tournamentDeleteConfirm: 'Delete this tournament?',
-    tournamentDeleteTitle: 'Delete tournament.',
+    tournamentDeleteTitle: 'Delete tournament',
     tournamentDeleteCopy:
       'This will remove the tournament and its related matches, stages, teams, and sync history from the database. This action cannot be undone.',
     cancel: 'Cancel',
     confirmDelete: 'Delete tournament',
     tournamentCreateEyebrow: 'New tournament',
-    tournamentCreateTitle: 'Add tournament.',
+    tournamentCreateTitle: 'Add tournament',
     tournamentCreateCopy:
       'Paste a LiveScore competition URL, preview discovered metadata, then create the tournament. Creation also runs the initial full sync.',
     tournamentEditEyebrow: 'Tournament setup',
-    tournamentEditTitle: 'Edit tournament.',
+    tournamentEditTitle: 'Edit tournament',
     tournamentEditCopy:
       'Update the admin-facing name, source URL, and request settings. Source URL changes are allowed only when they still point to the same LiveScore competition.',
     liveScoreUrl: 'LiveScore URL',
@@ -881,7 +885,7 @@ const translations = {
     tournamentNotFound: 'Tournament not found.',
     tournamentUrlInvalid: 'Enter a valid LiveScore competition URL',
     tournamentDetailsEyebrow: 'Tournament Details',
-    tournamentDetailsTitle: 'Tournament control panel.',
+    tournamentDetailsTitle: 'Tournament control panel',
     tournamentDetailsCopy:
       'Inspect the selected tournament, run LiveScore sync operations, and review recent data coverage without leaving the admin workspace.',
     overview: 'Overview',
@@ -940,8 +944,8 @@ const translations = {
     homeAdvantageDisabled: 'Neutral ground',
     tournamentActivated: 'Tournament activated.',
     tournamentDeactivated: 'Tournament paused.',
-    activateTournamentTitle: 'Activate tournament.',
-    deactivateTournamentTitle: 'Deactivate tournament.',
+    activateTournamentTitle: 'Activate tournament',
+    deactivateTournamentTitle: 'Deactivate tournament',
     activateTournamentCopy:
       'Active tournaments are included in hosted background synchronization. Schedule, live, finalize, and results services can keep this tournament up to date automatically.',
     deactivateTournamentCopy:
@@ -958,11 +962,11 @@ const translations = {
     awayTeam: 'Away',
     score: 'Score',
     round: 'Round',
-    editTeamTitle: 'Edit team.',
+    editTeamTitle: 'Edit team',
     editTeamCopy: 'Adjust the team display name and abbreviation used across tournament views.',
     teamUpdated: 'Team updated.',
     saveTeam: 'Save team',
-    editMatchTitle: 'Edit match.',
+    editMatchTitle: 'Edit match',
     editMatchCopy:
       'Adjust match details manually. Live sync may overwrite score, status, and kickoff changes, but manual round and stage edits are preserved.',
     saveMatch: 'Save match',
@@ -984,7 +988,7 @@ const translations = {
     adminQualityOps: 'Data quality',
     adminQualityOpsCopy: 'Review missing match statistics, stale squad snapshots, unfinished fixtures, and other data gaps before rating rebuilds run.',
     dataQualityPanelEyebrow: 'Data quality',
-    dataQualityPanelTitle: 'Data health desk.',
+    dataQualityPanelTitle: 'Data health desk',
     dataQualityPanelCopy:
       'A planned review workspace for missing tournament data, stale samples, incomplete match records, squad snapshot age, and sync freshness. This panel is UI-only for now.',
     dataQualityReadinessTitle: 'Data health snapshot',
@@ -1019,7 +1023,7 @@ const translations = {
     adminUsersOps: 'Users and access',
     adminUsersOpsCopy: 'Review users, account status, access level, lockouts, and future role-based visibility controls.',
     usersPanelEyebrow: 'Users and access',
-    usersPanelTitle: 'Access control.',
+    usersPanelTitle: 'Access control',
     usersPanelCopy:
       'A future admin workspace for account review, role assignment, activation state, lockouts, API keys, and access audit checks. This screen is UI-only for now.',
     usersDirectoryTitle: 'User directory',
@@ -1037,13 +1041,13 @@ const translations = {
     userFilterActive: 'Active',
     userFilterPending: 'Pending',
     userFilterLocked: 'Locked',
-    userDetailsTitle: 'User details.',
+    userDetailsTitle: 'User details',
     userDetailsCopy: 'Review account identity, access status, roles, and confirmation state.',
-    userSuspendTitle: 'Suspend user.',
+    userSuspendTitle: 'Suspend user',
     userSuspendCopy: 'Suspended users are locked out and cannot access protected application views until access is restored.',
-    userUnsuspendTitle: 'Unsuspend user.',
+    userUnsuspendTitle: 'Unsuspend user',
     userUnsuspendCopy: 'This restores access for the selected user if their account credentials are otherwise valid.',
-    userDeleteTitle: 'Delete user.',
+    userDeleteTitle: 'Delete user',
     userDeleteCopy: 'This removes the user account from the system. This action cannot be undone.',
     userSuspendSuccess: 'User suspended.',
     userUnsuspendSuccess: 'User unsuspended.',
@@ -1059,7 +1063,7 @@ const translations = {
     unsuspend: 'Unsuspend',
     changeRole: 'Change role',
     resendConfirmation: 'Resend confirmation email',
-    adminUserActionsTitle: 'User actions.',
+    adminUserActionsTitle: 'User actions',
     adminUserActionsCopy: 'Choose an account operation. Destructive access actions ask for confirmation before they are executed.',
     confirmAction: 'Confirm action',
     accessPrepared: 'Prepared',
@@ -1080,7 +1084,7 @@ const translations = {
     adminSystemJobsOps: 'System jobs',
     adminSystemJobsOpsCopy: 'Monitor scheduled sync services, intervals, recent runs, failures, and background processing health.',
     systemJobsPanelEyebrow: 'System jobs',
-    systemJobsPanelTitle: 'Background sync control.',
+    systemJobsPanelTitle: 'Background sync control',
     systemJobsPanelCopy:
       'A future operator panel for scheduled LiveScore synchronization, finalization checks, squad imports, and rating rebuild queues. This screen is UI-only for now.',
     systemJobsCoreTitle: 'Hosted services',
@@ -1128,7 +1132,7 @@ const translations = {
     adminPlaceholder: 'Not wired yet',
     backHome: 'Back to home',
     heroEyebrow: 'Football intelligence platform',
-    heroTitle: 'Team ratings that explain themselves before kickoff.',
+    heroTitle: 'Team ratings that explain themselves before kickoff',
     heroCopy:
       'A modern football analytics app built around FTSR: Elo foundation, live result sync, form, performance signals, squad value, and operator-grade data controls.',
     explore: 'Explore Platform',
@@ -1137,47 +1141,47 @@ const translations = {
     dataFeeds: 'Data feeds',
     adminJobs: 'Admin jobs',
     modelEyebrow: 'Model stack',
-    modelTitle: 'From raw matches to a readable team strength score.',
+    modelTitle: 'From raw matches to a readable team strength score',
     modelCopy:
       'Each module stays independent, so the final rating can be explained, tuned, rebuilt, and tested without turning into a black box.',
     workspaceEyebrow: 'Logged-in experience',
-    workspaceTitle: 'A working desk for ratings, matches, squads, and predictions.',
+    workspaceTitle: 'A working desk for ratings, matches, squads, and predictions',
     workspaceCopy:
       'Regular users get clear rating tables, trend movement, team pages, match context, and confidence signals. The app should feel quick, factual, and useful during the football week.',
     dataCoverage: 'Data coverage',
     pipelineEyebrow: 'Data pipeline',
-    pipelineTitle: 'Designed for overnight syncs and matchday refreshes.',
+    pipelineTitle: 'Designed for overnight syncs and matchday refreshes',
     adminEyebrow: 'Admin panel',
-    adminTitle: 'Control room for the data that powers the ratings.',
+    adminTitle: 'Control room for the data that powers the ratings',
     ctaEyebrow: 'Next phase',
-    ctaTitle: 'Ready for authentication, routing, and real backend integration.',
+    ctaTitle: 'Ready for authentication, routing, and real backend integration',
     ctaCopy:
       'The public story is now in place. The logged-in application can grow from this visual language into dashboards, admin workflows, and rating explainers.',
     footerCopy:
       'Explainable football team ratings powered by results, statistics, squad quality, and transparent model components.',
     language: 'Language',
     legal: 'Built for football analytics research.',
-    loginTitle: 'Welcome back.',
+    loginTitle: 'Welcome back',
     loginCopy: 'Sign in to continue to ratings, match intelligence, and admin tools.',
-    registerTitle: 'Create your account.',
+    registerTitle: 'Create your account',
     registerCopy: 'Join the workspace and start exploring team strength models.',
     forgotPassword: 'Forgot Password?',
     resendActivation: "Didn't receive an activation email?",
     forgotPasswordEyebrow: 'Password recovery',
-    forgotPasswordTitle: 'Reset your password.',
+    forgotPasswordTitle: 'Reset your password',
     forgotPasswordCopy: 'Enter your email and we will request a password reset link.',
     resendActivationEyebrow: 'Account activation',
-    resendActivationTitle: 'Send activation again.',
+    resendActivationTitle: 'Send activation again',
     resendActivationCopy: 'Enter your email and we will send another activation message.',
     confirmEmailEyebrow: 'Email confirmation',
-    confirmEmailLoadingTitle: 'Confirming your account.',
+    confirmEmailLoadingTitle: 'Confirming your account',
     confirmEmailLoadingCopy: 'Please wait while we validate your activation link.',
-    confirmEmailSuccessTitle: 'Account confirmed.',
+    confirmEmailSuccessTitle: 'Account confirmed',
     confirmEmailSuccessCopy: 'Your email address is confirmed. You can now log in.',
-    confirmEmailFailureTitle: 'Confirmation failed.',
+    confirmEmailFailureTitle: 'Confirmation failed',
     confirmEmailFailureCopy: 'The activation link is missing, expired, or invalid. You can request a new activation email.',
     resetPasswordEyebrow: 'Password reset',
-    resetPasswordTitle: 'Set a new password.',
+    resetPasswordTitle: 'Set a new password',
     resetPasswordCopy: 'Choose a new password for your account and confirm the change.',
     resetPasswordInvalidLink: 'The reset password link is missing required data.',
     newPassword: 'New password',
@@ -1214,11 +1218,11 @@ const translations = {
     registerSuccess: 'Registration successful. Check your email to activate the account.',
     logoutSuccess: 'You have been logged out.',
     genericError: 'Something went wrong. Please try again.',
-    dashboardTitle: 'You are signed in.',
+    dashboardTitle: 'You are signed in',
     dashboardCopy:
       'Manage your account and verify that authenticated backend calls are working.',
     dashboardEyebrow: 'Command center',
-    dashboardHomeTitle: 'Good to have you back.',
+    dashboardHomeTitle: 'Good to have you back',
     dashboardHomeCopy:
       'Your rating workspace is ready. Live data widgets will land here next; for now this dashboard frames the key areas of the product.',
     dashboardProfileAction: 'Open profile',
@@ -1231,7 +1235,7 @@ const translations = {
     dashboardSignals: ['Premier League model: active', 'Latest rating run: waiting for live data', 'Squad snapshots: mapped manually by admin'],
     authHint: 'Auth token stored locally for API calls.',
     profileEyebrow: 'Account',
-    profileTitle: 'Account settings.',
+    profileTitle: 'Account settings',
     profileCopy: 'Your profile, password, email, and API key actions are live against the backend.',
     memberSince: 'Member since',
     saveProfile: 'Save profile',
@@ -1267,10 +1271,10 @@ const translations = {
     menuAdmin: 'Admin',
     menuSoon: 'Wkrótce',
     userMatchesPanelEyebrow: 'Mecze',
-    userMatchesPanelTitle: 'Centrum meczów.',
+    userMatchesPanelTitle: 'Centrum meczów',
     userMatchesPanelCopy: 'Wybierz turniej, aby przeglądać zsynchronizowane terminarze, mecze live i zakończone wyniki.',
     userMatchDetailsEyebrow: 'Mecze turnieju',
-    userMatchDetailsTitle: 'Lista meczów.',
+    userMatchDetailsTitle: 'Lista meczów',
     userMatchDetailsCopy: 'Przeglądaj mecze turnieju i filtruj listę po etapie, rundzie lub nazwie drużyny.',
     matchOpenTournament: 'Pokaż mecze',
     matchSearch: 'Szukaj meczów',
@@ -1279,13 +1283,13 @@ const translations = {
     allRounds: 'Wszystkie rundy',
     backToMatches: 'Wróć do meczów',
     predictionsPanelEyebrow: 'Predykcje',
-    predictionsPanelTitle: 'Centrum predykcji.',
+    predictionsPanelTitle: 'Centrum predykcji',
     predictionsPanelCopy: 'Wybierz turniej, aby sprawdzić modelowe prawdopodobieństwa 1X2 dla nadchodzących i live meczów.',
     predictionsDetailsEyebrow: 'Predykcje meczów',
-    predictionsDetailsTitle: 'Tablica modelu 1X2.',
+    predictionsDetailsTitle: 'Tablica modelu 1X2',
     predictionsDetailsCopy: 'Porównaj szanse gospodarzy, remisu i gości obliczone z aktualnych warstw ratingu FTSR.',
     predictionMatchEyebrow: 'Szczegóły predykcji',
-    predictionMatchTitle: 'Analiza meczu.',
+    predictionMatchTitle: 'Analiza meczu',
     predictionMatchCopy: 'Głębszy widok różnicy ratingów, pewności, przewagi domu, kursów fair i alternatywnych scenariuszy modelu.',
     predictionOpenTournament: 'Pokaż predykcje',
     predictionOpenMatch: 'Otwórz analizę',
@@ -1304,6 +1308,7 @@ const translations = {
     predictedOutcome: 'Typ modelu',
     scenarioBoard: 'Scenariusze',
     modelBreakdown: 'Rozbicie modelu',
+    actualModelScenario: 'Aktualny scenariusz modelu',
     homeAdvantageApplied: 'Przewaga domu aktywna',
     neutralGround: 'Neutralny teren',
     baseEloOnly: 'Tylko Base Elo',
@@ -1312,8 +1317,10 @@ const translations = {
     dataConfidence: 'Pewność danych',
     noPrediction: 'Predykcja niedostępna',
     noPredictionCopy: 'Obie drużyny muszą mieć ratingi, aby model mógł oszacować ten mecz.',
-    apiPanelEyebrow: 'Dostęp API',
-    apiPanelTitle: 'API danych meczowych.',
+    noFuturePredictions: 'Brak meczów do predykcji',
+    noFuturePredictionsCopy: 'Predykcje są dostępne tylko dla nadchodzących lub live meczów. Zakończone mecze są ukryte w tym widoku.',
+    apiPanelEyebrow: 'API',
+    apiPanelTitle: 'API danych meczowych',
     apiPanelCopy: 'Użyj swojego API key, aby pobierać listy meczów, wyniki, mecze live i nadchodzące spotkania z zewnętrznych narzędzi.',
     apiHeaderTitle: 'Autoryzacja',
     apiHeaderCopy: 'Przekaż klucz w poniższym nagłówku requestu. Klucz możesz zmienić w profilu.',
@@ -1324,13 +1331,13 @@ const translations = {
     apiEndpointUpcoming: 'Nadchodzące mecze',
     apiEndpointSingle: 'Szczegóły jednego meczu',
     apiKeyHeader: 'Nagłówek',
-    adminPanelEyebrow: 'Panel administratora',
-    adminPanelTitle: 'Centrum operacyjne.',
+    adminPanelEyebrow: 'Admin',
+    adminPanelTitle: 'Centrum operacyjne',
     adminPanelCopy:
       'Strukturalny workspace dla sync jobów, rebuildów ratingów, importów kadr i kontroli jakości danych. Kontrolki są na razie placeholderami gotowymi do podpięcia pod backend.',
     adminOverview: 'Przegląd',
-    ratingsPanelEyebrow: 'Operacje ratingów',
-    ratingsPanelTitle: 'Panel ratingów.',
+    ratingsPanelEyebrow: 'Ratingi',
+    ratingsPanelTitle: 'Panel ratingów',
     ratingsPanelCopy:
       'Zarządzaj konfiguracją modelu i otwieraj snapshoty ratingowe turniejów dla Base Elo, formy, performance, jakości kadry i łącznego FTSR.',
     ratingRebuildsTitle: 'Rebuildy ratingów',
@@ -1341,10 +1348,10 @@ const translations = {
     ratingTournamentListTitle: 'Ratingi turniejów',
     ratingTournamentListCopy: 'Otwórz turniej, aby sprawdzić aktualne snapshoty ratingów, runy warstw i ratingi drużyn.',
     userRatingsPanelEyebrow: 'Ratingi',
-    userRatingsPanelTitle: 'Ratingi drużyn.',
+    userRatingsPanelTitle: 'Ratingi drużyn',
     userRatingsPanelCopy: 'Przeglądaj tabele ratingów turniejów budowane z Base Elo, formy, performance i jakości kadry.',
     userRatingDetailsEyebrow: 'Ratingi turnieju',
-    userRatingDetailsTitle: 'Tabela ratingów drużyn.',
+    userRatingDetailsTitle: 'Tabela ratingów drużyn',
     userRatingDetailsCopy: 'Sprawdź aktualne ratingi siły drużyn dla wybranego turnieju.',
     ratingWeightsTitle: 'Wagi warstw',
     ratingParametersTitle: 'Domyślne snapshotów',
@@ -1440,8 +1447,8 @@ const translations = {
       { label: 'Squad Quality', value: 'Ostatni zaimportowany snapshot' },
       { label: 'Combined Rating', value: 'Draft do publikacji' },
     ],
-    squadsPanelEyebrow: 'Administracja kadrami',
-    squadsPanelTitle: 'Panel kadr.',
+    squadsPanelEyebrow: 'Kadry',
+    squadsPanelTitle: 'Panel kadr',
     squadsPanelCopy:
       'Mapuj drużyny turniejowe do źródeł Transfermarkt, sprawdzaj pokrycie kadr i przygotowuj dane squad quality dla modelu ratingowego.',
     squadsTableTitle: 'Pokrycie kadr w turniejach',
@@ -1475,7 +1482,7 @@ const translations = {
     squadBulkImportSuccess: 'Import snapshotów kadr zakończony.',
     squadBulkImportNoMappings: 'Nie znaleziono mapowań Transfermarkt dla tego turnieju.',
     loading: 'Ładowanie',
-    editSquadMappingTitle: 'Edytuj źródło kadry.',
+    editSquadMappingTitle: 'Edytuj źródło kadry',
     editSquadMappingCopy: 'Wklej URL strony klubu Transfermarkt. Import znormalizuje go do szczegółowej strony kadry dla sezonu turnieju.',
     saveAndImportSnapshot: 'Zapisz i importuj snapshot',
     squadSeason: 'Sezon snapshotu',
@@ -1484,8 +1491,8 @@ const translations = {
     adminCreateTournament: 'Utwórz nowy turniej',
     adminListTournaments: 'Lista turniejów',
     adminTournamentsPanel: 'Panel turniejów',
-    tournamentsPanelEyebrow: 'Administracja turniejami',
-    tournamentsPanelTitle: 'Panel turniejów.',
+    tournamentsPanelEyebrow: 'Turnieje',
+    tournamentsPanelTitle: 'Panel turniejów',
     tournamentsPanelCopy:
       'Zarządzaj rozgrywkami zdefiniowanymi w aplikacji. Przeszukuj bazę turniejów, sprawdzaj pokrycie sync i otwieraj akcje edycji lub usuwania dla każdego turnieju.',
     addTournament: 'Dodaj nowy turniej',
@@ -1510,17 +1517,17 @@ const translations = {
     tournamentLoadFailed: 'Nie udało się pobrać turniejów.',
     tournamentDeleteSuccess: 'Turniej usunięty.',
     tournamentDeleteConfirm: 'Usunąć ten turniej?',
-    tournamentDeleteTitle: 'Usuń turniej.',
+    tournamentDeleteTitle: 'Usuń turniej',
     tournamentDeleteCopy:
       'To usunie turniej oraz powiązane mecze, etapy, drużyny i historię synchronizacji z bazy danych. Tej akcji nie można cofnąć.',
     cancel: 'Anuluj',
     confirmDelete: 'Usuń turniej',
     tournamentCreateEyebrow: 'Nowy turniej',
-    tournamentCreateTitle: 'Dodaj turniej.',
+    tournamentCreateTitle: 'Dodaj turniej',
     tournamentCreateCopy:
       'Wklej URL rozgrywek z LiveScore, sprawdź wykryte metadane, a potem utwórz turniej. Utworzenie uruchamia też pierwszy pełny sync.',
     tournamentEditEyebrow: 'Konfiguracja turnieju',
-    tournamentEditTitle: 'Edytuj turniej.',
+    tournamentEditTitle: 'Edytuj turniej',
     tournamentEditCopy:
       'Zmień nazwę widoczną w panelu, URL źródłowy i ustawienia zapytań. Zmiana URL jest dozwolona tylko wtedy, gdy nadal wskazuje te same rozgrywki LiveScore.',
     liveScoreUrl: 'URL LiveScore',
@@ -1541,7 +1548,7 @@ const translations = {
     tournamentNotFound: 'Nie znaleziono turnieju.',
     tournamentUrlInvalid: 'Podaj prawidłowy URL rozgrywek LiveScore',
     tournamentDetailsEyebrow: 'Szczegóły turnieju',
-    tournamentDetailsTitle: 'Panel kontroli turnieju.',
+    tournamentDetailsTitle: 'Panel kontroli turnieju',
     tournamentDetailsCopy:
       'Sprawdzaj wybrany turniej, uruchamiaj synchronizacje LiveScore i kontroluj pokrycie danych bez wychodzenia z panelu admina.',
     overview: 'Przegląd',
@@ -1600,8 +1607,8 @@ const translations = {
     homeAdvantageDisabled: 'Neutralny teren',
     tournamentActivated: 'Turniej aktywowany.',
     tournamentDeactivated: 'Turniej wstrzymany.',
-    activateTournamentTitle: 'Aktywuj turniej.',
-    deactivateTournamentTitle: 'Dezaktywuj turniej.',
+    activateTournamentTitle: 'Aktywuj turniej',
+    deactivateTournamentTitle: 'Dezaktywuj turniej',
     activateTournamentCopy:
       'Aktywne turnieje są uwzględniane przez hosted background synchronization. Serwisy schedule, live, finalize i results mogą automatycznie utrzymywać turniej aktualny.',
     deactivateTournamentCopy:
@@ -1618,11 +1625,11 @@ const translations = {
     awayTeam: 'Gość',
     score: 'Wynik',
     round: 'Runda',
-    editTeamTitle: 'Edytuj drużynę.',
+    editTeamTitle: 'Edytuj drużynę',
     editTeamCopy: 'Zmień nazwę wyświetlaną drużyny i skrót używany w widokach turnieju.',
     teamUpdated: 'Drużyna zaktualizowana.',
     saveTeam: 'Zapisz drużynę',
-    editMatchTitle: 'Edytuj mecz.',
+    editMatchTitle: 'Edytuj mecz',
     editMatchCopy:
       'Zmień szczegóły meczu ręcznie. Live sync może nadpisać wynik, status i godzinę, ale ręcznie ustawiona runda oraz etap zostaną zachowane.',
     saveMatch: 'Zapisz mecz',
@@ -1644,7 +1651,7 @@ const translations = {
     adminQualityOps: 'Jakość danych',
     adminQualityOpsCopy: 'Sprawdzaj brakujące statystyki meczowe, stare snapshoty kadr, niezakończone fixtures i inne luki danych przed rebuildami ratingów.',
     dataQualityPanelEyebrow: 'Jakość danych',
-    dataQualityPanelTitle: 'Panel zdrowia danych.',
+    dataQualityPanelTitle: 'Panel zdrowia danych',
     dataQualityPanelCopy:
       'Planowany workspace do przeglądu brakujących danych turniejów, starych próbek, niepełnych rekordów meczów, wieku snapshotów kadr i świeżości sync. Na razie to tylko UI.',
     dataQualityReadinessTitle: 'Snapshot zdrowia danych',
@@ -1679,7 +1686,7 @@ const translations = {
     adminUsersOps: 'Użytkownicy i dostęp',
     adminUsersOpsCopy: 'Przeglądaj użytkowników, status kont, poziom dostępu, blokady i przyszłe ustawienia widoczności według ról.',
     usersPanelEyebrow: 'Użytkownicy i dostęp',
-    usersPanelTitle: 'Kontrola dostępu.',
+    usersPanelTitle: 'Kontrola dostępu',
     usersPanelCopy:
       'Przyszły workspace admina do przeglądu kont, przypisywania ról, aktywacji, blokad, kluczy API i audytu dostępu. Na razie jest to tylko UI.',
     usersDirectoryTitle: 'Katalog użytkowników',
@@ -1697,13 +1704,13 @@ const translations = {
     userFilterActive: 'Aktywni',
     userFilterPending: 'Oczekujący',
     userFilterLocked: 'Zablokowani',
-    userDetailsTitle: 'Szczegóły użytkownika.',
+    userDetailsTitle: 'Szczegóły użytkownika',
     userDetailsCopy: 'Sprawdź tożsamość konta, status dostępu, role i stan potwierdzenia emaila.',
-    userSuspendTitle: 'Zawieś użytkownika.',
+    userSuspendTitle: 'Zawieś użytkownika',
     userSuspendCopy: 'Zawieszeni użytkownicy są blokowani i nie mogą korzystać z chronionych widoków aplikacji do czasu przywrócenia dostępu.',
-    userUnsuspendTitle: 'Przywróć użytkownika.',
+    userUnsuspendTitle: 'Przywróć użytkownika',
     userUnsuspendCopy: 'To przywraca dostęp wybranemu użytkownikowi, jeśli jego dane logowania są poprawne.',
-    userDeleteTitle: 'Usuń użytkownika.',
+    userDeleteTitle: 'Usuń użytkownika',
     userDeleteCopy: 'To usuwa konto użytkownika z systemu. Tej akcji nie można cofnąć.',
     userSuspendSuccess: 'Użytkownik zawieszony.',
     userUnsuspendSuccess: 'Użytkownik przywrócony.',
@@ -1719,7 +1726,7 @@ const translations = {
     unsuspend: 'Przywróć',
     changeRole: 'Zmień rolę',
     resendConfirmation: 'Wyślij email potwierdzający',
-    adminUserActionsTitle: 'Akcje użytkownika.',
+    adminUserActionsTitle: 'Akcje użytkownika',
     adminUserActionsCopy: 'Wybierz operację na koncie. Destrukcyjne akcje dostępu wymagają potwierdzenia przed wykonaniem.',
     confirmAction: 'Potwierdź akcję',
     accessPrepared: 'Przygotowane',
@@ -1740,7 +1747,7 @@ const translations = {
     adminSystemJobsOps: 'System jobs',
     adminSystemJobsOpsCopy: 'Monitoruj zaplanowane sync serwisy, interwały, ostatnie uruchomienia, błędy i zdrowie procesów w tle.',
     systemJobsPanelEyebrow: 'System jobs',
-    systemJobsPanelTitle: 'Kontrola synchronizacji w tle.',
+    systemJobsPanelTitle: 'Kontrola synchronizacji w tle',
     systemJobsPanelCopy:
       'Przyszły panel operatora dla zaplanowanej synchronizacji LiveScore, finalizacji meczów, importów kadr i kolejek rebuildów ratingów. Na razie to tylko UI.',
     systemJobsCoreTitle: 'Hosted services',
@@ -1788,7 +1795,7 @@ const translations = {
     adminPlaceholder: 'Jeszcze nie podpięte',
     backHome: 'Wroć na stronę główną',
     heroEyebrow: 'Platforma analityki piłkarskiej',
-    heroTitle: 'Rating drużyn, który tłumaczy się przed pierwszym gwizdkiem.',
+    heroTitle: 'Rating drużyn, który tłumaczy się przed pierwszym gwizdkiem',
     heroCopy:
       'Nowoczesna aplikacja analityczna oparta o FTSR: bazowe Elo, synchronizację wyników, formę, statystyki gry, jakość kadry i narzędzia administracyjne.',
     explore: 'Zobacz platformę',
@@ -1797,46 +1804,46 @@ const translations = {
     dataFeeds: 'Źródła danych',
     adminJobs: 'Zadania admina',
     modelEyebrow: 'Model ratingowy',
-    modelTitle: 'Od surowych meczów do czytelnej oceny siły drużyny.',
+    modelTitle: 'Od surowych meczów do czytelnej oceny siły drużyny',
     modelCopy:
       'Każdy moduł działa niezależnie, więc rating końcowy można wyjaśniać, stroić, przeliczać i testować bez czarnej skrzynki.',
     workspaceEyebrow: 'Widok zalogowanego użytkownika',
-    workspaceTitle: 'Miejsce pracy dla ratingów, meczów, kadr i predykcji.',
+    workspaceTitle: 'Miejsce pracy dla ratingów, meczów, kadr i predykcji',
     workspaceCopy:
       'Użytkownik dostaje tabele ratingowe, trendy, profile drużyn, kontekst meczowy i sygnały pewności. Aplikacja ma być szybka, konkretna i przydatna w tygodniu meczowym.',
     dataCoverage: 'Pokrycie danych',
     pipelineEyebrow: 'Przepływ danych',
-    pipelineTitle: 'Gotowe na nocne synchronizacje i odświeżanie w dniu meczu.',
+    pipelineTitle: 'Gotowe na nocne synchronizacje i odświeżanie w dniu meczu',
     adminEyebrow: 'Panel administratora',
-    adminTitle: 'Centrum kontroli danych zasilających ratingi.',
+    adminTitle: 'Centrum kontroli danych zasilających ratingi',
     ctaEyebrow: 'Kolejny etap',
-    ctaTitle: 'Gotowe pod routing, integracje i rozbudowę widoków.',
+    ctaTitle: 'Gotowe pod routing, integracje i rozbudowę widoków',
     ctaCopy:
       'Publiczna część jest na miejscu. Widok zalogowanego użytkownika może teraz rosnąć w dashboardy, narzędzia admina i wyjaśnienia ratingów.',
     footerCopy:
       'Wyjaśnialne ratingi drużyn piłkarskich oparte o wyniki, statystyki, jakość kadry i przejrzyste komponenty modelu.',
     language: 'Język',
     legal: 'Zbudowane do badań nad analityką piłkarską.',
-    loginTitle: 'Witaj ponownie.',
+    loginTitle: 'Witaj ponownie',
     loginCopy: 'Zaloguj się, aby przejść do ratingów, danych meczowych i narzędzi admina.',
-    registerTitle: 'Utwórz konto.',
+    registerTitle: 'Utwórz konto',
     registerCopy: 'Dołącz do workspace i zacznij eksplorować modele siły drużyn.',
     forgotPassword: 'Nie pamiętasz hasła?',
     resendActivation: 'Nie dotarł email aktywacyjny?',
     forgotPasswordEyebrow: 'Odzyskiwanie hasła',
-    forgotPasswordTitle: 'Zresetuj hasło.',
+    forgotPasswordTitle: 'Zresetuj hasło',
     forgotPasswordCopy: 'Podaj email, a poprosimy backend o link resetowania hasła.',
     resendActivationEyebrow: 'Aktywacja konta',
-    resendActivationTitle: 'Wyślij aktywację ponownie.',
+    resendActivationTitle: 'Wyślij aktywację ponownie',
     resendActivationCopy: 'Podaj email, a wyślemy kolejną wiadomość aktywacyjną.',
     confirmEmailEyebrow: 'Potwierdzenie emaila',
-    confirmEmailLoadingTitle: 'Potwierdzamy konto.',
+    confirmEmailLoadingTitle: 'Potwierdzamy konto',
     confirmEmailLoadingCopy: 'Poczekaj chwilę, sprawdzamy link aktywacyjny.',
-    confirmEmailSuccessTitle: 'Konto potwierdzone.',
+    confirmEmailSuccessTitle: 'Konto potwierdzone',
     confirmEmailSuccessCopy: 'Adres email został potwierdzony. Możesz się zalogować.',
-    confirmEmailFailureTitle: 'Potwierdzenie nieudane.',
+    confirmEmailFailureTitle: 'Potwierdzenie nieudane',
     confirmEmailFailureCopy: 'Link aktywacyjny jest niepełny, wygasł albo jest nieprawidłowy. Możesz poprosić o nowy email aktywacyjny.',    resetPasswordEyebrow: 'Reset hasła',
-    resetPasswordTitle: 'Ustaw nowe hasło.',
+    resetPasswordTitle: 'Ustaw nowe hasło',
     resetPasswordCopy: 'Wybierz nowe hasło do konta i potwierdź zmianę.',
     resetPasswordInvalidLink: 'Link resetowania hasła nie zawiera wymaganych danych.',
     newPassword: 'Nowe hasło',
@@ -1872,11 +1879,11 @@ const translations = {
     registerSuccess: 'Rejestracja zakończona. Sprawdź email, aby aktywować konto.',
     logoutSuccess: 'Wylogowano.',
     genericError: 'Coś poszło nie tak. Spróbuj ponownie.',
-    dashboardTitle: 'Jesteś zalogowany.',
+    dashboardTitle: 'Jesteś zalogowany',
     dashboardCopy:
       'Zarządzaj kontem i sprawdź, że autoryzowane zapytania do backendu działają.',
     dashboardEyebrow: 'Centrum dowodzenia',
-    dashboardHomeTitle: 'Dobrze Cię widzieć.',
+    dashboardHomeTitle: 'Dobrze Cię widzieć',
     dashboardHomeCopy:
       'Workspace ratingowy jest gotowy. Docelowe widgety z live data trafią tutaj później; na razie dashboard pokazuje główne obszary aplikacji.',
     dashboardProfileAction: 'Otwórz profil',
@@ -1889,7 +1896,7 @@ const translations = {
     dashboardSignals: ['Model Premier League: aktywny', 'Ostatni rating run: oczekuje na live data', 'Snapshoty kadr: mapowane ręcznie przez admina'],
     authHint: 'Token autoryzacji zapisany lokalnie dla zapytań API.',
     profileEyebrow: 'Konto',
-    profileTitle: 'Ustawienia konta.',
+    profileTitle: 'Ustawienia konta',
     profileCopy: 'Profil, hasło, email i akcje API key działają bezpośrednio z backendem.',
     memberSince: 'Data dołączenia',
     saveProfile: 'Zapisz profil',
@@ -2255,22 +2262,38 @@ function calculatePrediction(
   const homeRating = options?.homeRating ?? homeTeam.finalRating
   const awayRating = options?.awayRating ?? awayTeam.finalRating
   const ratingGap = homeRating + homeAdvantage - awayRating
-  const homeNoDraw = 1 / (1 + 10 ** (-ratingGap / 400))
-  const draw = clamp(0.285 - Math.min(Math.abs(ratingGap), 320) / 320 * 0.105, 0.17, 0.30)
-  const homeWin = (1 - draw) * homeNoDraw
-  const awayWin = 1 - draw - homeWin
+  const absoluteGap = Math.abs(ratingGap)
+  const draw = clamp(0.235 * Math.exp(-absoluteGap / 360) + 0.05, 0.085, 0.285)
+  const homeNoDraw = 1 / (1 + 10 ** (-ratingGap / 360))
+  let homeWin = (1 - draw) * homeNoDraw
+  let awayWin = 1 - draw - homeWin
+  const homeUpsetFloor = applyHomeAdvantage ? 0.075 : 0.065
+  const awayUpsetFloor = applyHomeAdvantage ? 0.055 : 0.065
+
+  if (ratingGap > 0 && awayWin < awayUpsetFloor) {
+    homeWin = Math.max(0.01, homeWin - (awayUpsetFloor - awayWin))
+    awayWin = awayUpsetFloor
+  } else if (ratingGap < 0 && homeWin < homeUpsetFloor) {
+    awayWin = Math.max(0.01, awayWin - (homeUpsetFloor - homeWin))
+    homeWin = homeUpsetFloor
+  }
+
+  const total = homeWin + draw + awayWin
+  homeWin /= total
+  awayWin /= total
+  const normalizedDraw = draw / total
   const outcomes = [
     { label: labels.home, chance: homeWin },
-    { label: labels.draw, chance: draw },
+    { label: labels.draw, chance: normalizedDraw },
     { label: labels.away, chance: awayWin },
   ].sort((left, right) => right.chance - left.chance)
 
   return {
     homeWin,
-    draw,
+    draw: normalizedDraw,
     awayWin,
     homeFairOdds: 1 / homeWin,
-    drawFairOdds: 1 / draw,
+    drawFairOdds: 1 / normalizedDraw,
     awayFairOdds: 1 / awayWin,
     ratingGap,
     confidence: clamp((homeTeam.ratingConfidence + awayTeam.ratingConfidence) / 2, 0, 1),
@@ -2388,13 +2411,13 @@ function App() {
     navigateTo(routes[nextView])
   }
 
-  const showToast = (message: string, tone: ToastTone) => {
+  const showToast = useCallback((message: string, tone: ToastTone) => {
     const id = Date.now()
     setToasts((current) => [...current, { id, message, tone }])
     window.setTimeout(() => {
       setToasts((current) => current.filter((toast) => toast.id !== id))
     }, 4200)
-  }
+  }, [])
 
   const handleLogout = () => {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
@@ -4425,9 +4448,24 @@ function TournamentPredictionsPanel({
           return
         }
 
-        setTournament(tournamentResult.data)
-        setMatches(matchesResult.data)
-        setCombinedRatings(ratingsResult.data)
+        const loadedTournament = tournamentResult.data
+        const loadedMatches = matchesResult.data
+        const loadedRatings = ratingsResult.data
+        const ratingsById = toRecordByTeamId(loadedRatings.teams)
+        const firstPredictionRound = [...new Set(loadedMatches.map((match) => match.roundInfo).filter(Boolean))]
+          .sort(compareText)
+          .find((round) => loadedMatches.some((match) => {
+            if (match.roundInfo !== round || !isPredictableMatch(match) || !match.homeTeam || !match.awayTeam) {
+              return false
+            }
+
+            return Boolean(ratingsById[match.homeTeam.id] && ratingsById[match.awayTeam.id])
+          }))
+
+        setTournament(loadedTournament)
+        setMatches(loadedMatches)
+        setCombinedRatings(loadedRatings)
+        setRoundFilter(firstPredictionRound ?? 'all')
       } catch {
         if (isMounted) {
           onToast(t.genericError, 'error')
@@ -4608,7 +4646,10 @@ function TournamentPredictionsPanel({
                 ))}
                 {!isLoading && displayedMatches.length === 0 && (
                   <tr>
-                    <td className="empty-table" colSpan={8}>-</td>
+                    <td className="empty-table prediction-empty-table" colSpan={8}>
+                      <strong>{t.noFuturePredictions}</strong>
+                      <span>{t.noFuturePredictionsCopy}</span>
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -4694,12 +4735,8 @@ function PredictionDetailsPanel({
   const scenarios = homeTeam && awayTeam && tournament
     ? [
       {
-        title: tournament.applyHomeAdvantage ? t.homeAdvantageApplied : t.neutralGround,
+        title: t.actualModelScenario,
         prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels),
-      },
-      {
-        title: t.neutralGround,
-        prediction: calculatePrediction(homeTeam, awayTeam, false, predictionLabels, { homeAdvantage: 0 }),
       },
       {
         title: t.baseEloOnly,
@@ -4739,8 +4776,14 @@ function PredictionDetailsPanel({
       <div className="admin-dashboard-content ratings-panel-layout">
         <div className="admin-dashboard-hero prediction-hero">
           <p className="eyebrow">{t.predictionMatchEyebrow}</p>
-          <h1>{match ? `${getTeamDisplayName(match, 'home')} vs ${getTeamDisplayName(match, 'away')}` : t.predictionMatchTitle}</h1>
-          <p>{t.predictionMatchCopy}</p>
+          {match ? (
+            <h1 className="prediction-match-title">
+              <span>{getTeamDisplayName(match, 'home')}</span>
+              <span>{getTeamDisplayName(match, 'away')}</span>
+            </h1>
+          ) : (
+            <h1>{t.predictionMatchTitle}</h1>
+          )}
         </div>
 
         <div className="details-top-actions rating-top-actions">
@@ -4784,11 +4827,10 @@ function PredictionDetailsPanel({
               </div>
             </section>
 
-            <section className="prediction-odds-grid">
-              <PredictionOutcomeCard title={t.homeWin} chance={prediction.homeWin} odds={prediction.homeFairOdds} />
-              <PredictionOutcomeCard title={t.draw} chance={prediction.draw} odds={prediction.drawFairOdds} />
-              <PredictionOutcomeCard title={t.awayWin} chance={prediction.awayWin} odds={prediction.awayFairOdds} />
-            </section>
+            <PredictionProbabilityCard
+              prediction={prediction}
+              labels={{ home: t.homeWin, draw: t.draw, away: t.awayWin, odds: t.fairOdds }}
+            />
 
             <section className="details-panel">
               <div className="details-panel-heading">
@@ -4829,18 +4871,26 @@ function PredictionDetailsPanel({
                 <h2>{t.scenarioBoard}</h2>
               </div>
               <div className="prediction-scenario-grid">
-                {scenarios.map((scenario) => (
-                  <div className="prediction-scenario-card" key={scenario.title}>
-                    <strong>{scenario.title}</strong>
-                    <span>{scenario.prediction.favoriteLabel}</span>
-                    <small>{formatPercent(scenario.prediction.favoriteChance)} | {t.ratingGap} {formatSigned(scenario.prediction.ratingGap)}</small>
-                    <div>
-                      <PredictionMiniBar label="1" value={scenario.prediction.homeWin} />
-                      <PredictionMiniBar label="X" value={scenario.prediction.draw} />
-                      <PredictionMiniBar label="2" value={scenario.prediction.awayWin} />
+                {scenarios.map((scenario) => {
+                  const dominant = [
+                    ['1', scenario.prediction.homeWin],
+                    ['X', scenario.prediction.draw],
+                    ['2', scenario.prediction.awayWin],
+                  ].sort((left, right) => Number(right[1]) - Number(left[1]))[0][0]
+
+                  return (
+                    <div className="prediction-scenario-card" key={scenario.title}>
+                      <strong>{scenario.title}</strong>
+                      <span>{scenario.prediction.favoriteLabel}</span>
+                      <small>{formatPercent(scenario.prediction.favoriteChance)} | {t.ratingGap} {formatSigned(scenario.prediction.ratingGap)}</small>
+                      <div>
+                        <PredictionMiniBar label="1" tone="home" value={scenario.prediction.homeWin} isDominant={dominant === '1'} />
+                        <PredictionMiniBar label="X" tone="draw" value={scenario.prediction.draw} isDominant={dominant === 'X'} />
+                        <PredictionMiniBar label="2" tone="away" value={scenario.prediction.awayWin} isDominant={dominant === '2'} />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </section>
           </>
@@ -4859,22 +4909,92 @@ function PredictionCell({ value, odds }: { value: number; odds: number }) {
   )
 }
 
-function PredictionOutcomeCard({ title, chance, odds }: { title: string; chance: number; odds: number }) {
+function PredictionProbabilityCard({
+  prediction,
+  labels,
+}: {
+  prediction: MatchPrediction
+  labels: { home: string; draw: string; away: string; odds: string }
+}) {
+  const homeStop = prediction.homeWin * 100
+  const drawStop = homeStop + prediction.draw * 100
+  const homeCenter = homeStop / 2
+  const drawCenter = homeStop + prediction.draw * 50
+  const awayCenter = drawStop + prediction.awayWin * 50
+  const gradient = [
+    `radial-gradient(circle at ${homeCenter}% 50%, rgba(176, 216, 107, 0.34), rgba(176, 216, 107, 0.16) 34%, transparent 64%)`,
+    `radial-gradient(circle at ${drawCenter}% 50%, rgba(228, 206, 107, 0.28), rgba(228, 206, 107, 0.13) 28%, transparent 58%)`,
+    `radial-gradient(circle at ${awayCenter}% 50%, rgba(127, 183, 168, 0.28), rgba(127, 183, 168, 0.13) 30%, transparent 60%)`,
+    'linear-gradient(135deg, rgba(176, 216, 107, 0.10), rgba(255, 255, 255, 0.05))',
+    'rgba(255, 255, 255, 0.07)',
+  ].join(', ')
+
   return (
-    <div className="prediction-outcome-card">
-      <span>{title}</span>
-      <strong>{formatPercent(chance)}</strong>
-      <small>{formatOdds(odds)}</small>
-      <div className="prediction-bar" aria-hidden="true">
-        <i style={{ width: `${Math.round(chance * 100)}%` }} />
-      </div>
+    <div className="prediction-probability-stack">
+      <section className="prediction-probability-card" style={{ background: gradient }}>
+        <div className="prediction-probability-header">
+          <PredictionProbabilityMetric label={labels.home} chance={prediction.homeWin} style={{ width: `${prediction.homeWin * 100}%` }} />
+          <PredictionProbabilityMetric label={labels.draw} chance={prediction.draw} style={{ width: `${prediction.draw * 100}%` }} />
+          <PredictionProbabilityMetric label={labels.away} chance={prediction.awayWin} style={{ width: `${prediction.awayWin * 100}%` }} />
+        </div>
+      </section>
+      <section className="prediction-fair-odds-card">
+        <PredictionFairOddsMetric label={labels.home} odds={prediction.homeFairOdds} oddsLabel={labels.odds} />
+        <PredictionFairOddsMetric label={labels.draw} odds={prediction.drawFairOdds} oddsLabel={labels.odds} />
+        <PredictionFairOddsMetric label={labels.away} odds={prediction.awayFairOdds} oddsLabel={labels.odds} />
+      </section>
     </div>
   )
 }
 
-function PredictionMiniBar({ label, value }: { label: string; value: number }) {
+function PredictionProbabilityMetric({
+  label,
+  chance,
+  style,
+}: {
+  label: string
+  chance: number
+  style?: { width: string }
+}) {
   return (
-    <span className="prediction-mini-bar">
+    <span style={style}>
+      <small>{label}</small>
+      <strong>{formatPercent(chance)}</strong>
+    </span>
+  )
+}
+
+function PredictionFairOddsMetric({
+  label,
+  odds,
+  oddsLabel,
+}: {
+  label: string
+  odds: number
+  oddsLabel: string
+}) {
+  return (
+    <span>
+      <small>{label}</small>
+      <strong>{formatOdds(odds)}</strong>
+      <em>{oddsLabel}</em>
+    </span>
+  )
+}
+
+function PredictionMiniBar({
+  label,
+  tone,
+  value,
+  isDominant = false,
+}: {
+  label: string
+  tone: 'home' | 'draw' | 'away'
+  value: number
+  isDominant?: boolean
+}) {
+  return (
+    <span className={`prediction-mini-bar ${tone} ${isDominant ? 'dominant' : ''}`}>
       <small>{label}</small>
       <i><b style={{ width: `${Math.round(value * 100)}%` }} /></i>
       <em>{formatPercent(value)}</em>
@@ -7745,33 +7865,39 @@ function SquadsPanel({
           </button>
         </div>
 
-        <div className="tournament-toolbar squad-toolbar">
-          <label className="tournament-search compact">
-            <span>{t.tournamentSearch}</span>
-            <input
-              placeholder={t.tournamentSearchPlaceholder}
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
-          <div className="tournament-filter squad-filter" aria-label={t.squadCoverage}>
-            {[
-              ['all', t.squadFilterAll],
-              ['unlinked', t.squadFilterUnlinked],
-              ['missing-snapshots', t.squadFilterMissingSnapshots],
-            ].map(([value, label]) => (
-              <button
-                className={squadFilter === value ? 'active' : ''}
-                type="button"
-                key={value}
-                onClick={() => setSquadFilter(value as 'all' | 'unlinked' | 'missing-snapshots')}
-              >
-                {label}
-              </button>
-            ))}
+        <section className="details-panel squads-management-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="teams" />
+            <h2>{t.adminSquadOps}</h2>
           </div>
-        </div>
+
+          <div className="tournament-toolbar squad-toolbar">
+            <label className="tournament-search compact">
+              <span>{t.tournamentSearch}</span>
+              <input
+                placeholder={t.tournamentSearchPlaceholder}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <div className="tournament-filter squad-filter" aria-label={t.squadCoverage}>
+              {[
+                ['all', t.squadFilterAll],
+                ['unlinked', t.squadFilterUnlinked],
+                ['missing-snapshots', t.squadFilterMissingSnapshots],
+              ].map(([value, label]) => (
+                <button
+                  className={squadFilter === value ? 'active' : ''}
+                  type="button"
+                  key={value}
+                  onClick={() => setSquadFilter(value as 'all' | 'unlinked' | 'missing-snapshots')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
         {isLoading && (
           <FullPageProcessingOverlay label={t.loading} />
@@ -7781,7 +7907,7 @@ function SquadsPanel({
           <FullPageProcessingOverlay label={t.importRunning} />
         )}
 
-        <div className="tournament-table-shell">
+          <div className="tournament-table-shell">
           {!isLoading && (
             <table className="tournament-table squads-table">
               <thead>
@@ -7841,7 +7967,8 @@ function SquadsPanel({
               </tbody>
             </table>
           )}
-        </div>
+          </div>
+        </section>
       </div>
     </section>
   )
@@ -8492,42 +8619,48 @@ function TournamentsPanel({
           <FullPageProcessingOverlay label={t.loading} />
         )}
 
-        <div className="tournament-toolbar">
-          <button
-            className="form-submit compact"
-            type="button"
-            onClick={onCreate}
-          >
-            {t.addTournament}
-          </button>
-          <label className="tournament-search compact">
-            <span>{t.tournamentSearch}</span>
-            <input
-              placeholder={t.tournamentSearchPlaceholder}
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
-          <div className="tournament-filter" aria-label={t.tournamentLastSync}>
-            {[
-              ['all', t.tournamentFilterAll],
-              ['synced', t.tournamentFilterSynced],
-              ['not-synced', t.tournamentFilterNotSynced],
-            ].map(([value, label]) => (
-              <button
-                className={syncFilter === value ? 'active' : ''}
-                type="button"
-                key={value}
-                onClick={() => setSyncFilter(value as 'all' | 'synced' | 'not-synced')}
-              >
-                {label}
-              </button>
-            ))}
+        <section className="details-panel tournaments-management-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="tournaments" />
+            <h2>{t.adminTournamentOps}</h2>
           </div>
-        </div>
 
-        <div className="tournament-table-shell">
+          <div className="tournament-toolbar">
+            <button
+              className="form-submit compact"
+              type="button"
+              onClick={onCreate}
+            >
+              {t.addTournament}
+            </button>
+            <label className="tournament-search compact">
+              <span>{t.tournamentSearch}</span>
+              <input
+                placeholder={t.tournamentSearchPlaceholder}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <div className="tournament-filter" aria-label={t.tournamentLastSync}>
+              {[
+                ['all', t.tournamentFilterAll],
+                ['synced', t.tournamentFilterSynced],
+                ['not-synced', t.tournamentFilterNotSynced],
+              ].map(([value, label]) => (
+                <button
+                  className={syncFilter === value ? 'active' : ''}
+                  type="button"
+                  key={value}
+                  onClick={() => setSyncFilter(value as 'all' | 'synced' | 'not-synced')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="tournament-table-shell">
           <table className="tournament-table">
             <thead>
               <tr>
@@ -8584,7 +8717,8 @@ function TournamentsPanel({
               )}
             </tbody>
           </table>
-        </div>
+          </div>
+        </section>
       </div>
       {deleteCandidate && (
         <DeleteTournamentModal
@@ -10296,6 +10430,8 @@ function LoadingSpinner() {
 }
 
 export default App
+
+
 
 
 
