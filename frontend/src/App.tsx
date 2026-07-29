@@ -262,9 +262,23 @@ type CombinedRatingsResponse = {
     baseEloRunId?: number | null
     formRatingRunId?: number | null
     performanceRatingRunId?: number | null
+    snapshotStartSeasonOffset?: number | null
     calculatedAtUtc: string
   }
   teams: CombinedTeamRating[]
+}
+
+type BaseEloMatchSnapshot = {
+  id: number
+  runId: number
+  liveScoreEventId: string
+  kickoffUtc: string
+  homeTeamId: number
+  homeTeamName: string
+  awayTeamId: number
+  awayTeamName: string
+  homeActual: number
+  awayActual: number
 }
 
 type TeamFormRatingDetail = {
@@ -634,23 +648,67 @@ const translations = {
     predictionSearchPlaceholder: 'Search by team or round',
     backToPredictions: 'Back to predictions',
     backToPredictionList: 'Back to tournament',
+    predictionSummary: 'Prediction summary',
     homeWin: 'Home win',
     draw: 'Draw',
     awayWin: 'Away win',
+    chance: 'Chance',
     fairOdds: 'Fair odds',
     modelEdge: 'Model edge',
     ratingGap: 'Rating gap',
+    neutralRatingGap: 'Neutral rating gap',
+    homeAdvantageValue: 'Home advantage value',
     modelConfidence: 'Model confidence',
     strongestSignal: 'Strongest signal',
     predictedOutcome: 'Predicted outcome',
+    matchShape: 'Match shape',
+    drawRisk: 'Draw risk',
+    veryHighDrawRisk: 'Very high draw risk',
+    highDrawRisk: 'High draw risk',
+    moderateDrawRisk: 'Moderate draw risk',
+    lowDrawRisk: 'Low draw risk',
+    veryLowDrawRisk: 'Very low draw risk',
+    balancedMatch: 'Balanced match',
+    slightHomeLean: 'Slight home lean',
+    slightAwayLean: 'Slight away lean',
+    moderateHomeLean: 'Moderate home lean',
+    moderateAwayLean: 'Moderate away lean',
+    clearHomeLean: 'Clear home lean',
+    clearAwayLean: 'Clear away lean',
+    strongHomeLean: 'Strong home lean',
+    strongAwayLean: 'Strong away lean',
+    heavyHomeFavorite: 'Heavy home favorite',
+    heavyAwayFavorite: 'Heavy away favorite',
+    drawRiskVeryHighCopy: 'Draw is one of the main match outcomes, not only a fallback scenario.',
+    drawRiskHighCopy: 'Ratings are close enough that draw is a meaningful outcome.',
+    drawRiskModerateCopy: 'Draw is in the normal football danger zone and should stay visible.',
+    drawRiskLowCopy: 'Draw is possible, but model pressure points toward a winner.',
+    drawRiskVeryLowCopy: 'Draw is comparatively suppressed by the model shape.',
     scenarioBoard: 'Scenario board',
     modelBreakdown: 'Model breakdown',
     actualModelScenario: 'Actual model scenario',
+    actualModelScenarioWithHomeAdvantage: 'Actual model scenario + home advantage',
+    actualModelIngredients: 'Final rating: Base Elo, form, performance, and squad quality',
+    actualModelHomeAdvantageIngredients: 'Final rating plus tournament home advantage',
     homeAdvantageApplied: 'Home advantage applied',
     neutralGround: 'Neutral ground',
     baseEloOnly: 'Base Elo only',
+    baseEloWithHomeAdvantage: 'Base Elo + home advantage',
+    baseEloIngredients: 'Base Elo layer only',
+    baseEloHomeAdvantageIngredients: 'Base Elo layer plus tournament home advantage',
+    historicSplit: 'Historic % split',
+    historicSplitIngredients: 'Real home, draw, and away result split from tracked head-to-head matches',
+    historicSample: 'Historic sample',
+    noHistoricHeadToHead: 'No tracked head-to-head matches in the selected historical window',
+    calibratedModel: 'Calibrated model',
+    calibratedModelIngredients: 'Actual model softened toward realistic football 1X2 distributions',
+    calibratedModelHomeAdvantageIngredients: 'Actual model, calibrated extremes, and tournament home advantage',
     formMomentum: 'Form momentum',
+    formMomentumIngredients: 'Base Elo plus current form adjustment',
+    formMomentumHomeAdvantageIngredients: 'Base Elo, current form adjustment, and home advantage',
     squadAdjusted: 'Squad adjusted',
+    squadAdjustedIngredients: 'Base Elo plus squad quality adjustment',
+    squadAdjustedHomeAdvantageIngredients: 'Base Elo, squad quality adjustment, and home advantage',
     dataConfidence: 'Data confidence',
     noPrediction: 'Prediction unavailable',
     noPredictionCopy: 'Both teams need matched rating data before the model can estimate this fixture.',
@@ -1297,23 +1355,67 @@ const translations = {
     predictionSearchPlaceholder: 'Szukaj po drużynie lub rundzie',
     backToPredictions: 'Wróć do predykcji',
     backToPredictionList: 'Wróć do turnieju',
+    predictionSummary: 'Podsumowanie predykcji',
     homeWin: 'Wygrana gospodarzy',
     draw: 'Remis',
     awayWin: 'Wygrana gości',
+    chance: 'Szansa',
     fairOdds: 'Kurs fair',
     modelEdge: 'Przewaga modelu',
     ratingGap: 'Różnica ratingów',
+    neutralRatingGap: 'Neutralna różnica ratingów',
+    homeAdvantageValue: 'Wartość przewagi gospodarza',
     modelConfidence: 'Pewność modelu',
     strongestSignal: 'Najsilniejszy sygnał',
     predictedOutcome: 'Typ modelu',
+    matchShape: 'Kształt meczu',
+    drawRisk: 'Ryzyko remisu',
+    veryHighDrawRisk: 'Bardzo wysokie ryzyko remisu',
+    highDrawRisk: 'Wysokie ryzyko remisu',
+    moderateDrawRisk: 'Umiarkowane ryzyko remisu',
+    lowDrawRisk: 'Niskie ryzyko remisu',
+    veryLowDrawRisk: 'Bardzo niskie ryzyko remisu',
+    balancedMatch: 'Wyrównany mecz',
+    slightHomeLean: 'Lekka przewaga gospodarzy',
+    slightAwayLean: 'Lekka przewaga gości',
+    moderateHomeLean: 'Umiarkowana przewaga gospodarzy',
+    moderateAwayLean: 'Umiarkowana przewaga gości',
+    clearHomeLean: 'Czytelna przewaga gospodarzy',
+    clearAwayLean: 'Czytelna przewaga gości',
+    strongHomeLean: 'Wyraźna przewaga gospodarzy',
+    strongAwayLean: 'Wyraźna przewaga gości',
+    heavyHomeFavorite: 'Mocny faworyt u siebie',
+    heavyAwayFavorite: 'Mocny faworyt na wyjeździe',
+    drawRiskVeryHighCopy: 'Remis jest jednym z głównych scenariuszy meczu, a nie tylko wariantem pobocznym.',
+    drawRiskHighCopy: 'Ratingi są na tyle blisko, że remis jest istotnym scenariuszem.',
+    drawRiskModerateCopy: 'Remis jest w typowym piłkarskim obszarze ryzyka i powinien pozostać widoczny.',
+    drawRiskLowCopy: 'Remis jest możliwy, ale presja modelu wskazuje na zwycięzcę.',
+    drawRiskVeryLowCopy: 'Remis jest wyraźnie przygaszony przez układ modelu.',
     scenarioBoard: 'Scenariusze',
     modelBreakdown: 'Rozbicie modelu',
     actualModelScenario: 'Aktualny scenariusz modelu',
+    actualModelScenarioWithHomeAdvantage: 'Aktualny scenariusz modelu + przewaga gospodarza',
+    actualModelIngredients: 'Finalny rating: Base Elo, forma, performance i jakość kadry',
+    actualModelHomeAdvantageIngredients: 'Finalny rating plus przewaga gospodarza w turnieju',
     homeAdvantageApplied: 'Przewaga domu aktywna',
     neutralGround: 'Neutralny teren',
     baseEloOnly: 'Tylko Base Elo',
+    baseEloWithHomeAdvantage: 'Base Elo + przewaga gospodarza',
+    baseEloIngredients: 'Tylko warstwa Base Elo',
+    baseEloHomeAdvantageIngredients: 'Base Elo plus przewaga gospodarza w turnieju',
+    historicSplit: 'Historyczny podział %',
+    historicSplitIngredients: 'Rzeczywisty podział zwycięstw gospodarzy, remisów i gości z historycznych meczów H2H',
+    historicSample: 'Próba historyczna',
+    noHistoricHeadToHead: 'Brak historycznych meczów H2H w wybranym oknie danych',
+    calibratedModel: 'Model skalibrowany',
+    calibratedModelIngredients: 'Aktualny model wygładzony do realistycznych rozkładów piłkarskich 1X2',
+    calibratedModelHomeAdvantageIngredients: 'Aktualny model, wygładzone skrajności i przewaga gospodarza',
     formMomentum: 'Momentum formy',
+    formMomentumIngredients: 'Base Elo plus aktualna korekta formy',
+    formMomentumHomeAdvantageIngredients: 'Base Elo, korekta formy i przewaga gospodarza',
     squadAdjusted: 'Korekta kadry',
+    squadAdjustedIngredients: 'Base Elo plus korekta jakości kadry',
+    squadAdjustedHomeAdvantageIngredients: 'Base Elo, korekta jakości kadry i przewaga gospodarza',
     dataConfidence: 'Pewność danych',
     noPrediction: 'Predykcja niedostępna',
     noPredictionCopy: 'Obie drużyny muszą mieć ratingi, aby model mógł oszacować ten mecz.',
@@ -2239,6 +2341,9 @@ type MatchPrediction = {
   favoriteChance: number
 }
 
+const DEFAULT_HOME_ADVANTAGE = 50
+const CALIBRATED_HOME_ADVANTAGE = 40
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
@@ -2258,13 +2363,13 @@ function calculatePrediction(
   labels: { home: string; draw: string; away: string },
   options?: { homeRating?: number; awayRating?: number; homeAdvantage?: number },
 ): MatchPrediction {
-  const homeAdvantage = options?.homeAdvantage ?? (applyHomeAdvantage ? 65 : 0)
+  const homeAdvantage = options?.homeAdvantage ?? (applyHomeAdvantage ? DEFAULT_HOME_ADVANTAGE : 0)
   const homeRating = options?.homeRating ?? homeTeam.finalRating
   const awayRating = options?.awayRating ?? awayTeam.finalRating
   const ratingGap = homeRating + homeAdvantage - awayRating
   const absoluteGap = Math.abs(ratingGap)
-  const draw = clamp(0.235 * Math.exp(-absoluteGap / 360) + 0.05, 0.085, 0.285)
-  const homeNoDraw = 1 / (1 + 10 ** (-ratingGap / 360))
+  let draw = clamp(0.255 * Math.exp(-absoluteGap / 560) + 0.085, 0.13, 0.34)
+  const homeNoDraw = 1 / (1 + 10 ** (-ratingGap / 480))
   let homeWin = (1 - draw) * homeNoDraw
   let awayWin = 1 - draw - homeWin
   const homeUpsetFloor = applyHomeAdvantage ? 0.075 : 0.065
@@ -2276,6 +2381,13 @@ function calculatePrediction(
   } else if (ratingGap < 0 && homeWin < homeUpsetFloor) {
     awayWin = Math.max(0.01, awayWin - (homeUpsetFloor - homeWin))
     homeWin = homeUpsetFloor
+  }
+
+  if (ratingGap < -40) {
+    const awayFavoriteDrawBoost = clamp((absoluteGap - 40) / 260 * 0.045, 0, 0.045)
+    const transferredFromAway = Math.min(awayFavoriteDrawBoost, Math.max(0, awayWin - awayUpsetFloor))
+    awayWin -= transferredFromAway
+    draw += transferredFromAway
   }
 
   const total = homeWin + draw + awayWin
@@ -2299,6 +2411,178 @@ function calculatePrediction(
     confidence: clamp((homeTeam.ratingConfidence + awayTeam.ratingConfidence) / 2, 0, 1),
     favoriteLabel: outcomes[0].label,
     favoriteChance: outcomes[0].chance,
+  }
+}
+
+function calculateCalibratedPrediction(
+  homeTeam: CombinedTeamRating,
+  awayTeam: CombinedTeamRating,
+  applyHomeAdvantage: boolean,
+  labels: { home: string; draw: string; away: string },
+): MatchPrediction {
+  const neutralGap = homeTeam.finalRating - awayTeam.finalRating
+  const calibratedNeutralGap = neutralGap * 0.82
+  const calibratedHomeAdvantage = applyHomeAdvantage ? CALIBRATED_HOME_ADVANTAGE : 0
+
+  return calculatePrediction(homeTeam, awayTeam, applyHomeAdvantage, labels, {
+    homeRating: calibratedNeutralGap / 2,
+    awayRating: -calibratedNeutralGap / 2,
+    homeAdvantage: calibratedHomeAdvantage,
+  })
+}
+
+function buildPredictionFromSplit(
+  homeWin: number,
+  draw: number,
+  awayWin: number,
+  labels: { home: string; draw: string; away: string },
+  confidence: number,
+): MatchPrediction {
+  const total = homeWin + draw + awayWin
+  const normalizedHome = total > 0 ? homeWin / total : 0
+  const normalizedDraw = total > 0 ? draw / total : 0
+  const normalizedAway = total > 0 ? awayWin / total : 0
+  const outcomes = [
+    { label: labels.home, chance: normalizedHome },
+    { label: labels.draw, chance: normalizedDraw },
+    { label: labels.away, chance: normalizedAway },
+  ].sort((left, right) => right.chance - left.chance)
+
+  return {
+    homeWin: normalizedHome,
+    draw: normalizedDraw,
+    awayWin: normalizedAway,
+    homeFairOdds: normalizedHome > 0 ? 1 / normalizedHome : Number.POSITIVE_INFINITY,
+    drawFairOdds: normalizedDraw > 0 ? 1 / normalizedDraw : Number.POSITIVE_INFINITY,
+    awayFairOdds: normalizedAway > 0 ? 1 / normalizedAway : Number.POSITIVE_INFINITY,
+    ratingGap: 0,
+    confidence,
+    favoriteLabel: outcomes[0]?.label ?? labels.draw,
+    favoriteChance: outcomes[0]?.chance ?? 0,
+  }
+}
+
+function calculateHistoricHeadToHeadSplit(
+  snapshots: BaseEloMatchSnapshot[],
+  currentHomeTeamId: number,
+  currentAwayTeamId: number,
+  labels: { home: string; draw: string; away: string },
+) {
+  let homeWins = 0
+  let draws = 0
+  let awayWins = 0
+
+  snapshots.forEach((snapshot) => {
+    const sameFixtureOrder = snapshot.homeTeamId === currentHomeTeamId && snapshot.awayTeamId === currentAwayTeamId
+    const switchedFixtureOrder = snapshot.homeTeamId === currentAwayTeamId && snapshot.awayTeamId === currentHomeTeamId
+
+    if (!sameFixtureOrder && !switchedFixtureOrder) {
+      return
+    }
+
+    if (snapshot.homeActual === 0.5 || snapshot.awayActual === 0.5) {
+      draws += 1
+      return
+    }
+
+    if (sameFixtureOrder) {
+      if (snapshot.homeActual > snapshot.awayActual) {
+        homeWins += 1
+      } else {
+        awayWins += 1
+      }
+      return
+    }
+
+    if (snapshot.awayActual > snapshot.homeActual) {
+      homeWins += 1
+    } else {
+      awayWins += 1
+    }
+  })
+
+  const sampleSize = homeWins + draws + awayWins
+
+  if (sampleSize === 0) {
+    return null
+  }
+
+  return {
+    sampleSize,
+    prediction: buildPredictionFromSplit(
+      homeWins,
+      draws,
+      awayWins,
+      labels,
+      clamp(sampleSize / 10, 0.25, 1),
+    ),
+  }
+}
+
+function getPredictionShape(prediction: MatchPrediction, t: (typeof translations)[Language]) {
+  const favoriteGapToDraw = prediction.favoriteChance - prediction.draw
+  const spread = Math.max(prediction.homeWin, prediction.draw, prediction.awayWin) - Math.min(prediction.homeWin, prediction.draw, prediction.awayWin)
+  const isHomeFavorite = prediction.homeWin >= prediction.awayWin
+  const favoriteChance = prediction.favoriteChance
+  let shape: string = t.balancedMatch
+  let shapeSide = 'balanced'
+  let shapeTone = 'balanced'
+
+  if (spread > 0.10) {
+    shapeSide = isHomeFavorite ? 'home' : 'away'
+
+    if (favoriteChance < 0.42) {
+      shape = isHomeFavorite ? t.slightHomeLean : t.slightAwayLean
+      shapeTone = 'slight'
+    } else if (favoriteChance < 0.48) {
+      shape = isHomeFavorite ? t.moderateHomeLean : t.moderateAwayLean
+      shapeTone = 'moderate'
+    } else if (favoriteChance < 0.55) {
+      shape = isHomeFavorite ? t.clearHomeLean : t.clearAwayLean
+      shapeTone = 'clear'
+    } else if (favoriteChance < 0.65) {
+      shape = isHomeFavorite ? t.strongHomeLean : t.strongAwayLean
+      shapeTone = 'strong'
+    } else {
+      shape = isHomeFavorite ? t.heavyHomeFavorite : t.heavyAwayFavorite
+      shapeTone = 'heavy'
+    }
+  }
+
+  let risk: string = t.veryLowDrawRisk
+  let riskTone = 'very-low'
+
+  if (prediction.draw >= 0.31) {
+    risk = t.veryHighDrawRisk
+    riskTone = 'very-high'
+  } else if (prediction.draw >= 0.27) {
+    risk = t.highDrawRisk
+    riskTone = 'high'
+  } else if (prediction.draw >= 0.23 || favoriteGapToDraw <= 0.12) {
+    risk = t.moderateDrawRisk
+    riskTone = 'moderate'
+  } else if (prediction.draw >= 0.18) {
+    risk = t.lowDrawRisk
+    riskTone = 'low'
+  }
+
+  const copy = prediction.draw >= 0.31
+    ? t.drawRiskVeryHighCopy
+    : prediction.draw >= 0.27
+      ? t.drawRiskHighCopy
+      : prediction.draw >= 0.23 || favoriteGapToDraw <= 0.12
+        ? t.drawRiskModerateCopy
+        : prediction.draw >= 0.18
+          ? t.drawRiskLowCopy
+          : t.drawRiskVeryLowCopy
+
+  return {
+    shape,
+    shapeSide,
+    shapeTone,
+    risk,
+    riskTone,
+    copy,
   }
 }
 
@@ -3197,76 +3481,79 @@ function AuthPage({
   }
 
   return (
-    <section className="auth-section">
-      <HeroField />
-      <div className="hero-shade" />
-      <div className="auth-card">
-        <p className="eyebrow">{mode === 'login' ? t.submitLogin : t.submitRegister}</p>
-        <h1>{mode === 'login' ? t.loginTitle : t.registerTitle}</h1>
-        <p className="auth-copy">{mode === 'login' ? t.loginCopy : t.registerCopy}</p>
-        <form className="auth-form" noValidate onSubmit={handleSubmit}>
-          <FormField
-            error={errors.email}
-            label={t.email}
-            type="email"
-            value={email}
-            onChange={setEmail}
-          />
-          <FormField
-            error={errors.password}
-            label={t.password}
-            type="password"
-            value={password}
-            onChange={setPassword}
-          />
-          {mode === 'register' && (
+    <>
+      {isSubmitting && <FullPageProcessingOverlay label={t.loading} />}
+      <section className="auth-section">
+        <HeroField />
+        <div className="hero-shade" />
+        <div className="auth-card">
+          <p className="eyebrow">{mode === 'login' ? t.submitLogin : t.submitRegister}</p>
+          <h1>{mode === 'login' ? t.loginTitle : t.registerTitle}</h1>
+          <p className="auth-copy">{mode === 'login' ? t.loginCopy : t.registerCopy}</p>
+          <form className="auth-form" noValidate onSubmit={handleSubmit}>
             <FormField
-              error={errors.confirmPassword}
-              label={t.confirmPassword}
-              type="password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
+              error={errors.email}
+              label={t.email}
+              type="email"
+              value={email}
+              onChange={setEmail}
             />
-          )}
-          {mode === 'register' && (
-            <label className="terms-field">
-              <span className="terms-row">
-                <span className="terms-control">
-                  <input
-                    checked={termsAccepted}
-                    type="checkbox"
-                    onChange={(event) => setTermsAccepted(event.target.checked)}
-                  />
-                  <span>
-                    {t.acceptTermsPrefix} <Link to="/terms">{t.termsAndConditions}</Link>
+            <FormField
+              error={errors.password}
+              label={t.password}
+              type="password"
+              value={password}
+              onChange={setPassword}
+            />
+            {mode === 'register' && (
+              <FormField
+                error={errors.confirmPassword}
+                label={t.confirmPassword}
+                type="password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+              />
+            )}
+            {mode === 'register' && (
+              <label className="terms-field">
+                <span className="terms-row">
+                  <span className="terms-control">
+                    <input
+                      checked={termsAccepted}
+                      type="checkbox"
+                      onChange={(event) => setTermsAccepted(event.target.checked)}
+                    />
+                    <span>
+                      {t.acceptTermsPrefix} <Link to="/terms">{t.termsAndConditions}</Link>
+                    </span>
                   </span>
+                  {errors.termsAccepted && <small>{errors.termsAccepted}</small>}
                 </span>
-                {errors.termsAccepted && <small>{errors.termsAccepted}</small>}
-              </span>
-            </label>
-          )}
-          <button className="form-submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? '...' : mode === 'login' ? t.submitLogin : t.submitRegister}
-          </button>
-        </form>
-        <div className="auth-switch">
-          <span>{mode === 'login' ? t.noAccount : t.hasAccount}</span>
-          <button type="button" onClick={onSwitch}>
-            {mode === 'login' ? t.createAccount : t.useExisting}
-          </button>
-        </div>
-        {mode === 'login' && (
-          <div className="auth-links">
-            <button type="button" onClick={onForgotPassword}>
-              {t.forgotPassword}
+              </label>
+            )}
+            <button className="form-submit" type="submit" disabled={isSubmitting}>
+              {mode === 'login' ? t.submitLogin : t.submitRegister}
             </button>
-            <button type="button" onClick={onResendActivation}>
-              {t.resendActivation}
+          </form>
+          <div className="auth-switch">
+            <span>{mode === 'login' ? t.noAccount : t.hasAccount}</span>
+            <button type="button" onClick={onSwitch}>
+              {mode === 'login' ? t.createAccount : t.useExisting}
             </button>
           </div>
-        )}
-      </div>
-    </section>
+          {mode === 'login' && (
+            <div className="auth-links">
+              <button type="button" onClick={onForgotPassword}>
+                {t.forgotPassword}
+              </button>
+              <button type="button" onClick={onResendActivation}>
+                {t.resendActivation}
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    </>
   )
 }
 
@@ -3323,32 +3610,35 @@ function EmailActionPage({
   }
 
   return (
-    <section className="auth-section">
-      <HeroField />
-      <div className="hero-shade" />
-      <div className="auth-card">
-        <p className="eyebrow">{isForgotPassword ? t.forgotPasswordEyebrow : t.resendActivationEyebrow}</p>
-        <h1>{isForgotPassword ? t.forgotPasswordTitle : t.resendActivationTitle}</h1>
-        <p className="auth-copy">{isForgotPassword ? t.forgotPasswordCopy : t.resendActivationCopy}</p>
-        <form className="auth-form" noValidate onSubmit={handleSubmit}>
-          <FormField
-            error={errors.email}
-            label={t.email}
-            type="email"
-            value={email}
-            onChange={setEmail}
-          />
-          <button className="form-submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? '...' : isForgotPassword ? t.sendResetLink : t.resendEmail}
-          </button>
-        </form>
-        <div className="auth-switch">
-          <button type="button" onClick={onBackLogin}>
-            {t.backToLogin}
-          </button>
+    <>
+      {isSubmitting && <FullPageProcessingOverlay label={t.loading} />}
+      <section className="auth-section">
+        <HeroField />
+        <div className="hero-shade" />
+        <div className="auth-card">
+          <p className="eyebrow">{isForgotPassword ? t.forgotPasswordEyebrow : t.resendActivationEyebrow}</p>
+          <h1>{isForgotPassword ? t.forgotPasswordTitle : t.resendActivationTitle}</h1>
+          <p className="auth-copy">{isForgotPassword ? t.forgotPasswordCopy : t.resendActivationCopy}</p>
+          <form className="auth-form" noValidate onSubmit={handleSubmit}>
+            <FormField
+              error={errors.email}
+              label={t.email}
+              type="email"
+              value={email}
+              onChange={setEmail}
+            />
+            <button className="form-submit" type="submit" disabled={isSubmitting}>
+              {isForgotPassword ? t.sendResetLink : t.resendEmail}
+            </button>
+          </form>
+          <div className="auth-switch">
+            <button type="button" onClick={onBackLogin}>
+              {t.backToLogin}
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   )
 }
 
@@ -3420,31 +3710,34 @@ function ConfirmEmailPage({
     : message || (isSuccess ? t.confirmEmailSuccessCopy : t.confirmEmailFailureCopy)
 
   return (
-    <section className="auth-section">
-      <HeroField />
-      <div className="hero-shade" />
-      <div className={`auth-card status-card ${status}`}>
-        <p className="eyebrow">{t.confirmEmailEyebrow}</p>
-        <h1>{title}</h1>
-        <p className="auth-copy">{copy}</p>
-        {!isLoading && (
-          <button
-            className="form-submit"
-            type="button"
-            onClick={isSuccess ? onBackLogin : onResendActivation}
-          >
-            {isSuccess ? t.backToLogin : t.goToResendActivation}
-          </button>
-        )}
-        {!isLoading && !isSuccess && (
-          <div className="auth-switch">
-            <button type="button" onClick={onBackLogin}>
-              {t.backToLogin}
+    <>
+      {isLoading && <FullPageProcessingOverlay label={t.loading} />}
+      <section className="auth-section">
+        <HeroField />
+        <div className="hero-shade" />
+        <div className={`auth-card status-card ${status}`}>
+          <p className="eyebrow">{t.confirmEmailEyebrow}</p>
+          <h1>{title}</h1>
+          <p className="auth-copy">{copy}</p>
+          {!isLoading && (
+            <button
+              className="form-submit"
+              type="button"
+              onClick={isSuccess ? onBackLogin : onResendActivation}
+            >
+              {isSuccess ? t.backToLogin : t.goToResendActivation}
             </button>
-          </div>
-        )}
-      </div>
-    </section>
+          )}
+          {!isLoading && !isSuccess && (
+            <div className="auth-switch">
+              <button type="button" onClick={onBackLogin}>
+                {t.backToLogin}
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    </>
   )
 }
 
@@ -3528,39 +3821,42 @@ function ResetPasswordPage({
   }
 
   return (
-    <section className="auth-section">
-      <HeroField />
-      <div className="hero-shade" />
-      <div className="auth-card">
-        <p className="eyebrow">{t.resetPasswordEyebrow}</p>
-        <h1>{t.resetPasswordTitle}</h1>
-        <p className="auth-copy">{isLinkValid ? t.resetPasswordCopy : t.resetPasswordInvalidLink}</p>
-        <form className="auth-form" noValidate onSubmit={handleSubmit}>
-          <FormField
-            error={errors.password}
-            label={t.newPassword}
-            type="password"
-            value={password}
-            onChange={setPassword}
-          />
-          <FormField
-            error={errors.confirmPassword}
-            label={t.confirmNewPassword}
-            type="password"
-            value={confirmPassword}
-            onChange={setConfirmPassword}
-          />
-          <button className="form-submit" type="submit" disabled={isSubmitting || !isLinkValid}>
-            {isSubmitting ? '...' : t.setNewPassword}
-          </button>
-        </form>
-        <div className="auth-switch">
-          <button type="button" onClick={onBackLogin}>
-            {t.backToLogin}
-          </button>
+    <>
+      {isSubmitting && <FullPageProcessingOverlay label={t.loading} />}
+      <section className="auth-section">
+        <HeroField />
+        <div className="hero-shade" />
+        <div className="auth-card">
+          <p className="eyebrow">{t.resetPasswordEyebrow}</p>
+          <h1>{t.resetPasswordTitle}</h1>
+          <p className="auth-copy">{isLinkValid ? t.resetPasswordCopy : t.resetPasswordInvalidLink}</p>
+          <form className="auth-form" noValidate onSubmit={handleSubmit}>
+            <FormField
+              error={errors.password}
+              label={t.newPassword}
+              type="password"
+              value={password}
+              onChange={setPassword}
+            />
+            <FormField
+              error={errors.confirmPassword}
+              label={t.confirmNewPassword}
+              type="password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+            />
+            <button className="form-submit" type="submit" disabled={isSubmitting || !isLinkValid}>
+              {t.setNewPassword}
+            </button>
+          </form>
+          <div className="auth-switch">
+            <button type="button" onClick={onBackLogin}>
+              {t.backToLogin}
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   )
 }
 
@@ -4036,8 +4332,13 @@ function UserMatchDetailsPanel({
           return
         }
 
+        const loadedMatches = matchesResult.data
+        const firstRound = [...new Set(loadedMatches.map((match) => match.roundInfo).filter(Boolean))]
+          .sort((left, right) => compareText(left, right))[0]
+
         setTournament(tournamentResult.data)
-        setMatches(matchesResult.data)
+        setMatches(loadedMatches)
+        setRoundFilter(firstRound ?? 'all')
       } catch {
         if (isMounted) {
           onToast(t.tournamentLoadFailed, 'error')
@@ -4679,6 +4980,7 @@ function PredictionDetailsPanel({
   const [tournament, setTournament] = useState<TournamentDetails | null>(null)
   const [matches, setMatches] = useState<MatchSummary[]>([])
   const [combinedRatings, setCombinedRatings] = useState<CombinedRatingsResponse | null>(null)
+  const [baseEloSnapshots, setBaseEloSnapshots] = useState<BaseEloMatchSnapshot[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -4702,9 +5004,29 @@ function PredictionDetailsPanel({
           return
         }
 
+        let loadedBaseEloSnapshots: BaseEloMatchSnapshot[] = []
+        const baseEloRunId = ratingsResult.data.runContext.baseEloRunId
+        const usesHistoricalWindow = (ratingsResult.data.runContext.snapshotStartSeasonOffset ?? 0) <= -3
+
+        if (usesHistoricalWindow && baseEloRunId) {
+          const snapshotsResult = await authorizedRequest<BaseEloMatchSnapshot[]>(
+            user.token,
+            `/api/rating-runs/${baseEloRunId}/base-elo/snapshots`,
+          )
+
+          if (!isMounted) {
+            return
+          }
+
+          if (snapshotsResult.ok && snapshotsResult.data) {
+            loadedBaseEloSnapshots = snapshotsResult.data
+          }
+        }
+
         setTournament(tournamentResult.data)
         setMatches(matchesResult.data)
         setCombinedRatings(ratingsResult.data)
+        setBaseEloSnapshots(loadedBaseEloSnapshots)
       } catch {
         if (isMounted) {
           onToast(t.genericError, 'error')
@@ -4732,32 +5054,82 @@ function PredictionDetailsPanel({
     ? calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels)
     : null
 
+  const hasHistoricalSnapshot = (combinedRatings?.runContext.snapshotStartSeasonOffset ?? 0) <= -3
+  const historicHeadToHead = hasHistoricalSnapshot && match?.homeTeam && match.awayTeam
+    ? calculateHistoricHeadToHeadSplit(baseEloSnapshots, match.homeTeam.id, match.awayTeam.id, predictionLabels)
+    : null
   const scenarios = homeTeam && awayTeam && tournament
     ? [
       {
         title: t.actualModelScenario,
+        ingredients: tournament.applyHomeAdvantage ? t.actualModelHomeAdvantageIngredients : t.actualModelIngredients,
         prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels),
+        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).ratingGap)}`,
+        isHistoric: false,
       },
       {
         title: t.baseEloOnly,
+        ingredients: tournament.applyHomeAdvantage ? t.baseEloHomeAdvantageIngredients : t.baseEloIngredients,
         prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
           homeRating: homeTeam.baseElo,
           awayRating: awayTeam.baseElo,
         }),
+        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo,
+          awayRating: awayTeam.baseElo,
+        }).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo,
+          awayRating: awayTeam.baseElo,
+        }).ratingGap)}`,
+        isHistoric: false,
       },
       {
         title: t.formMomentum,
+        ingredients: tournament.applyHomeAdvantage ? t.formMomentumHomeAdvantageIngredients : t.formMomentumIngredients,
         prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
           homeRating: homeTeam.baseElo + homeTeam.formAdjustment,
           awayRating: awayTeam.baseElo + awayTeam.formAdjustment,
         }),
+        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo + homeTeam.formAdjustment,
+          awayRating: awayTeam.baseElo + awayTeam.formAdjustment,
+        }).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo + homeTeam.formAdjustment,
+          awayRating: awayTeam.baseElo + awayTeam.formAdjustment,
+        }).ratingGap)}`,
+        isHistoric: false,
       },
       {
         title: t.squadAdjusted,
+        ingredients: tournament.applyHomeAdvantage ? t.squadAdjustedHomeAdvantageIngredients : t.squadAdjustedIngredients,
         prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
           homeRating: homeTeam.baseElo + homeTeam.squadQualityAdjustment,
           awayRating: awayTeam.baseElo + awayTeam.squadQualityAdjustment,
         }),
+        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo + homeTeam.squadQualityAdjustment,
+          awayRating: awayTeam.baseElo + awayTeam.squadQualityAdjustment,
+        }).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+          homeRating: homeTeam.baseElo + homeTeam.squadQualityAdjustment,
+          awayRating: awayTeam.baseElo + awayTeam.squadQualityAdjustment,
+        }).ratingGap)}`,
+        isHistoric: false,
+      },
+      ...(hasHistoricalSnapshot
+        ? [{
+            title: t.historicSplit,
+            ingredients: t.historicSplitIngredients,
+            prediction: historicHeadToHead?.prediction ?? null,
+            summary: historicHeadToHead ? `${t.historicSample}: ${historicHeadToHead.sampleSize}` : t.noHistoricHeadToHead,
+            isHistoric: true,
+          }]
+        : []),
+      {
+        title: t.calibratedModel,
+        ingredients: tournament.applyHomeAdvantage ? t.calibratedModelHomeAdvantageIngredients : t.calibratedModelIngredients,
+        prediction: calculateCalibratedPrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels),
+        summary: `${formatPercent(calculateCalibratedPrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculateCalibratedPrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).ratingGap)}`,
+        isHistoric: false,
       },
     ]
     : []
@@ -4770,6 +5142,10 @@ function PredictionDetailsPanel({
       { label: t.ratingSquad, value: Math.abs(homeTeam.squadQualityAdjustment - awayTeam.squadQualityAdjustment) },
     ].sort((left, right) => right.value - left.value)[0]
     : null
+  const predictionShape = prediction ? getPredictionShape(prediction, t) : null
+  const neutralRatingGap = homeTeam && awayTeam ? homeTeam.finalRating - awayTeam.finalRating : 0
+  const homeAdvantageValue = prediction ? prediction.ratingGap - neutralRatingGap : 0
+  const appliesHomeAdvantage = Boolean(tournament?.applyHomeAdvantage)
 
   return (
     <section className="admin-dashboard">
@@ -4815,10 +5191,17 @@ function PredictionDetailsPanel({
                 <strong>{getTeamDisplayName(match, 'home')}</strong>
                 <small>{homeTeam.finalRating.toFixed(2)} FTSR</small>
               </div>
-              <div className="prediction-main-call">
-                <span>{t.predictedOutcome}</span>
-                <strong>{prediction.favoriteLabel}</strong>
-                <small>{formatPercent(prediction.favoriteChance)} | {t.fairOdds} {formatOdds(1 / prediction.favoriteChance)}</small>
+              <div className="prediction-main-call" style={{ background: getPredictionSummaryGradient(prediction) }}>
+                <span className="prediction-main-title">{t.predictionSummary}</span>
+                <div className="prediction-main-outcome">
+                  <strong>{prediction.favoriteLabel}</strong>
+                  <strong>{formatPercent(prediction.favoriteChance)} chance</strong>
+                </div>
+                <div className="prediction-main-shape">
+                  <strong className={`shape-tone ${predictionShape?.shapeSide ?? 'balanced'}-${predictionShape?.shapeTone ?? 'balanced'}`}>{predictionShape?.shape}</strong>
+                  <strong className={`risk-tone ${predictionShape?.riskTone ?? 'moderate'}`}>{predictionShape?.risk}</strong>
+                </div>
+                <p>{predictionShape?.copy}</p>
               </div>
               <div className="prediction-team-card right">
                 <span>{t.awayTeam}</span>
@@ -4839,6 +5222,8 @@ function PredictionDetailsPanel({
               </div>
               <div className="prediction-breakdown-grid">
                 <TooltipMetric label={t.ratingGap} value={formatSigned(prediction.ratingGap)} />
+                <TooltipMetric label={t.homeAdvantageValue} value={appliesHomeAdvantage ? formatSigned(homeAdvantageValue) : t.homeAdvantageDisabled} />
+                <TooltipMetric label={t.neutralRatingGap} value={formatSigned(neutralRatingGap)} />
                 <TooltipMetric label={t.modelConfidence} value={formatPercent(prediction.confidence)} />
                 <TooltipMetric label={t.strongestSignal} value={strongestSignal ? `${strongestSignal.label} (${strongestSignal.value.toFixed(2)})` : '-'} />
                 <TooltipMetric label={t.ratingUpdated} value={combinedRatings ? formatDate(combinedRatings.runContext.calculatedAtUtc, '-') : '-'} />
@@ -4872,22 +5257,30 @@ function PredictionDetailsPanel({
               </div>
               <div className="prediction-scenario-grid">
                 {scenarios.map((scenario) => {
+                  const scenarioPrediction = scenario.prediction
                   const dominant = [
-                    ['1', scenario.prediction.homeWin],
-                    ['X', scenario.prediction.draw],
-                    ['2', scenario.prediction.awayWin],
+                    ['1', scenarioPrediction?.homeWin ?? 0],
+                    ['X', scenarioPrediction?.draw ?? 0],
+                    ['2', scenarioPrediction?.awayWin ?? 0],
                   ].sort((left, right) => Number(right[1]) - Number(left[1]))[0][0]
 
                   return (
-                    <div className="prediction-scenario-card" key={scenario.title}>
+                    <div className={`prediction-scenario-card${scenario.isHistoric ? ' historic-split-card' : ''}`} key={scenario.title}>
                       <strong>{scenario.title}</strong>
-                      <span>{scenario.prediction.favoriteLabel}</span>
-                      <small>{formatPercent(scenario.prediction.favoriteChance)} | {t.ratingGap} {formatSigned(scenario.prediction.ratingGap)}</small>
-                      <div>
-                        <PredictionMiniBar label="1" tone="home" value={scenario.prediction.homeWin} isDominant={dominant === '1'} />
-                        <PredictionMiniBar label="X" tone="draw" value={scenario.prediction.draw} isDominant={dominant === 'X'} />
-                        <PredictionMiniBar label="2" tone="away" value={scenario.prediction.awayWin} isDominant={dominant === '2'} />
-                      </div>
+                      <p>{scenario.ingredients}</p>
+                      {scenarioPrediction ? (
+                        <>
+                          <span>{scenarioPrediction.favoriteLabel}</span>
+                          <small>{scenario.summary}</small>
+                          <div>
+                            <PredictionMiniBar label="1" tone="home" value={scenarioPrediction.homeWin} isDominant={dominant === '1'} />
+                            <PredictionMiniBar label="X" tone="draw" value={scenarioPrediction.draw} isDominant={dominant === 'X'} />
+                            <PredictionMiniBar label="2" tone="away" value={scenarioPrediction.awayWin} isDominant={dominant === '2'} />
+                          </div>
+                        </>
+                      ) : (
+                        <span className="historic-split-empty">{scenario.summary}</span>
+                      )}
                     </div>
                   )
                 })}
@@ -4909,6 +5302,53 @@ function PredictionCell({ value, odds }: { value: number; odds: number }) {
   )
 }
 
+function getPredictionSurfaceGradient(prediction: MatchPrediction, intensity = 1) {
+  const homeStop = prediction.homeWin * 100
+  const drawStop = homeStop + prediction.draw * 100
+  const homeCenter = homeStop / 2
+  const drawCenter = homeStop + prediction.draw * 50
+  const awayCenter = drawStop + prediction.awayWin * 50
+  const alpha = (value: number) => Math.min(1, value * intensity).toFixed(3)
+
+  return [
+    `radial-gradient(circle at ${homeCenter}% 50%, rgba(176, 216, 107, ${alpha(0.34)}), rgba(176, 216, 107, ${alpha(0.16)}) 34%, transparent 64%)`,
+    `radial-gradient(circle at ${drawCenter}% 50%, rgba(228, 206, 107, ${alpha(0.28)}), rgba(228, 206, 107, ${alpha(0.13)}) 28%, transparent 58%)`,
+    `radial-gradient(circle at ${awayCenter}% 50%, rgba(96, 132, 158, ${alpha(0.32)}), rgba(96, 132, 158, ${alpha(0.15)}) 30%, transparent 60%)`,
+    `linear-gradient(90deg, rgba(176, 216, 107, ${alpha(0.08)}) 0%, rgba(255, 255, 255, ${alpha(0.045)}) ${homeStop}%, rgba(228, 206, 107, ${alpha(0.055)}) ${homeStop}%, rgba(255, 255, 255, ${alpha(0.045)}) ${drawStop}%, rgba(96, 132, 158, ${alpha(0.10)}) 100%)`,
+    'rgba(255, 255, 255, 0.07)',
+  ].join(', ')
+}
+
+function getPredictionSummaryGradient(prediction: MatchPrediction) {
+  const winner = prediction.homeWin >= prediction.awayWin && prediction.homeWin >= prediction.draw
+    ? 'home'
+    : prediction.awayWin >= prediction.homeWin && prediction.awayWin >= prediction.draw
+      ? 'away'
+      : 'draw'
+
+  if (winner === 'home') {
+    return [
+      'radial-gradient(circle at 18% 50%, rgba(176, 216, 107, 0.20), transparent 52%)',
+      'linear-gradient(90deg, rgba(176, 216, 107, 0.20) 0%, rgba(176, 216, 107, 0.10) 38%, rgba(255, 255, 255, 0.035) 100%)',
+      'rgba(255, 255, 255, 0.055)',
+    ].join(', ')
+  }
+
+  if (winner === 'away') {
+    return [
+      'radial-gradient(circle at 82% 50%, rgba(96, 132, 158, 0.22), transparent 52%)',
+      'linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0%, rgba(96, 132, 158, 0.09) 58%, rgba(96, 132, 158, 0.22) 100%)',
+      'rgba(255, 255, 255, 0.055)',
+    ].join(', ')
+  }
+
+  return [
+    'radial-gradient(circle at 50% 50%, rgba(228, 206, 107, 0.18), transparent 54%)',
+    'linear-gradient(90deg, rgba(255, 255, 255, 0.035), rgba(228, 206, 107, 0.11), rgba(255, 255, 255, 0.035))',
+    'rgba(255, 255, 255, 0.055)',
+  ].join(', ')
+}
+
 function PredictionProbabilityCard({
   prediction,
   labels,
@@ -4916,18 +5356,7 @@ function PredictionProbabilityCard({
   prediction: MatchPrediction
   labels: { home: string; draw: string; away: string; odds: string }
 }) {
-  const homeStop = prediction.homeWin * 100
-  const drawStop = homeStop + prediction.draw * 100
-  const homeCenter = homeStop / 2
-  const drawCenter = homeStop + prediction.draw * 50
-  const awayCenter = drawStop + prediction.awayWin * 50
-  const gradient = [
-    `radial-gradient(circle at ${homeCenter}% 50%, rgba(176, 216, 107, 0.34), rgba(176, 216, 107, 0.16) 34%, transparent 64%)`,
-    `radial-gradient(circle at ${drawCenter}% 50%, rgba(228, 206, 107, 0.28), rgba(228, 206, 107, 0.13) 28%, transparent 58%)`,
-    `radial-gradient(circle at ${awayCenter}% 50%, rgba(127, 183, 168, 0.28), rgba(127, 183, 168, 0.13) 30%, transparent 60%)`,
-    'linear-gradient(135deg, rgba(176, 216, 107, 0.10), rgba(255, 255, 255, 0.05))',
-    'rgba(255, 255, 255, 0.07)',
-  ].join(', ')
+  const gradient = getPredictionSurfaceGradient(prediction)
 
   return (
     <div className="prediction-probability-stack">
@@ -8755,6 +9184,7 @@ function TournamentFormPage({
   const [isActive, setIsActive] = useState(true)
   const [applyHomeAdvantage, setApplyHomeAdvantage] = useState(true)
   const [locale, setLocale] = useState('en')
+  const [competitionCountry, setCompetitionCountry] = useState('')
   const [timezoneOffset, setTimezoneOffset] = useState('0')
   const [preview, setPreview] = useState<TournamentPreview | null>(null)
   const [loadedTournament, setLoadedTournament] = useState<TournamentDetails | null>(null)
@@ -8794,6 +9224,7 @@ function TournamentFormPage({
         setIsActive(result.data.isActive)
         setApplyHomeAdvantage(result.data.applyHomeAdvantage)
         setLocale(result.data.locale)
+        setCompetitionCountry(result.data.competitionCountry)
         setTimezoneOffset(result.data.timezoneOffset)
       })
       .catch(() => {
@@ -8867,6 +9298,7 @@ function TournamentFormPage({
       setName((current) => current || result.data?.name || '')
       setSeason((current) => current || result.data?.season || '')
       setLocale(result.data.locale)
+      setCompetitionCountry(result.data.competitionCountry || '')
       setTimezoneOffset(result.data.timezoneOffset)
       onToast(t.tournamentPreviewLoaded, 'success')
     } catch {
@@ -8895,6 +9327,7 @@ function TournamentFormPage({
               isActive,
               applyHomeAdvantage,
               liveScoreUrl: liveScoreUrl.trim(),
+              competitionCountry: competitionCountry.trim() || null,
               locale: locale.trim(),
               timezoneOffset: timezoneOffset.trim(),
             }),
@@ -8907,6 +9340,7 @@ function TournamentFormPage({
               season: season.trim() || null,
               applyHomeAdvantage,
               locale: locale.trim(),
+              competitionCountry: competitionCountry.trim() || null,
               timezoneOffset: timezoneOffset.trim(),
             }),
           })
@@ -9031,6 +9465,13 @@ function TournamentFormPage({
                 type="text"
                 value={locale}
                 onChange={setLocale}
+              />
+              <FormField
+                error={errors.competitionCountry}
+                label={t.tournamentCountry}
+                type="text"
+                value={competitionCountry}
+                onChange={setCompetitionCountry}
               />
               <FormField
                 error={errors.timezoneOffset}

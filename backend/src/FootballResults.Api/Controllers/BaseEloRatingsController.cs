@@ -51,7 +51,7 @@ public sealed class BaseEloRatingsController(IBaseEloRatingService baseEloRating
     }
 
     [HttpGet("api/rating-runs/{runId:int}/base-elo/snapshots")]
-    [Authorize(Policy = AuthExtensions.ApiKeyOrAdminPolicy)]
+    [Authorize(Policy = AuthExtensions.ApiKeyOrUserPolicy)]
     [ProducesResponseType(typeof(IReadOnlyList<MatchEloSnapshotDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<MatchEloSnapshotDto>>> GetRunSnapshots(
         int runId,

@@ -6,7 +6,7 @@ public sealed record RebuildBaseEloRequest(
     decimal BaseRating = 1500,
     decimal PromotedBaselineRating = 1450,
     decimal KFactor = 20,
-    decimal HomeAdvantage = 55,
+    decimal HomeAdvantage = 50,
     int BootstrapSeasonCount = 3,
     string Scope = "Tournament",
     int? SnapshotStartSeasonOffset = null);

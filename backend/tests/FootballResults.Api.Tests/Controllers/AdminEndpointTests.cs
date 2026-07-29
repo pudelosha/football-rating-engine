@@ -21,8 +21,10 @@ public sealed class AdminEndpointTests
         var create = await client.PostAsJsonAsync("/api/tournaments", Request());
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
 
-        var update = await client.PutAsJsonAsync($"/api/tournaments/{tournamentId}", new UpdateTournamentRequest("Updated Cup", "2026", true, true, null, "en", "0"));
+        var update = await client.PutAsJsonAsync($"/api/tournaments/{tournamentId}", new UpdateTournamentRequest("Updated Cup", "2026", true, true, null, "International", "en", "0"));
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        var updatedTournament = await update.Content.ReadFromJsonAsync<TournamentDetailsDto>();
+        Assert.Equal("International", updatedTournament!.CompetitionCountry);
 
         var delete = await client.DeleteAsync($"/api/tournaments/{tournamentId}");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);

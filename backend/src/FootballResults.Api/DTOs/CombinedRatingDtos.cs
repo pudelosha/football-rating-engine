@@ -4,6 +4,7 @@ public sealed record CombinedRatingRunContextDto(
     int? BaseEloRunId,
     int? FormRatingRunId,
     int? PerformanceRatingRunId,
+    int? SnapshotStartSeasonOffset,
     DateTimeOffset CalculatedAtUtc);
 
 public sealed record TeamCombinedRatingDto(

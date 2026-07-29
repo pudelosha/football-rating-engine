@@ -1982,7 +1982,7 @@ p {
 
 .prediction-scoreboard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.72fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -2027,6 +2027,16 @@ p {
   line-height: 1;
 }
 
+.prediction-team-card strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  padding-bottom: 3px;
+  line-height: 1.16;
+}
+
 .prediction-team-card small,
 .prediction-main-call small {
   color: rgba(255, 249, 234, 0.66);
@@ -2035,7 +2045,125 @@ p {
 }
 
 .prediction-main-call {
-  background: linear-gradient(135deg, rgba(176, 216, 107, 0.22), rgba(255, 255, 255, 0.06));
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 10px 18px;
+}
+
+.prediction-main-title {
+  grid-column: 1 / -1;
+  justify-self: center;
+  text-align: center;
+}
+
+.prediction-main-outcome,
+.prediction-main-shape {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+
+.prediction-main-outcome {
+  justify-items: center;
+  text-align: center;
+}
+
+.prediction-main-shape {
+  justify-items: center;
+  text-align: center;
+}
+
+.prediction-main-outcome strong,
+.prediction-main-shape strong.shape-tone,
+.prediction-main-shape strong.risk-tone {
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.prediction-main-shape strong.shape-tone.balanced-balanced {
+  color: rgba(221, 236, 184, 0.92);
+  text-shadow: 0 0 18px rgba(221, 236, 184, 0.14);
+}
+
+.prediction-main-shape strong.shape-tone.home-slight {
+  color: rgba(205, 231, 158, 0.82);
+  text-shadow: 0 0 18px rgba(176, 216, 107, 0.10);
+}
+
+.prediction-main-shape strong.shape-tone.home-moderate {
+  color: rgba(176, 216, 107, 0.90);
+  text-shadow: 0 0 20px rgba(176, 216, 107, 0.16);
+}
+
+.prediction-main-shape strong.shape-tone.home-clear {
+  color: rgba(138, 194, 83, 0.96);
+  text-shadow: 0 0 22px rgba(138, 194, 83, 0.20);
+}
+
+.prediction-main-shape strong.shape-tone.home-strong {
+  color: rgba(92, 163, 75, 0.98);
+  text-shadow: 0 0 24px rgba(92, 163, 75, 0.24);
+}
+
+.prediction-main-shape strong.shape-tone.home-heavy {
+  color: rgba(58, 139, 72, 1);
+  text-shadow: 0 0 26px rgba(58, 139, 72, 0.28);
+}
+
+.prediction-main-shape strong.shape-tone.away-slight {
+  color: rgba(178, 204, 222, 0.84);
+  text-shadow: 0 0 18px rgba(96, 132, 158, 0.12);
+}
+
+.prediction-main-shape strong.shape-tone.away-moderate {
+  color: rgba(149, 184, 209, 0.92);
+  text-shadow: 0 0 20px rgba(96, 132, 158, 0.18);
+}
+
+.prediction-main-shape strong.shape-tone.away-clear {
+  color: rgba(119, 164, 198, 0.96);
+  text-shadow: 0 0 22px rgba(96, 132, 158, 0.22);
+}
+
+.prediction-main-shape strong.shape-tone.away-strong {
+  color: rgba(91, 143, 184, 0.98);
+  text-shadow: 0 0 24px rgba(91, 143, 184, 0.25);
+}
+
+.prediction-main-shape strong.shape-tone.away-heavy {
+  color: rgba(65, 120, 166, 1);
+  text-shadow: 0 0 26px rgba(65, 120, 166, 0.28);
+}
+
+.prediction-main-shape strong.risk-tone.very-low {
+  color: #8fb7d6;
+}
+
+.prediction-main-shape strong.risk-tone.low {
+  color: #9fc8bd;
+}
+
+.prediction-main-shape strong.risk-tone.moderate {
+  color: #d5d879;
+}
+
+.prediction-main-shape strong.risk-tone.high {
+  color: #e4ce6b;
+}
+
+.prediction-main-shape strong.risk-tone.very-high {
+  color: #ff9b6a;
+}
+
+.prediction-main-call p {
+  grid-column: 1 / -1;
+  max-width: 520px;
+  justify-self: center;
+  margin: 0;
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.45;
   text-align: center;
 }
 
@@ -2185,7 +2313,7 @@ p {
 
 .prediction-breakdown-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -2241,10 +2369,25 @@ p {
   font-weight: 950;
 }
 
+.prediction-scenario-card > p {
+  margin: -8px 0 0;
+  color: rgba(255, 249, 234, 0.52);
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
 .prediction-scenario-card > span {
   color: #b0d86b;
   font-size: 24px;
   font-weight: 950;
+}
+
+.prediction-scenario-card > span.historic-split-empty {
+  max-width: 520px;
+  color: rgba(255, 249, 234, 0.72);
+  font-size: 16px;
+  line-height: 1.35;
 }
 
 .prediction-scenario-card > div {
@@ -3711,7 +3854,7 @@ p {
 
 .tournament-settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -4629,8 +4772,14 @@ p {
   }
 
   .prediction-team-card.right,
-  .prediction-main-call {
+  .prediction-main-call,
+  .prediction-main-outcome,
+  .prediction-main-shape {
     text-align: left;
+  }
+
+  .prediction-main-call {
+    grid-template-columns: 1fr;
   }
 
   .match-filter-bar {

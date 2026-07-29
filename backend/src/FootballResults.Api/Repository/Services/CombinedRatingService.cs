@@ -28,21 +28,21 @@ public sealed class CombinedRatingService(
         {
             return new CombinedTeamRatingsDto(
                 tournamentId,
-                new CombinedRatingRunContextDto(null, null, null, DateTimeOffset.UtcNow),
+                new CombinedRatingRunContextDto(null, null, null, null, DateTimeOffset.UtcNow),
                 []);
         }
 
         var latestEloRun = await dbContext.EloRatingRuns
             .Where(run => run.TournamentId == tournamentId && run.Status == EloRatingRunStatus.Succeeded)
             .OrderByDescending(run => run.StartedAtUtc)
-            .Select(run => new { run.Id, run.StartedAtUtc })
+            .Select(run => new { run.Id, run.StartedAtUtc, run.SnapshotStartSeasonOffset })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (latestEloRun is null)
         {
             return new CombinedTeamRatingsDto(
                 tournamentId,
-                new CombinedRatingRunContextDto(null, null, null, DateTimeOffset.UtcNow),
+                new CombinedRatingRunContextDto(null, null, null, null, DateTimeOffset.UtcNow),
                 []);
         }
 
@@ -136,6 +136,7 @@ public sealed class CombinedRatingService(
                 latestEloRun.Id,
                 latestFormRun?.Id,
                 latestPerformanceRun?.Id,
+                latestEloRun.SnapshotStartSeasonOffset,
                 DateTimeOffset.UtcNow),
             teams);
     }

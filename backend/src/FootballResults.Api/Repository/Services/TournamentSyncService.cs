@@ -619,16 +619,10 @@ public sealed class TournamentSyncService(
 
         AssignIfNotEmpty(value => tournament.LiveScoreCompetitionId = value, preferred.CompetitionId);
         AssignIfNotEmpty(value => tournament.CompetitionName = value, preferred.CompetitionName);
-        AssignIfNotEmpty(value => tournament.CompetitionCountry = value, preferred.CompetitionCountry);
         AssignIfNotEmpty(value => tournament.CompetitionUrlName = value, preferred.CompetitionUrlName);
         AssignIfNotEmpty(value => tournament.CategoryCode = value, preferred.CategoryCode);
         AssignIfNotEmpty(value => tournament.CategoryName = value, preferred.CategoryName);
         AssignIfNotEmpty(value => tournament.CategoryTransliteratedName = value, preferred.CategoryTransliteratedName);
-
-        if (!string.IsNullOrWhiteSpace(preferred.CategoryName) && tournament.Name == tournament.CompetitionName)
-        {
-            tournament.Name = preferred.CategoryName;
-        }
 
         tournament.UpdatedAtUtc = now;
     }

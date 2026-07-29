@@ -16,6 +16,7 @@ public sealed record UpdateTournamentRequest(
     bool? IsActive,
     bool? ApplyHomeAdvantage,
     string? LiveScoreUrl,
+    string? CompetitionCountry,
     string? Locale,
     string? TimezoneOffset);
 

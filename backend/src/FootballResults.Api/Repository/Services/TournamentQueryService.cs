@@ -85,21 +85,26 @@ public sealed class TournamentQueryService(
                 throw new InvalidOperationException("The LiveScore URL points to a different competition.");
             }
 
-            tournament.CompetitionName = discovery.CompetitionName;
-            tournament.CompetitionCountry = discovery.CompetitionCountry;
-            tournament.CompetitionUrlName = discovery.CompetitionUrlName;
-            tournament.CategoryCode = discovery.CategoryCode;
-            tournament.CategoryName = discovery.CategoryName;
-            tournament.CategoryTransliteratedName = discovery.CategoryTransliteratedName;
-            tournament.BaseUrl = discovery.BaseUrl;
-            tournament.FixturesUrl = discovery.FixturesUrl;
-            tournament.ResultsUrl = discovery.ResultsUrl;
-            tournament.ApiBaseUrl = discovery.ApiBaseUrl;
+            tournament.CompetitionName = KeepExistingWhenBlank(discovery.CompetitionName, tournament.CompetitionName);
+            tournament.CompetitionCountry = KeepExistingWhenBlank(discovery.CompetitionCountry, tournament.CompetitionCountry);
+            tournament.CompetitionUrlName = KeepExistingWhenBlank(discovery.CompetitionUrlName, tournament.CompetitionUrlName);
+            tournament.CategoryCode = KeepExistingWhenBlank(discovery.CategoryCode, tournament.CategoryCode);
+            tournament.CategoryName = KeepExistingWhenBlank(discovery.CategoryName, tournament.CategoryName);
+            tournament.CategoryTransliteratedName = KeepExistingWhenBlank(discovery.CategoryTransliteratedName, tournament.CategoryTransliteratedName);
+            tournament.BaseUrl = KeepExistingWhenBlank(discovery.BaseUrl, tournament.BaseUrl);
+            tournament.FixturesUrl = KeepExistingWhenBlank(discovery.FixturesUrl, tournament.FixturesUrl);
+            tournament.ResultsUrl = KeepExistingWhenBlank(discovery.ResultsUrl, tournament.ResultsUrl);
+            tournament.ApiBaseUrl = KeepExistingWhenBlank(discovery.ApiBaseUrl, tournament.ApiBaseUrl);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Locale))
         {
             tournament.Locale = request.Locale;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CompetitionCountry))
+        {
+            tournament.CompetitionCountry = request.CompetitionCountry;
         }
 
         if (!string.IsNullOrWhiteSpace(request.TimezoneOffset))
@@ -158,5 +163,10 @@ public sealed class TournamentQueryService(
             .Include(tournament => tournament.Stages)
             .Include(tournament => tournament.TournamentTeams)
             .ThenInclude(tournamentTeam => tournamentTeam.Team);
+    }
+
+    private static string KeepExistingWhenBlank(string discoveredValue, string existingValue)
+    {
+        return string.IsNullOrWhiteSpace(discoveredValue) ? existingValue : discoveredValue;
     }
 }

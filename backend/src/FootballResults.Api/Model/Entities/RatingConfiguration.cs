@@ -13,7 +13,7 @@ public sealed class RatingConfiguration
     public decimal BaseRating { get; set; } = 1500;
     public decimal PromotedBaselineRating { get; set; } = 1400;
     public decimal KFactor { get; set; } = 20;
-    public decimal HomeAdvantage { get; set; } = 65;
+    public decimal HomeAdvantage { get; set; } = 50;
     public int BootstrapSeasonCount { get; set; } = 3;
     public int FormMatchCount { get; set; } = 5;
     public decimal FormScale { get; set; } = 100;
@@ -24,4 +24,3 @@ public sealed class RatingConfiguration
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }
-
