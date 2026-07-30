@@ -1658,6 +1658,7 @@ p {
 .rating-config-footer button,
 .ratings-tournament-table td:last-child button,
 .predictions-table td:last-child button,
+.team-directory-table td:last-child button,
 .rating-run-card button {
   min-height: 40px;
   padding: 0 14px;
@@ -4408,6 +4409,217 @@ p {
   color: #fff9ea;
   background: #1f2a23;
   font-weight: 850;
+}
+
+.team-directory-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.75fr) minmax(240px, 1fr) minmax(300px, 1.35fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.team-directory-filters label {
+  display: grid;
+  min-width: 0;
+  align-content: end;
+  gap: 4px;
+}
+
+.team-directory-filters label span {
+  color: rgba(255, 249, 234, 0.56);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.team-directory-filters select,
+.team-directory-filters input {
+  min-height: 40px;
+  height: 40px;
+  width: 100%;
+  padding: 0 12px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: none;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.team-directory-filters .team-directory-search input {
+  min-height: 40px;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 40px;
+}
+
+.team-directory-filters input {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.team-directory-filters select {
+  padding-right: 36px;
+  background:
+    linear-gradient(45deg, transparent 50%, #b0d86b 50%) calc(100% - 17px) 50% / 7px 7px no-repeat,
+    linear-gradient(135deg, #b0d86b 50%, transparent 50%) calc(100% - 12px) 50% / 7px 7px no-repeat,
+    rgba(255, 255, 255, 0.08);
+  appearance: none;
+}
+
+.team-directory-filters select option {
+  color: #fff9ea;
+  background: #1f2a23;
+  font-weight: 850;
+}
+
+.team-directory-search span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.team-directory-table {
+  min-width: 1120px;
+}
+
+.team-overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-details-table {
+  min-width: 980px;
+}
+
+.team-details-table td:last-child button {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 14px;
+  color: #101915;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.team-match-limit-filter {
+  justify-content: flex-end;
+}
+
+.team-match-limit-filter button {
+  min-width: 54px;
+  min-height: 38px;
+}
+
+.squad-snapshot-summary {
+  margin-bottom: 16px;
+}
+
+.squad-snapshot-trio {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.squad-players-table {
+  min-width: 980px;
+}
+
+.team-directory-table td:first-child small,
+.team-rating-cell small,
+.team-context-list span small {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.team-context-list {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.team-context-list span,
+.team-context-list em {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(255, 249, 234, 0.84);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.team-context-list span {
+  display: block;
+  overflow: hidden;
+  max-width: 260px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-rating-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.team-directory-table td:last-child button {
+  width: 100%;
+}
+
+.round-filter-stepper {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.round-filter-stepper label {
+  flex: 1;
+}
+
+.round-step-button {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  flex: 0 0 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #0e150f;
+  border: 0;
+  border-radius: 999px;
+  background: #b0d86b;
+  box-shadow: 0 10px 26px rgba(176, 216, 107, 0.16);
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 0;
+}
+
+.round-step-button span {
+  display: block;
+  transform: translateY(-1px);
+  line-height: 1;
+}
+
+.round-step-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #c2ed78;
+}
+
+.round-step-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  transform: none;
+  box-shadow: none;
 }
 
 .rating-updated-badge {

@@ -18,6 +18,8 @@ type View =
   | 'dashboard'
   | 'ratings'
   | 'rating-details'
+  | 'teams'
+  | 'team-details'
   | 'matches'
   | 'matches-details'
   | 'predictions'
@@ -133,11 +135,35 @@ type SquadQualitySnapshot = {
   season?: string | null
   fetchedAtUtc: string
   clubName: string
+  stadiumName?: string | null
   playerCount: number
   squadSize?: number | null
   totalMarketValueEur?: number | null
+  averageMarketValueEur?: number | null
   topElevenMarketValueEur?: number | null
   topFifteenMarketValueEur?: number | null
+}
+
+type SquadPlayerSnapshot = {
+  id: number
+  squadQualitySnapshotId: number
+  externalPlayerId: string
+  profileUrl: string
+  playerName: string
+  positionGroup: string
+  position: string
+  shirtNumber: string
+  dateOfBirth?: string | null
+  age?: number | null
+  nationalities: string
+  heightCm?: number | null
+  foot: string
+  joinedDate?: string | null
+  signedFromClubName: string
+  transferFeeText: string
+  contractUntil?: string | null
+  marketValueText: string
+  marketValueEur?: number | null
 }
 
 type ImportTransfermarktSquadResponse = {
@@ -150,8 +176,10 @@ type ImportTransfermarktSquadResponse = {
   clubName: string
   sourceUrl: string
   season?: string | null
+  stadiumName: string
   playerCount: number
   totalMarketValueEur?: number | null
+  averageMarketValueEur?: number | null
   topElevenMarketValueEur?: number | null
   topFifteenMarketValueEur?: number | null
 }
@@ -529,6 +557,8 @@ type UserSortKey = 'email' | 'displayName' | 'role' | 'status' | 'memberSince'
 type SquadTournamentSortKey = 'name' | 'season' | 'teams' | 'coverage' | 'snapshot'
 type SquadTeamSortKey = 'team' | 'value' | 'mapping' | 'snapshot'
 type RatingTeamSortKey = 'team' | 'baseElo' | 'form' | 'performance' | 'squad' | 'finalRating' | 'confidence'
+type UserTeamSortKey = 'team' | 'country' | 'tournaments' | 'rating' | 'lastSync'
+type SquadPlayerSortKey = 'name' | 'position' | 'age' | 'nationality' | 'value' | 'contract'
 type SortDirection = 'asc' | 'desc'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -548,6 +578,8 @@ const routes: Record<View, string> = {
   dashboard: '/dashboard',
   ratings: '/ratings',
   'rating-details': '/ratings/0',
+  teams: '/teams',
+  'team-details': '/teams/0',
   matches: '/matches',
   'matches-details': '/matches/0',
   predictions: '/predictions',
@@ -583,6 +615,10 @@ function getViewFromPath(pathname: string): View {
 
   if (/^\/ratings\/\d+$/.test(pathname)) {
     return 'rating-details'
+  }
+
+  if (/^\/teams\/\d+$/.test(pathname)) {
+    return 'team-details'
   }
 
   if (/^\/matches\/\d+$/.test(pathname)) {
@@ -625,6 +661,49 @@ const translations = {
     menuPredictions: 'Predictions',
     menuAdmin: 'Admin',
     menuSoon: 'Soon',
+    teamsPanelEyebrow: 'Teams',
+    teamsPanelTitle: 'Team directory',
+    teamsPanelCopy: 'Search global team identities across countries, leagues, seasons, and tournament contexts.',
+    teamSearch: 'Search teams',
+    teamSearchPlaceholder: 'Search',
+    teamFilterCountry: 'Country',
+    teamFilterTournament: 'Tournament',
+    teamFilterAllCountries: 'All countries',
+    teamFilterAllTournaments: 'All tournaments',
+    activeTournamentContexts: 'Active tournaments',
+    latestRating: 'Latest rating',
+    teamDetails: 'Details',
+    teamDetailsEyebrow: 'Team',
+    teamDetailsTitle: 'Team profile',
+    teamDetailsCopy: 'Review the team across tournament contexts, ratings, matches, and squad snapshots.',
+    backToTeams: 'Back to teams',
+    teamOverview: 'Overview',
+    teamRatingContexts: 'Rating contexts',
+    teamMatchHistory: 'Upcoming matches',
+    teamSquadSnapshot: 'Squad snapshot',
+    teamNoContexts: 'This team is not linked to any synchronized tournament yet.',
+    teamNoMatches: 'No matches found for this team.',
+    teamNoSquad: 'No squad snapshot imported yet.',
+    teamLoadFailed: 'Could not load team profile.',
+    latestSquadValue: 'Latest squad value',
+    activeContexts: 'Active contexts',
+    totalContexts: 'Total contexts',
+    playedMatches: 'Known matches',
+    openRatings: 'Open ratings',
+    showFive: '5',
+    showTen: '10',
+    showTwentyFive: '25',
+    showAll: 'All',
+    playerName: 'Player',
+    position: 'Position',
+    age: 'Age',
+    nationality: 'Nationality',
+    marketValue: 'Market value',
+    contractUntil: 'Contract',
+    averageMarketValue: 'Average value',
+    stadiumName: 'Stadium',
+    noTeams: 'No teams found.',
+    teamsLoadFailed: 'Could not load team directory.',
     userMatchesPanelEyebrow: 'Matches',
     userMatchesPanelTitle: 'Match center',
     userMatchesPanelCopy: 'Select a tournament to browse synchronized fixtures, live matches, and completed results.',
@@ -641,7 +720,7 @@ const translations = {
     predictionsPanelTitle: 'Prediction center',
     predictionsPanelCopy: 'Select a tournament to inspect model-driven 1X2 probabilities for upcoming and live matches.',
     predictionsDetailsEyebrow: 'Match predictions',
-    predictionsDetailsTitle: '1X2 model board',
+    predictionsDetailsTitle: 'Predictions Board',
     predictionsDetailsCopy: 'Compare home win, draw, and away win chances calculated from the current FTSR rating layers.',
     predictionMatchEyebrow: 'Prediction detail',
     predictionMatchTitle: 'Match intelligence',
@@ -649,7 +728,7 @@ const translations = {
     predictionOpenTournament: 'Show predictions',
     predictionOpenMatch: 'Open analysis',
     predictionSearch: 'Search predictions',
-    predictionSearchPlaceholder: 'Search by team or round',
+    predictionSearchPlaceholder: 'Search',
     backToPredictions: 'Back to predictions',
     backToPredictionList: 'Back to tournament',
     predictionSummary: 'Prediction summary',
@@ -1372,6 +1451,49 @@ const translations = {
     menuPredictions: 'Predykcje',
     menuAdmin: 'Admin',
     menuSoon: 'Wkrótce',
+    teamsPanelEyebrow: 'Drużyny',
+    teamsPanelTitle: 'Katalog drużyn',
+    teamsPanelCopy: 'Szukaj globalnych tożsamości drużyn po krajach, ligach, sezonach i kontekstach turniejowych.',
+    teamSearch: 'Szukaj drużyn',
+    teamSearchPlaceholder: 'Szukaj',
+    teamFilterCountry: 'Kraj',
+    teamFilterTournament: 'Turniej',
+    teamFilterAllCountries: 'Wszystkie kraje',
+    teamFilterAllTournaments: 'Wszystkie turnieje',
+    activeTournamentContexts: 'Aktywne turnieje',
+    latestRating: 'Ostatni rating',
+    teamDetails: 'Szczegóły',
+    teamDetailsEyebrow: 'Drużyna',
+    teamDetailsTitle: 'Profil drużyny',
+    teamDetailsCopy: 'Przeglądaj drużynę w kontekstach turniejowych, ratingach, meczach i snapshotach kadry.',
+    backToTeams: 'Wróć do drużyn',
+    teamOverview: 'Przegląd',
+    teamRatingContexts: 'Konteksty ratingowe',
+    teamMatchHistory: 'Nadchodzące mecze',
+    teamSquadSnapshot: 'Snapshot kadry',
+    teamNoContexts: 'Ta drużyna nie jest jeszcze powiązana z żadnym zsynchronizowanym turniejem.',
+    teamNoMatches: 'Nie znaleziono meczów dla tej drużyny.',
+    teamNoSquad: 'Brak zaimportowanego snapshotu kadry.',
+    teamLoadFailed: 'Nie udało się pobrać profilu drużyny.',
+    latestSquadValue: 'Ostatnia wartość kadry',
+    activeContexts: 'Aktywne konteksty',
+    totalContexts: 'Wszystkie konteksty',
+    playedMatches: 'Znane mecze',
+    openRatings: 'Otwórz ratingi',
+    showFive: '5',
+    showTen: '10',
+    showTwentyFive: '25',
+    showAll: 'Wszystkie',
+    playerName: 'Zawodnik',
+    position: 'Pozycja',
+    age: 'Wiek',
+    nationality: 'Narodowość',
+    marketValue: 'Wartość',
+    contractUntil: 'Kontrakt',
+    averageMarketValue: 'Średnia wartość',
+    stadiumName: 'Stadion',
+    noTeams: 'Nie znaleziono drużyn.',
+    teamsLoadFailed: 'Nie udało się pobrać katalogu drużyn.',
     userMatchesPanelEyebrow: 'Mecze',
     userMatchesPanelTitle: 'Centrum meczów',
     userMatchesPanelCopy: 'Wybierz turniej, aby przeglądać zsynchronizowane terminarze, mecze live i zakończone wyniki.',
@@ -1388,7 +1510,7 @@ const translations = {
     predictionsPanelTitle: 'Centrum predykcji',
     predictionsPanelCopy: 'Wybierz turniej, aby sprawdzić modelowe prawdopodobieństwa 1X2 dla nadchodzących i live meczów.',
     predictionsDetailsEyebrow: 'Predykcje meczów',
-    predictionsDetailsTitle: 'Tablica modelu 1X2',
+    predictionsDetailsTitle: 'Tablica predykcji',
     predictionsDetailsCopy: 'Porównaj szanse gospodarzy, remisu i gości obliczone z aktualnych warstw ratingu FTSR.',
     predictionMatchEyebrow: 'Szczegóły predykcji',
     predictionMatchTitle: 'Analiza meczu',
@@ -1396,7 +1518,7 @@ const translations = {
     predictionOpenTournament: 'Pokaż predykcje',
     predictionOpenMatch: 'Otwórz analizę',
     predictionSearch: 'Szukaj predykcji',
-    predictionSearchPlaceholder: 'Szukaj po drużynie lub rundzie',
+    predictionSearchPlaceholder: 'Szukaj',
     backToPredictions: 'Wróć do predykcji',
     backToPredictionList: 'Wróć do turnieju',
     predictionSummary: 'Podsumowanie predykcji',
@@ -2940,7 +3062,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -3154,6 +3276,26 @@ function App() {
           tournamentId={Number(location.pathname.match(/^\/ratings\/(\d+)$/)?.[1] ?? 0)}
           onToast={showToast}
           onBack={() => navigateTo('/ratings')}
+        />
+      )}
+
+      {view === 'teams' && user && (
+        <UserTeamsPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          onOpen={(id) => navigateTo(`/teams/${id}`)}
+        />
+      )}
+
+      {view === 'team-details' && user && (
+        <UserTeamDetailsPanel
+          t={t}
+          user={user}
+          teamId={Number(location.pathname.match(/^\/teams\/(\d+)$/)?.[1] ?? 0)}
+          onToast={showToast}
+          onBack={() => navigateTo('/teams')}
+          onOpenRatings={(tournamentId) => navigateTo(`/ratings/${tournamentId}`)}
         />
       )}
 
@@ -3392,10 +3534,6 @@ function AppMenu({
   onLogout: () => void
   onNavigate: (view: View) => void
 }) {
-  const futureItems: Array<[MenuIconName, string]> = [
-    ['teams', t.menuTeams],
-  ]
-
   return (
     <>
       <button
@@ -3419,6 +3557,12 @@ function AppMenu({
               <span>{t.menuRatings}</span>
             </span>
           </button>
+          <button type="button" onClick={() => onNavigate('teams')}>
+            <span className="menu-label">
+              <MenuIcon name="teams" />
+              <span>{t.menuTeams}</span>
+            </span>
+          </button>
           <button type="button" onClick={() => onNavigate('matches')}>
             <span className="menu-label">
               <MenuIcon name="matches" />
@@ -3431,15 +3575,6 @@ function AppMenu({
               <span>{t.menuPredictions}</span>
             </span>
           </button>
-          {futureItems.map(([icon, item]) => (
-            <button className="muted" type="button" disabled key={item}>
-              <span className="menu-label">
-                <MenuIcon name={icon} />
-                <span>{item}</span>
-              </span>
-              <small>{t.menuSoon}</small>
-            </button>
-          ))}
           <button type="button" onClick={() => onNavigate('api')}>
             <span className="menu-label">
               <MenuIcon name="api" />
@@ -4478,6 +4613,732 @@ function ApiPanel({
   )
 }
 
+type UserTeamContext = {
+  tournamentId: number
+  tournamentName: string
+  season: string
+  country: string
+  isActive: boolean
+  baseElo?: number
+  formAdjustment?: number
+  performanceAdjustment?: number
+  squadQualityAdjustment?: number
+  finalRating?: number
+  lastSyncedAtUtc?: string | null
+}
+
+type UserTeamDirectoryRow = {
+  team: TeamSummary
+  countries: string[]
+  contexts: UserTeamContext[]
+  latestRating?: number
+  latestRatingContext?: UserTeamContext
+  lastSyncedAtUtc?: string | null
+}
+
+function UserTeamsPanel({
+  t,
+  user,
+  onToast,
+  onOpen,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onOpen: (id: number) => void
+}) {
+  const [teams, setTeams] = useState<TeamSummary[]>([])
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([])
+  const [teamContexts, setTeamContexts] = useState<Record<number, UserTeamContext[]>>({})
+  const [search, setSearch] = useState('')
+  const [countryFilter, setCountryFilter] = useState('all')
+  const [tournamentFilter, setTournamentFilter] = useState('all')
+  const [sortKey, setSortKey] = useState<UserTeamSortKey>('team')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const [teamsResult, tournamentsResult] = await Promise.all([
+          authorizedRequest<TeamSummary[]>(user.token, '/api/teams'),
+          authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments'),
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!teamsResult.ok || !teamsResult.data || !tournamentsResult.ok || !tournamentsResult.data) {
+          onToast(t.teamsLoadFailed, 'error')
+          return
+        }
+
+        const loadedTournaments = tournamentsResult.data
+        const contextResults = await Promise.all(loadedTournaments.map(async (tournament) => {
+          const [tournamentTeamsResult, ratingsResult] = await Promise.all([
+            authorizedRequest<TeamSummary[]>(user.token, `/api/tournaments/${tournament.id}/teams`),
+            authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournament.id}/ratings/combined/teams`),
+          ])
+
+          const ratingsById = toRecordByTeamId(ratingsResult.ok && ratingsResult.data ? ratingsResult.data.teams : [])
+          return {
+            tournament,
+            teams: tournamentTeamsResult.ok && tournamentTeamsResult.data ? tournamentTeamsResult.data : [],
+            ratingsById,
+          }
+        }))
+
+        if (!isMounted) {
+          return
+        }
+
+        const contextsByTeamId: Record<number, UserTeamContext[]> = {}
+        contextResults.forEach(({ tournament, teams: tournamentTeams, ratingsById }) => {
+          tournamentTeams.forEach((team) => {
+            const rating = ratingsById[team.id]
+            const context: UserTeamContext = {
+              tournamentId: tournament.id,
+              tournamentName: tournament.name,
+              season: tournament.season,
+              country: tournament.competitionCountry || tournament.competitionName,
+              isActive: tournament.isActive,
+              baseElo: rating?.baseElo,
+              formAdjustment: rating?.formAdjustment,
+              performanceAdjustment: rating?.performanceAdjustment,
+              squadQualityAdjustment: rating?.squadQualityAdjustment,
+              finalRating: rating?.finalRating,
+              lastSyncedAtUtc: tournament.lastSyncedAtUtc,
+            }
+
+            contextsByTeamId[team.id] = [...(contextsByTeamId[team.id] ?? []), context]
+          })
+        })
+
+        setTeams(teamsResult.data)
+        setTournaments(loadedTournaments)
+        setTeamContexts(contextsByTeamId)
+      } catch {
+        if (isMounted) {
+          onToast(t.teamsLoadFailed, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.teamsLoadFailed, user.token])
+
+  const rows = useMemo<UserTeamDirectoryRow[]>(() => {
+    return teams.map((team) => {
+      const contexts = [...(teamContexts[team.id] ?? [])].sort((left, right) => {
+        if (left.isActive !== right.isActive) {
+          return left.isActive ? -1 : 1
+        }
+
+        return compareText(left.tournamentName, right.tournamentName)
+      })
+      const ratedContexts = contexts.filter((context) => context.finalRating !== undefined)
+      const latestRatingContext = ratedContexts.sort((left, right) => (right.finalRating ?? 0) - (left.finalRating ?? 0))[0]
+      const lastSyncedAtUtc = contexts
+        .map((context) => context.lastSyncedAtUtc)
+        .filter(Boolean)
+        .sort((left, right) => new Date(right ?? 0).getTime() - new Date(left ?? 0).getTime())[0]
+
+      return {
+        team,
+        countries: [...new Set(contexts.map((context) => context.country).filter(Boolean))],
+        contexts,
+        latestRating: latestRatingContext?.finalRating,
+        latestRatingContext,
+        lastSyncedAtUtc,
+      }
+    })
+  }, [teamContexts, teams])
+
+  const countryOptions = useMemo(() => {
+    return [...new Set(rows.flatMap((row) => row.countries))]
+      .filter(Boolean)
+      .sort(compareText)
+  }, [rows])
+
+  const tournamentOptions = useMemo(() => {
+    return [...tournaments].sort((left, right) => compareText(left.name, right.name))
+  }, [tournaments])
+
+  const displayedRows = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const filtered = rows.filter((row) => {
+      if (countryFilter !== 'all' && !row.countries.includes(countryFilter)) {
+        return false
+      }
+
+      if (tournamentFilter !== 'all' && !row.contexts.some((context) => String(context.tournamentId) === tournamentFilter)) {
+        return false
+      }
+
+      if (!normalizedSearch) {
+        return true
+      }
+
+      return [
+        row.team.name,
+        row.team.abbreviation,
+        ...row.countries,
+        ...row.contexts.flatMap((context) => [
+          context.tournamentName,
+          context.season,
+          context.country,
+          context.finalRating?.toFixed(2),
+        ]),
+      ].some((value) => (value ?? '').toLowerCase().includes(normalizedSearch))
+    })
+
+    return filtered.sort((left, right) => {
+      let comparison = 0
+      if (sortKey === 'team') {
+        comparison = compareText(left.team.name, right.team.name)
+      } else if (sortKey === 'country') {
+        comparison = compareText(left.countries[0], right.countries[0])
+      } else if (sortKey === 'tournaments') {
+        comparison = left.contexts.length - right.contexts.length
+      } else if (sortKey === 'rating') {
+        comparison = (left.latestRating ?? -1) - (right.latestRating ?? -1)
+      } else if (sortKey === 'lastSync') {
+        comparison = new Date(left.lastSyncedAtUtc ?? 0).getTime() - new Date(right.lastSyncedAtUtc ?? 0).getTime()
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.team.name, right.team.name)
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [countryFilter, rows, search, sortDirection, sortKey, tournamentFilter])
+
+  const requestSort = (key: UserTeamSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'team' || key === 'country' ? 'asc' : 'desc')
+  }
+
+  const headers: Array<{ key: UserTeamSortKey; label: string }> = [
+    { key: 'team', label: t.teamName },
+    { key: 'country', label: t.tournamentCountry },
+    { key: 'tournaments', label: t.activeTournamentContexts },
+    { key: 'rating', label: t.latestRating },
+    { key: 'lastSync', label: t.tournamentLastSync },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.teamsPanelEyebrow}</p>
+          <h1>{t.teamsPanelTitle}</h1>
+          <p>{t.teamsPanelCopy}</p>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel team-directory-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="teams" />
+              <h2>{t.menuTeams}</h2>
+            </div>
+          </div>
+
+          <div className="team-directory-filters">
+            <label>
+              <span>{t.teamFilterCountry}</span>
+              <select value={countryFilter} onChange={(event) => setCountryFilter(event.target.value)}>
+                <option value="all">{t.teamFilterAllCountries}</option>
+                {countryOptions.map((country) => (
+                  <option value={country} key={country}>{country}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{t.teamFilterTournament}</span>
+              <select value={tournamentFilter} onChange={(event) => setTournamentFilter(event.target.value)}>
+                <option value="all">{t.teamFilterAllTournaments}</option>
+                {tournamentOptions.map((tournament) => (
+                  <option value={tournament.id} key={tournament.id}>{tournament.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="team-directory-search">
+              <span>{t.teamSearch}</span>
+              <input
+                placeholder={t.teamSearchPlaceholder}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table team-directory-table">
+              <thead>
+                <tr>
+                  {headers.map((header) => (
+                    <th key={header.key}>
+                      <button
+                        className="table-sort-button"
+                        type="button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key)}
+                      >
+                        <span>{header.label}</span>
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && displayedRows.map((row) => (
+                  <tr key={row.team.id}>
+                    <td>
+                      <strong>{row.team.name}</strong>
+                    </td>
+                    <td>{row.countries.join(', ') || '-'}</td>
+                    <td>
+                      <div className="team-context-list">
+                        {row.contexts.map((context) => (
+                          <span key={`${row.team.id}-${context.tournamentId}`}>
+                            {context.tournamentName}{context.season ? ` ${context.season}` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      {row.latestRating !== undefined
+                        ? (
+                          <span className="team-rating-cell">
+                            <strong>{row.latestRating.toFixed(2)}</strong>
+                          </span>
+                        )
+                        : '-'}
+                    </td>
+                    <td>{formatDate(row.lastSyncedAtUtc, '-')}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpen(row.team.id)}>
+                        {t.teamDetails}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && displayedRows.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={6}>{t.noTeams}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function UserTeamDetailsPanel({
+  t,
+  user,
+  teamId,
+  onToast,
+  onBack,
+  onOpenRatings,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  teamId: number
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+  onOpenRatings: (tournamentId: number) => void
+}) {
+  const [team, setTeam] = useState<TeamSummary | null>(null)
+  const [contexts, setContexts] = useState<UserTeamContext[]>([])
+  const [matches, setMatches] = useState<Array<MatchSummary & { tournamentName: string }>>([])
+  const [squadSnapshot, setSquadSnapshot] = useState<SquadQualitySnapshot | null>(null)
+  const [squadPlayers, setSquadPlayers] = useState<SquadPlayerSnapshot[]>([])
+  const [upcomingLimit, setUpcomingLimit] = useState<'5' | '10' | '25' | 'all'>('5')
+  const [playerSortKey, setPlayerSortKey] = useState<SquadPlayerSortKey>('value')
+  const [playerSortDirection, setPlayerSortDirection] = useState<SortDirection>('desc')
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        const [teamResult, tournamentsResult, squadResult] = await Promise.all([
+          authorizedRequest<TeamSummary>(user.token, `/api/teams/${teamId}`),
+          authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments'),
+          authorizedRequest<SquadQualitySnapshot>(user.token, `/api/teams/${teamId}/squad-quality/latest`),
+        ])
+
+        if (!isMounted) {
+          return
+        }
+
+        if (!teamResult.ok || !teamResult.data || !tournamentsResult.ok || !tournamentsResult.data) {
+          onToast(t.teamLoadFailed, 'error')
+          return
+        }
+
+        const loadedTournaments = tournamentsResult.data
+        const loadedSquadSnapshot = squadResult.ok && squadResult.data ? squadResult.data : null
+        const playersResult = loadedSquadSnapshot
+          ? await authorizedRequest<SquadPlayerSnapshot[]>(user.token, `/api/squad-quality/snapshots/${loadedSquadSnapshot.id}/players`)
+          : null
+        const contextResults = await Promise.all(loadedTournaments.map(async (tournament) => {
+          const [teamsResult, ratingsResult, matchesResult] = await Promise.all([
+            authorizedRequest<TeamSummary[]>(user.token, `/api/tournaments/${tournament.id}/teams`),
+            authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournament.id}/ratings/combined/teams`),
+            authorizedRequest<MatchSummary[]>(user.token, `/api/tournaments/${tournament.id}/matches`),
+          ])
+
+          const hasTeam = teamsResult.ok && teamsResult.data
+            ? teamsResult.data.some((item) => item.id === teamId)
+            : false
+          const rating = ratingsResult.ok && ratingsResult.data
+            ? ratingsResult.data.teams.find((item) => item.teamId === teamId)
+            : undefined
+          const teamMatches = matchesResult.ok && matchesResult.data
+            ? matchesResult.data.filter((match) => match.homeTeam?.id === teamId || match.awayTeam?.id === teamId)
+            : []
+
+          return { tournament, hasTeam, rating, teamMatches }
+        }))
+
+        if (!isMounted) {
+          return
+        }
+
+        const loadedContexts = contextResults
+          .filter((result) => result.hasTeam)
+          .map(({ tournament, rating }) => ({
+            tournamentId: tournament.id,
+            tournamentName: tournament.name,
+            season: tournament.season,
+            country: tournament.competitionCountry || tournament.competitionName,
+            isActive: tournament.isActive,
+            baseElo: rating?.baseElo,
+            formAdjustment: rating?.formAdjustment,
+            performanceAdjustment: rating?.performanceAdjustment,
+            squadQualityAdjustment: rating?.squadQualityAdjustment,
+            finalRating: rating?.finalRating,
+            lastSyncedAtUtc: tournament.lastSyncedAtUtc,
+          }))
+          .sort((left, right) => compareText(left.tournamentName, right.tournamentName))
+
+        const loadedMatches = contextResults
+          .flatMap(({ tournament, teamMatches }) => teamMatches.map((match) => ({ ...match, tournamentName: tournament.name })))
+          .sort((left, right) => new Date(right.kickoffUtc ?? 0).getTime() - new Date(left.kickoffUtc ?? 0).getTime())
+
+        setTeam(teamResult.data)
+        setContexts(loadedContexts)
+        setMatches(loadedMatches)
+        setSquadSnapshot(loadedSquadSnapshot)
+        setSquadPlayers(playersResult?.ok && playersResult.data ? playersResult.data : [])
+      } catch {
+        if (isMounted) {
+          onToast(t.teamLoadFailed, 'error')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    load()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, t.teamLoadFailed, teamId, user.token])
+
+  const latestContext = contexts
+    .filter((context) => context.finalRating !== undefined)
+    .sort((left, right) => (right.finalRating ?? 0) - (left.finalRating ?? 0))[0]
+  const latestSync = contexts
+    .map((context) => context.lastSyncedAtUtc)
+    .filter(Boolean)
+    .sort((left, right) => new Date(right ?? 0).getTime() - new Date(left ?? 0).getTime())[0]
+  const country = contexts.map((context) => context.country).filter(Boolean)[0] ?? '-'
+  const upcomingMatches = matches
+    .filter((match) => isPredictableMatch(match))
+    .sort((left, right) => new Date(left.kickoffUtc ?? 0).getTime() - new Date(right.kickoffUtc ?? 0).getTime())
+  const displayedUpcomingMatches = upcomingLimit === 'all'
+    ? upcomingMatches
+    : upcomingMatches.slice(0, Number(upcomingLimit))
+  const sortedSquadPlayers = useMemo(() => {
+    return [...squadPlayers].sort((left, right) => {
+      let comparison = 0
+      if (playerSortKey === 'name') {
+        comparison = compareText(left.playerName, right.playerName)
+      } else if (playerSortKey === 'position') {
+        comparison = compareText(left.position || left.positionGroup, right.position || right.positionGroup)
+      } else if (playerSortKey === 'age') {
+        comparison = (left.age ?? -1) - (right.age ?? -1)
+      } else if (playerSortKey === 'nationality') {
+        comparison = compareText(left.nationalities, right.nationalities)
+      } else if (playerSortKey === 'value') {
+        comparison = (left.marketValueEur ?? -1) - (right.marketValueEur ?? -1)
+      } else if (playerSortKey === 'contract') {
+        comparison = new Date(left.contractUntil ?? 0).getTime() - new Date(right.contractUntil ?? 0).getTime()
+      }
+
+      if (comparison === 0) {
+        comparison = compareText(left.playerName, right.playerName)
+      }
+
+      return playerSortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [playerSortDirection, playerSortKey, squadPlayers])
+  const requestPlayerSort = (key: SquadPlayerSortKey) => {
+    if (playerSortKey === key) {
+      setPlayerSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setPlayerSortKey(key)
+    setPlayerSortDirection(key === 'value' ? 'desc' : 'asc')
+  }
+  const playerHeaders: Array<{ key: SquadPlayerSortKey; label: string }> = [
+    { key: 'name', label: t.playerName },
+    { key: 'position', label: t.position },
+    { key: 'age', label: t.age },
+    { key: 'nationality', label: t.nationality },
+    { key: 'value', label: t.marketValue },
+    { key: 'contract', label: t.contractUntil },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout team-profile-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.teamDetailsEyebrow}</p>
+          <h1>{team?.name || t.teamDetailsTitle}</h1>
+          <p>{t.teamDetailsCopy}</p>
+        </div>
+
+        <div className="details-top-actions rating-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToTeams}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="teams" />
+            <h2>{t.teamOverview}</h2>
+          </div>
+          <div className="details-grid overview-grid team-overview-grid">
+            <div><span>{t.teamName}</span><strong>{team?.name || '-'}</strong></div>
+            <div><span>{t.abbreviation}</span><strong>{team?.abbreviation || '-'}</strong></div>
+            <div><span>{t.tournamentCountry}</span><strong>{country}</strong></div>
+            <div><span>{t.latestRating}</span><strong>{latestContext?.finalRating !== undefined ? latestContext.finalRating.toFixed(2) : '-'}</strong></div>
+            <div><span>{t.latestSquadValue}</span><strong>{formatMoney(squadSnapshot?.totalMarketValueEur)}</strong></div>
+            <div><span>{t.tournamentLastSync}</span><strong>{formatDate(latestSync, '-')}</strong></div>
+          </div>
+        </section>
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="ratings" />
+            <h2>{t.teamRatingContexts}</h2>
+          </div>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table team-details-table">
+              <thead>
+                <tr>
+                  <th>{t.tournamentName}</th>
+                  <th>{t.tournamentSeason}</th>
+                  <th>{t.tournamentCountry}</th>
+                  <th>{t.ratingBaseElo}</th>
+                  <th>{t.ratingForm}</th>
+                  <th>{t.ratingPerformance}</th>
+                  <th>{t.ratingSquad}</th>
+                  <th>{t.ratingFinal}</th>
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && contexts.map((context) => (
+                  <tr key={context.tournamentId}>
+                    <td><strong>{context.tournamentName}</strong></td>
+                    <td>{context.season || '-'}</td>
+                    <td>{context.country || '-'}</td>
+                    <td>{context.baseElo !== undefined ? context.baseElo.toFixed(2) : '-'}</td>
+                    <td>{context.formAdjustment !== undefined ? formatSigned(context.formAdjustment) : '-'}</td>
+                    <td>{context.performanceAdjustment !== undefined ? formatSigned(context.performanceAdjustment) : '-'}</td>
+                    <td>{context.squadQualityAdjustment !== undefined ? formatSigned(context.squadQualityAdjustment) : '-'}</td>
+                    <td>{context.finalRating !== undefined ? context.finalRating.toFixed(2) : '-'}</td>
+                    <td>
+                      <button type="button" onClick={() => onOpenRatings(context.tournamentId)}>
+                        {t.openRatings}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && contexts.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={9}>{t.teamNoContexts}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="matches" />
+              <h2>{t.teamMatchHistory}</h2>
+            </div>
+            <div className="tournament-filter team-match-limit-filter">
+              {[
+                ['5', t.showFive],
+                ['10', t.showTen],
+                ['25', t.showTwentyFive],
+                ['all', t.showAll],
+              ].map(([value, label]) => (
+                <button
+                  className={upcomingLimit === value ? 'active' : ''}
+                  type="button"
+                  key={value}
+                  onClick={() => setUpcomingLimit(value as typeof upcomingLimit)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table team-details-table">
+              <thead>
+                <tr>
+                  <th>{t.kickoff}</th>
+                  <th>{t.tournamentName}</th>
+                  <th>{t.round}</th>
+                  <th>{t.homeTeam}</th>
+                  <th>{t.awayTeam}</th>
+                  <th>{t.score}</th>
+                  <th>{t.status}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && displayedUpcomingMatches.map((match) => (
+                  <tr key={`${match.tournamentId}-${match.id}`}>
+                    <td>{formatDate(match.kickoffUtc, '-')}</td>
+                    <td>{match.tournamentName}</td>
+                    <td>{match.roundInfo || '-'}</td>
+                    <td>{getTeamDisplayName(match, 'home')}</td>
+                    <td>{getTeamDisplayName(match, 'away')}</td>
+                    <td>{match.homeScore ?? '-'} : {match.awayScore ?? '-'}</td>
+                    <td>{matchStatusText(match.status, t)}</td>
+                  </tr>
+                ))}
+                {!isLoading && displayedUpcomingMatches.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={7}>{t.teamNoMatches}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="teams" />
+            <h2>{t.teamSquadSnapshot}</h2>
+          </div>
+          {squadSnapshot ? (
+            <>
+              <div className="details-grid overview-grid squad-snapshot-summary squad-snapshot-trio">
+                <div><span>{t.totalTeamValue}</span><strong>{formatMoney(squadSnapshot.totalMarketValueEur)}</strong></div>
+                <div><span>{t.averageMarketValue}</span><strong>{formatMoney(squadSnapshot.averageMarketValueEur)}</strong></div>
+                <div><span>{t.squadTeamCount}</span><strong>{squadSnapshot.playerCount}</strong></div>
+              </div>
+              <div className="tournament-table-shell compact-table-shell">
+                <table className="tournament-table team-details-table squad-players-table">
+                  <thead>
+                    <tr>
+                      {playerHeaders.map((header) => (
+                        <th key={header.key}>
+                          <button
+                            className="table-sort-button"
+                            type="button"
+                            aria-sort={playerSortKey === header.key ? (playerSortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                            onClick={() => requestPlayerSort(header.key)}
+                          >
+                            <span>{header.label}</span>
+                            <span className="sort-indicator" aria-hidden="true">{playerSortKey === header.key ? (playerSortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                          </button>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedSquadPlayers.map((player) => (
+                      <tr key={player.id}>
+                        <td><strong>{player.playerName}</strong></td>
+                        <td>{player.position || player.positionGroup || '-'}</td>
+                        <td>{player.age ?? '-'}</td>
+                        <td>{player.nationalities || '-'}</td>
+                        <td>{formatMoney(player.marketValueEur)}</td>
+                        <td>{player.contractUntil ? formatDate(player.contractUntil, '-') : '-'}</td>
+                      </tr>
+                    ))}
+                    {squadPlayers.length === 0 && (
+                      <tr>
+                        <td className="empty-table" colSpan={6}>{t.teamNoSquad}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <p className="empty-panel-copy">{t.teamNoSquad}</p>
+          )}
+        </section>
+      </div>
+    </section>
+  )
+}
+
 function UserMatchesPanel({
   t,
   user,
@@ -4742,6 +5603,17 @@ function UserMatchDetailsPanel({
     return [...new Set(matches.map((match) => match.roundInfo).filter(Boolean))]
       .sort((left, right) => compareText(left, right))
   }, [matches])
+  const selectedRoundIndex = roundOptions.findIndex((round) => round === roundFilter)
+  const goToPreviousRound = () => {
+    if (selectedRoundIndex > 0) {
+      setRoundFilter(roundOptions[selectedRoundIndex - 1])
+    }
+  }
+  const goToNextRound = () => {
+    if (selectedRoundIndex < roundOptions.length - 1) {
+      setRoundFilter(roundOptions[Math.max(selectedRoundIndex + 1, 0)])
+    }
+  }
 
   const displayedMatches = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -4844,15 +5716,35 @@ function UserMatchDetailsPanel({
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
-              <label className="label-hidden">
-                <span>{t.roundFilter}</span>
-                <select value={roundFilter} onChange={(event) => setRoundFilter(event.target.value)}>
-                  <option value="all">{t.allRounds}</option>
-                  {roundOptions.map((round) => (
-                    <option value={round} key={round}>{round}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="round-filter-stepper">
+                <label className="label-hidden">
+                  <span>{t.roundFilter}</span>
+                  <select value={roundFilter} onChange={(event) => setRoundFilter(event.target.value)}>
+                    <option value="all">{t.allRounds}</option>
+                    {roundOptions.map((round) => (
+                      <option value={round} key={round}>{round}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="round-step-button"
+                  aria-label="Previous round"
+                  disabled={selectedRoundIndex <= 0}
+                  onClick={goToPreviousRound}
+                >
+                  <span>-</span>
+                </button>
+                <button
+                  type="button"
+                  className="round-step-button"
+                  aria-label="Next round"
+                  disabled={roundOptions.length === 0 || selectedRoundIndex >= roundOptions.length - 1}
+                  onClick={goToNextRound}
+                >
+                  <span>+</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -5168,6 +6060,17 @@ function TournamentPredictionsPanel({
 
   const ratingsByTeamId = useMemo(() => toRecordByTeamId(combinedRatings?.teams ?? []), [combinedRatings])
   const roundOptions = useMemo(() => [...new Set(matches.map((match) => match.roundInfo).filter(Boolean))].sort(compareText), [matches])
+  const selectedRoundIndex = roundOptions.findIndex((round) => round === roundFilter)
+  const goToPreviousRound = () => {
+    if (selectedRoundIndex > 0) {
+      setRoundFilter(roundOptions[selectedRoundIndex - 1])
+    }
+  }
+  const goToNextRound = () => {
+    if (selectedRoundIndex < roundOptions.length - 1) {
+      setRoundFilter(roundOptions[Math.max(selectedRoundIndex + 1, 0)])
+    }
+  }
   const predictionLabels = { home: t.homeWin, draw: t.draw, away: t.awayWin }
 
   const displayedMatches = useMemo(() => {
@@ -5187,7 +6090,9 @@ function TournamentPredictionsPanel({
           match.roundInfo,
           getTeamDisplayName(match, 'home'),
           getTeamDisplayName(match, 'away'),
-        ].some((value) => value.toLowerCase().includes(normalizedSearch))
+          formatDate(match.kickoffUtc, ''),
+          match.kickoffUtc,
+        ].some((value) => (value ?? '').toLowerCase().includes(normalizedSearch))
       })
       .map((match) => {
         const homeRating = match.homeTeam ? ratingsByTeamId[match.homeTeam.id] : undefined
@@ -5246,7 +6151,10 @@ function TournamentPredictionsPanel({
       <div className="admin-dashboard-content ratings-panel-layout">
         <div className="admin-dashboard-hero">
           <p className="eyebrow">{t.predictionsDetailsEyebrow}</p>
-          <h1>{tournament?.name || t.predictionsDetailsTitle}</h1>
+          <h1 className="stacked-page-title">
+            <span>{tournament?.name || t.predictionsDetailsTitle}</span>
+            {tournament?.season && <small>{tournament.season}</small>}
+          </h1>
           <p>{t.predictionsDetailsCopy}</p>
         </div>
 
@@ -5277,15 +6185,35 @@ function TournamentPredictionsPanel({
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
-              <label className="label-hidden">
-                <span>{t.roundFilter}</span>
-                <select value={roundFilter} onChange={(event) => setRoundFilter(event.target.value)}>
-                  <option value="all">{t.allRounds}</option>
-                  {roundOptions.map((round) => (
-                    <option value={round} key={round}>{round}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="round-filter-stepper">
+                <label className="label-hidden">
+                  <span>{t.roundFilter}</span>
+                  <select value={roundFilter} onChange={(event) => setRoundFilter(event.target.value)}>
+                    <option value="all">{t.allRounds}</option>
+                    {roundOptions.map((round) => (
+                      <option value={round} key={round}>{round}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="round-step-button"
+                  aria-label="Previous round"
+                  disabled={selectedRoundIndex <= 0}
+                  onClick={goToPreviousRound}
+                >
+                  <span>-</span>
+                </button>
+                <button
+                  type="button"
+                  className="round-step-button"
+                  aria-label="Next round"
+                  disabled={roundOptions.length === 0 || selectedRoundIndex >= roundOptions.length - 1}
+                  onClick={goToNextRound}
+                >
+                  <span>+</span>
+                </button>
+              </div>
             </div>
           </div>
 
