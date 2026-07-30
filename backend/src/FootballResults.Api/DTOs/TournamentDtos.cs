@@ -92,11 +92,26 @@ public sealed record TournamentStageDto(
 public sealed record TeamDto(
     int Id,
     string Name,
-    string Abbreviation);
+    string Abbreviation,
+    bool IsEnabled);
+
+public sealed record AdminTeamDto(
+    int Id,
+    string Name,
+    string Abbreviation,
+    bool IsEnabled,
+    IReadOnlyList<TeamTournamentAssignmentDto> TournamentAssignments);
+
+public sealed record TeamTournamentAssignmentDto(
+    int TournamentId,
+    string TournamentName,
+    string Season,
+    string Country);
 
 public sealed record UpdateTeamRequest(
     string Name,
-    string Abbreviation);
+    string Abbreviation,
+    bool IsEnabled = true);
 
 public sealed record MatchDto(
     int Id,

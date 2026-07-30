@@ -27,6 +27,7 @@ type View =
   | 'prediction-details'
   | 'api'
   | 'admin'
+  | 'admin-teams'
   | 'admin-ratings'
   | 'admin-rating-details'
   | 'admin-squads'
@@ -109,6 +110,15 @@ type TeamSummary = {
   id: number
   name: string
   abbreviation: string
+  isEnabled: boolean
+  tournamentAssignments?: TeamTournamentAssignment[]
+}
+
+type TeamTournamentAssignment = {
+  tournamentId: number
+  tournamentName: string
+  season: string
+  country: string
 }
 
 type ExternalTeamMapping = {
@@ -549,7 +559,7 @@ type TournamentPreview = {
 }
 
 type TournamentSortKey = 'name' | 'season' | 'country' | 'teams' | 'matches' | 'lastSync'
-type TeamSortKey = 'name' | 'abbreviation'
+type TeamSortKey = 'name' | 'abbreviation' | 'tournaments'
 type MatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
 type PublicMatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'score' | 'status'
 type PredictionMatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'homeWin' | 'draw' | 'awayWin'
@@ -587,6 +597,7 @@ const routes: Record<View, string> = {
   'prediction-details': '/predictions/0/matches/0',
   api: '/api',
   admin: '/admin',
+  'admin-teams': '/admin/teams',
   'admin-ratings': '/admin/ratings',
   'admin-rating-details': '/admin/ratings/0',
   'admin-squads': '/admin/squads',
@@ -996,6 +1007,20 @@ const translations = {
     squadSeason: 'Snapshot season',
     adminTournamentOps: 'Tournaments',
     adminTournamentOpsCopy: 'Create new competitions, browse existing tournaments, and open the dedicated tournament administration panel for deeper setup and maintenance.',
+    adminTeamsOps: 'Teams',
+    adminTeamsOpsCopy: 'Control team visibility, public directory exposure, and future cross-tournament team identity settings.',
+    adminTeamsPanelEyebrow: 'Teams',
+    adminTeamsPanelTitle: 'Teams panel',
+    adminTeamsPanelCopy: 'Manage global team visibility in the public team directory while keeping tournament, match, rating, and prediction data intact.',
+    adminTeamsTableTitle: 'Team visibility',
+    teamFilterEnabled: 'Enabled',
+    teamFilterDisabled: 'Disabled',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    teamVisibility: 'Visibility',
+    editTeamVisibilityTitle: 'Edit team',
+    editTeamVisibilityCopy: 'Update the display name and decide whether this team appears in the global Teams directory.',
+    teamVisibilityCopy: 'Disabled teams are hidden from /teams, but remain visible in tournaments, matches, ratings, and predictions.',
     adminCreateTournament: 'Create new tournament',
     adminListTournaments: 'List tournaments',
     adminTournamentsPanel: 'Tournaments panel',
@@ -1158,6 +1183,8 @@ const translations = {
     adminSquadOpsCopy: 'Manage squad sources, map teams to Transfermarkt, import player lists, and maintain squad quality snapshots for rating calculations.',
     adminQualityOps: 'Data quality',
     adminQualityOpsCopy: 'Review missing match statistics, stale squad snapshots, unfinished fixtures, and other data gaps before rating rebuilds run.',
+    adminNotificationsOps: 'Notifications',
+    adminNotificationsOpsCopy: 'Prepare user messages, service alerts, activation reminders, and future email or in-app announcements.',
     dataQualityPanelEyebrow: 'Data quality',
     dataQualityPanelTitle: 'Data health desk',
     dataQualityPanelCopy:
@@ -1183,6 +1210,9 @@ const translations = {
     dataQualityEntity: 'Entity',
     dataQualityProblem: 'Problem',
     dataQualitySample: 'Sample',
+    dataQualityAcceptVisible: 'Accept visible warnings',
+    dataQualityAccepted: 'Warnings accepted.',
+    dataQualityAcceptCopy: 'Accepted warnings are hidden from this panel, but source data remains unchanged.',
     dataQualityChecks: [
       { key: 'tournament-structure', title: 'Tournament structure', status: 'Identity', copy: 'Missing identity, teams, stages, LiveScore IDs, or inconsistent season metadata.' },
       { key: 'match-completeness', title: 'Match completeness', status: 'Matches', copy: 'Missing teams, kickoff dates, final scores, unfinished past matches, or manual round/stage review.' },
@@ -1786,6 +1816,20 @@ const translations = {
     squadSeason: 'Sezon snapshotu',
     adminTournamentOps: 'Turnieje',
     adminTournamentOpsCopy: 'Twórz nowe rozgrywki, przeglądaj istniejące turnieje i otwieraj dedykowany panel administracji turniejami do konfiguracji oraz utrzymania.',
+    adminTeamsOps: 'Drużyny',
+    adminTeamsOpsCopy: 'Kontroluj widoczność drużyn, ekspozycję w publicznym katalogu i przyszłe ustawienia tożsamości drużyn między turniejami.',
+    adminTeamsPanelEyebrow: 'Drużyny',
+    adminTeamsPanelTitle: 'Panel drużyn',
+    adminTeamsPanelCopy: 'Zarządzaj globalną widocznością drużyn w publicznym katalogu bez usuwania danych turniejowych, meczowych, ratingowych i predykcyjnych.',
+    adminTeamsTableTitle: 'Widoczność drużyn',
+    teamFilterEnabled: 'Aktywne',
+    teamFilterDisabled: 'Ukryte',
+    enabled: 'Aktywna',
+    disabled: 'Ukryta',
+    teamVisibility: 'Widoczność',
+    editTeamVisibilityTitle: 'Edytuj drużynę',
+    editTeamVisibilityCopy: 'Zmień nazwę wyświetlaną i zdecyduj, czy drużyna pojawia się w globalnym katalogu Teams.',
+    teamVisibilityCopy: 'Ukryte drużyny znikają z /teams, ale nadal są widoczne w turniejach, meczach, ratingach i predykcjach.',
     adminCreateTournament: 'Utwórz nowy turniej',
     adminListTournaments: 'Lista turniejów',
     adminTournamentsPanel: 'Panel turniejów',
@@ -1948,6 +1992,8 @@ const translations = {
     adminSquadOpsCopy: 'Zarządzaj źródłami kadr, mapuj drużyny do Transfermarkt, importuj listy zawodników i utrzymuj snapshoty jakości kadr dla ratingów.',
     adminQualityOps: 'Jakość danych',
     adminQualityOpsCopy: 'Sprawdzaj brakujące statystyki meczowe, stare snapshoty kadr, niezakończone fixtures i inne luki danych przed rebuildami ratingów.',
+    adminNotificationsOps: 'Powiadomienia',
+    adminNotificationsOpsCopy: 'Przygotuj wiadomości do użytkowników, alerty usług, przypomnienia aktywacyjne i przyszłe komunikaty email lub w aplikacji.',
     dataQualityPanelEyebrow: 'Jakość danych',
     dataQualityPanelTitle: 'Panel zdrowia danych',
     dataQualityPanelCopy:
@@ -1973,6 +2019,9 @@ const translations = {
     dataQualityEntity: 'Rekord',
     dataQualityProblem: 'Problem',
     dataQualitySample: 'Próbka',
+    dataQualityAcceptVisible: 'Akceptuj widoczne ostrzeżenia',
+    dataQualityAccepted: 'Ostrzeżenia zaakceptowane.',
+    dataQualityAcceptCopy: 'Zaakceptowane ostrzeżenia są ukryte w tym panelu, ale dane źródłowe pozostają bez zmian.',
     dataQualityChecks: [
       { key: 'tournament-structure', title: 'Struktura turnieju', status: 'Identity', copy: 'Brakująca identyfikacja, drużyny, stage, LiveScore ID albo niespójne metadane sezonu.' },
       { key: 'match-completeness', title: 'Kompletność meczów', status: 'Mecze', copy: 'Brakujące drużyny, kickoffy, finalne wyniki, stare niezakończone mecze albo ręczny round/stage do sprawdzenia.' },
@@ -3062,7 +3111,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'api' || view === 'admin' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -3362,6 +3411,15 @@ function App() {
         <AdminDashboard
           t={t}
           onNavigate={navigate}
+        />
+      )}
+
+      {view === 'admin-teams' && user && (
+        <AdminTeamsPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          onBack={() => navigate('admin')}
         />
       )}
 
@@ -4359,6 +4417,12 @@ function AdminDashboard({
       action: () => onNavigate('admin-tournaments'),
     },
     {
+      icon: 'teams',
+      title: t.adminTeamsOps,
+      description: t.adminTeamsOpsCopy,
+      action: () => onNavigate('admin-teams'),
+    },
+    {
       icon: 'ratings',
       title: t.adminRatingOps,
       description: t.adminRatingOpsCopy,
@@ -4375,6 +4439,11 @@ function AdminDashboard({
       title: t.adminQualityOps,
       description: t.adminQualityOpsCopy,
       action: () => onNavigate('admin-data-quality'),
+    },
+    {
+      icon: 'api',
+      title: t.adminNotificationsOps,
+      description: t.adminNotificationsOpsCopy,
     },
     {
       icon: 'profile',
@@ -4427,6 +4496,288 @@ function AdminDashboard({
           })}
         </div>
       </div>
+    </section>
+  )
+}
+
+function AdminTeamsPanel({
+  t,
+  user,
+  onToast,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  onBack: () => void
+}) {
+  const [teams, setTeams] = useState<TeamSummary[]>([])
+  const [search, setSearch] = useState('')
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'enabled' | 'disabled'>('all')
+  const [sortKey, setSortKey] = useState<TeamSortKey>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [editingTeam, setEditingTeam] = useState<TeamSummary | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [updatingVisibilityId, setUpdatingVisibilityId] = useState<number | null>(null)
+
+  const loadTeams = async () => {
+    setIsLoading(true)
+    try {
+      const result = await authorizedRequest<TeamSummary[]>(user.token, '/api/admin/teams')
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setTeams(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadTeams()
+  }, [user.token])
+
+  const displayedTeams = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    const filtered = teams.filter((team) => {
+      if (visibilityFilter === 'enabled' && !team.isEnabled) {
+        return false
+      }
+
+      if (visibilityFilter === 'disabled' && team.isEnabled) {
+        return false
+      }
+
+      if (!normalizedSearch) {
+        return true
+      }
+
+      const assignmentValues = team.tournamentAssignments?.flatMap((assignment) => [
+        assignment.tournamentName,
+        assignment.season,
+        assignment.country,
+      ]) ?? []
+
+      return [team.name, team.abbreviation, team.id.toString(), ...assignmentValues]
+        .some((value) => value.toLowerCase().includes(normalizedSearch))
+    })
+
+    return filtered.sort((left, right) => {
+      let comparison = 0
+
+      if (sortKey === 'name') {
+        comparison = compareText(left.name, right.name)
+      } else if (sortKey === 'abbreviation') {
+        comparison = compareText(left.abbreviation, right.abbreviation)
+      } else {
+        comparison = (left.tournamentAssignments?.length ?? 0) - (right.tournamentAssignments?.length ?? 0)
+      }
+
+      if (comparison === 0) {
+        comparison = left.id - right.id
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [search, sortDirection, sortKey, teams, visibilityFilter])
+
+  const requestSort = (key: TeamSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection('asc')
+  }
+
+  const onTeamSaved = (updatedTeam: TeamSummary) => {
+    setTeams((current) => current.map((team) => team.id === updatedTeam.id ? updatedTeam : team))
+    setEditingTeam(null)
+    onToast(t.teamUpdated, 'success')
+  }
+
+  const updateTeamVisibility = async (team: TeamSummary, isEnabled: boolean) => {
+    if (team.isEnabled === isEnabled || updatingVisibilityId !== null) {
+      return
+    }
+
+    setUpdatingVisibilityId(team.id)
+    try {
+      const result = await authorizedRequest<TeamSummary>(user.token, `/api/teams/${team.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: team.name,
+          abbreviation: team.abbreviation,
+          isEnabled,
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setTeams((current) => current.map((item) => item.id === team.id
+        ? { ...item, ...result.data!, tournamentAssignments: item.tournamentAssignments }
+        : item))
+      onToast(t.teamUpdated, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setUpdatingVisibilityId(null)
+    }
+  }
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.adminTeamsPanelEyebrow}</p>
+          <h1>{t.adminTeamsPanelTitle}</h1>
+          <p>{t.adminTeamsPanelCopy}</p>
+        </div>
+
+        <div className="details-top-actions panel-top-actions">
+          <button type="button" onClick={onBack}>
+            <MenuIcon name="arrow-left" />
+            <span>{t.backToAdmin}</span>
+          </button>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread admin-teams-heading">
+            <div>
+              <MenuIcon name="teams" />
+              <h2>{t.adminTeamsTableTitle}</h2>
+            </div>
+            <div className="admin-team-toolbar">
+              <label className="tournament-search compact rating-table-search align-right">
+                <span>{t.teamSearch}</span>
+                <input
+                  placeholder={t.teamSearchPlaceholder}
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <div className="tournament-filter admin-team-filter">
+                {[
+                  ['all', t.tournamentFilterAll],
+                  ['enabled', t.teamFilterEnabled],
+                  ['disabled', t.teamFilterDisabled],
+                ].map(([value, label]) => (
+                  <button
+                    className={visibilityFilter === value ? 'active' : ''}
+                    type="button"
+                    key={value}
+                    onClick={() => setVisibilityFilter(value as typeof visibilityFilter)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="tournament-table-shell compact-table-shell">
+            <table className="tournament-table ratings-tournament-table admin-teams-table">
+              <thead>
+                <tr>
+                  {[
+                    { key: 'name', label: t.teamName },
+                    { key: 'abbreviation', label: t.abbreviation },
+                    { key: 'tournaments', label: t.activeTournamentContexts },
+                  ].map((header) => (
+                    <th key={header.key}>
+                      <button
+                        className="table-sort-button"
+                        type="button"
+                        aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        onClick={() => requestSort(header.key as TeamSortKey)}
+                      >
+                        <span>{header.label}</span>
+                        <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th>{t.teamVisibility}</th>
+                  <th>{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!isLoading && displayedTeams.map((team) => (
+                  <tr key={team.id}>
+                    <td><strong>{team.name}</strong></td>
+                    <td>{team.abbreviation || '-'}</td>
+                    <td>
+                      <div className="admin-team-tournament-list">
+                        {(team.tournamentAssignments?.length ?? 0) > 0
+                          ? team.tournamentAssignments?.map((assignment) => (
+                            <span key={assignment.tournamentId}>
+                              {assignment.tournamentName}{assignment.season ? ` ${assignment.season}` : ''}
+                            </span>
+                          ))
+                          : <span>-</span>}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="team-visibility-actions" aria-label={t.teamVisibility}>
+                        <button
+                          className={team.isEnabled ? 'active' : ''}
+                          disabled={updatingVisibilityId !== null}
+                          type="button"
+                          onClick={() => updateTeamVisibility(team, true)}
+                        >
+                          {t.enabled}
+                        </button>
+                        <button
+                          className={!team.isEnabled ? 'active disabled-state' : 'disabled-state'}
+                          disabled={updatingVisibilityId !== null}
+                          type="button"
+                          onClick={() => updateTeamVisibility(team, false)}
+                        >
+                          {t.disabled}
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      <button type="button" onClick={() => setEditingTeam(team)}>
+                        {t.edit}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!isLoading && displayedTeams.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={5}>{t.noTeams}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      {editingTeam && (
+        <AdminTeamEditModal
+          t={t}
+          user={user}
+          team={editingTeam}
+          onCancel={() => setEditingTeam(null)}
+          onSaved={(team) => onTeamSaved({ ...editingTeam, ...team, tournamentAssignments: editingTeam.tournamentAssignments })}
+          onToast={onToast}
+        />
+      )}
     </section>
   )
 }
@@ -8667,41 +9018,27 @@ function DataQualityPanel({
   const [isLoadingIssues, setIsLoadingIssues] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    let isMounted = true
+  const loadChecks = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const result = await authorizedRequest<DataQualityTournamentCheck[]>(user.token, '/api/admin/data-quality/tournament-checks')
 
-    const loadChecks = async () => {
-      setIsLoading(true)
-      try {
-        const result = await authorizedRequest<DataQualityTournamentCheck[]>(user.token, '/api/admin/data-quality/tournament-checks')
-
-        if (!isMounted) {
-          return
-        }
-
-        if (!result.ok || !result.data) {
-          onToast(result.message || t.genericError, 'error')
-          return
-        }
-
-        setChecks(result.data)
-      } catch {
-        if (isMounted) {
-          onToast(t.genericError, 'error')
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
       }
-    }
 
+      setChecks(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [onToast, t.genericError, user.token])
+
+  useEffect(() => {
     loadChecks()
-
-    return () => {
-      isMounted = false
-    }
-  }, [t.genericError, user.token])
+  }, [loadChecks])
 
   const getStatusLabel = (status: string) => {
     if (status === 'Healthy') {
@@ -8737,6 +9074,15 @@ function DataQualityPanel({
     } finally {
       setIsLoadingIssues(false)
     }
+  }
+
+  const refreshSelectedIssues = async () => {
+    if (!selectedCheck) {
+      return
+    }
+
+    await openIssuesModal(selectedCheck)
+    await loadChecks()
   }
 
   return (
@@ -8809,7 +9155,10 @@ function DataQualityPanel({
             check={selectedCheck}
             issues={selectedCheckIssues}
             isLoading={isLoadingIssues}
+            user={user}
+            onToast={onToast}
             onCancel={() => setSelectedCheck(null)}
+            onAccepted={refreshSelectedIssues}
           />
         )}
       </div>
@@ -8822,27 +9171,69 @@ function DataQualityIssuesModal({
   check,
   issues,
   isLoading,
+  user,
+  onToast,
   onCancel,
+  onAccepted,
 }: {
   t: (typeof translations)[Language]
   check: (typeof t.dataQualityChecks)[number]
   issues: DataQualityIssue[]
   isLoading: boolean
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
   onCancel: () => void
+  onAccepted: () => Promise<void>
 }) {
+  const [isAccepting, setIsAccepting] = useState(false)
+
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !isAccepting) {
         onCancel()
       }
     }
 
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [onCancel])
+  }, [isAccepting, onCancel])
+
+  const acceptVisibleIssues = async () => {
+    if (issues.length === 0 || isAccepting) {
+      return
+    }
+
+    setIsAccepting(true)
+    try {
+      const result = await authorizedRequest(user.token, `/api/admin/data-quality/tournament-checks/${check.key}/accepted-issues`, {
+        method: 'POST',
+        body: JSON.stringify({
+          note: t.dataQualityAcceptCopy,
+          issues: issues.map((issue) => ({
+            key: issue.key,
+            entityType: issue.entityType,
+            entityId: issue.entityId,
+            issue: issue.issue,
+          })),
+        }),
+      })
+
+      if (!result.ok) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      await onAccepted()
+      onToast(t.dataQualityAccepted, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsAccepting(false)
+    }
+  }
 
   return createPortal(
-    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isAccepting && onCancel()}>
       <section
         className="delete-modal data-quality-issues-modal"
         role="dialog"
@@ -8857,12 +9248,15 @@ function DataQualityIssuesModal({
           <p className="eyebrow">{t.dataQualityProblems}</p>
           <h2 id="data-quality-issues-title">{check.title}</h2>
           <p>{check.copy}</p>
+          {issues.length > 0 && !isLoading && (
+            <p className="data-quality-accept-copy">{t.dataQualityAcceptCopy}</p>
+          )}
         </div>
 
-        {isLoading ? (
+        {(isLoading || isAccepting) ? (
           <div className="modal-loading-block">
             <LoadingSpinner />
-            <strong>{t.loading}</strong>
+            <strong>{isAccepting ? t.dataQualityAcceptVisible : t.loading}</strong>
           </div>
         ) : issues.length > 0 ? (
           <div className="tournament-table-shell compact-table-shell data-quality-issues-table-shell">
@@ -8902,10 +9296,15 @@ function DataQualityIssuesModal({
           </div>
         )}
 
-        <div className="delete-modal-actions single">
-          <button type="button" onClick={onCancel}>
+        <div className={`delete-modal-actions ${issues.length > 0 && !isLoading ? '' : 'single'}`}>
+          <button type="button" disabled={isAccepting} onClick={onCancel}>
             {t.cancel}
           </button>
+          {issues.length > 0 && !isLoading && (
+            <button type="button" disabled={isAccepting} onClick={acceptVisibleIssues}>
+              {t.dataQualityAcceptVisible}
+            </button>
+          )}
         </div>
       </section>
     </div>,
@@ -11743,6 +12142,7 @@ function EditTeamModal({
         body: JSON.stringify({
           name: name.trim(),
           abbreviation: abbreviation.trim(),
+          isEnabled: team.isEnabled,
         }),
       })
 
@@ -11803,6 +12203,132 @@ function EditTeamModal({
         </div>
       </form>
     </div>
+  )
+}
+
+function AdminTeamEditModal({
+  t,
+  user,
+  team,
+  onCancel,
+  onSaved,
+  onToast,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  team: TeamSummary
+  onCancel: () => void
+  onSaved: (team: TeamSummary) => void
+  onToast: (message: string, tone: ToastTone) => void
+}) {
+  const [name, setName] = useState(team.name)
+  const [isEnabled, setIsEnabled] = useState(team.isEnabled)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSaving) {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isSaving, onCancel])
+
+  const saveTeam = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nextErrors: Record<string, string> = {}
+    if (!name.trim()) {
+      nextErrors.name = t.required
+    }
+
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await authorizedRequest<TeamSummary>(user.token, `/api/teams/${team.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: name.trim(),
+          abbreviation: team.abbreviation,
+          isEnabled,
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      onSaved(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isSaving && onCancel()}>
+      <form
+        className="delete-modal edit-team-modal admin-team-edit-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-edit-team-title"
+        noValidate
+        onSubmit={saveTeam}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="teams" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.edit}</p>
+          <h2 id="admin-edit-team-title">{t.editTeamVisibilityTitle}</h2>
+          <p>{t.editTeamVisibilityCopy}</p>
+          <div className="delete-modal-target">
+            <strong>{team.name}</strong>
+            <span>{team.abbreviation || '-'}</span>
+          </div>
+        </div>
+        <div className="edit-team-fields">
+          <FormField
+            error={errors.name}
+            label={t.teamName}
+            type="text"
+            value={name}
+            onChange={setName}
+          />
+          <label className="system-service-toggle admin-team-toggle">
+            <input
+              type="checkbox"
+              checked={isEnabled}
+              disabled={isSaving}
+              onChange={(event) => setIsEnabled(event.target.checked)}
+            />
+            <span>
+              <strong>{isEnabled ? t.enabled : t.disabled}</strong>
+              <small>{t.teamVisibilityCopy}</small>
+            </span>
+          </label>
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" disabled={isSaving} onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button type="submit" disabled={isSaving}>
+            {isSaving ? '...' : t.saveTeam}
+          </button>
+        </div>
+      </form>
+    </div>,
+    document.body,
   )
 }
 

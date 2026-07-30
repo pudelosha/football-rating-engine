@@ -18,3 +18,13 @@ public sealed record DataQualityIssueDto(
     int? EntityId,
     DateTimeOffset? SampleUtc,
     string Issue);
+
+public sealed record AcceptDataQualityIssuesRequest(
+    IReadOnlyList<AcceptDataQualityIssueRequest> Issues,
+    string? Note = null);
+
+public sealed record AcceptDataQualityIssueRequest(
+    string Key,
+    string EntityType,
+    int? EntityId,
+    string Issue);

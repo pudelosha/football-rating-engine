@@ -5,6 +5,7 @@ using FootballResults.Api.Model.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace FootballResults.Api.Controllers;
 
@@ -23,9 +24,7 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
         CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
-        var staleSquadSnapshotCutoff = now.AddDays(-SquadSnapshotFreshnessDays);
         var staleSyncCutoff = now.AddHours(-SyncFreshnessHours);
-        var pastMatchCutoff = now.AddHours(-3);
 
         var activeTournamentIds = await dbContext.Tournaments
             .AsNoTracking()
@@ -34,17 +33,11 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
             .ToListAsync(cancellationToken);
 
         var activeTournamentCount = activeTournamentIds.Count;
-        var structureIssueCount = await dbContext.Tournaments
-            .AsNoTracking()
-            .Where(tournament =>
-                tournament.IsActive
-                && (tournament.LiveScoreCompetitionId == string.Empty
-                    || tournament.Name == string.Empty
-                    || tournament.Season == string.Empty
-                    || tournament.BaseUrl == string.Empty
-                    || !tournament.TournamentTeams.Any()
-                    || !tournament.Stages.Any()))
-            .CountAsync(cancellationToken);
+        var structureIssues = await FilterAcceptedIssuesAsync(
+            "tournament-structure",
+            await GetTournamentStructureIssuesAsync(cancellationToken),
+            cancellationToken);
+        var structureIssueCount = structureIssues.Count;
 
         var structureLastSample = await dbContext.Tournaments
             .AsNoTracking()
@@ -56,22 +49,11 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
             .Where(match => activeTournamentIds.Contains(match.TournamentId))
             .CountAsync(cancellationToken);
 
-        var matchCompletenessIssueCount = await dbContext.Matches
-            .AsNoTracking()
-            .Where(match =>
-                activeTournamentIds.Contains(match.TournamentId)
-                && (match.LiveScoreEventId == string.Empty
-                    || match.KickoffUtc == null
-                    || match.HomeTeamId == null
-                    || match.AwayTeamId == null
-                    || match.RoundInfo == string.Empty
-                    || (match.KickoffUtc < pastMatchCutoff
-                        && match.Status != MatchStatus.Finished
-                        && match.Status != MatchStatus.Cancelled
-                        && match.Status != MatchStatus.Postponed)
-                    || (match.Status == MatchStatus.Finished
-                        && (match.HomeScore == null || match.AwayScore == null))))
-            .CountAsync(cancellationToken);
+        var matchCompletenessIssues = await FilterAcceptedIssuesAsync(
+            "match-completeness",
+            await GetMatchCompletenessIssuesAsync(activeTournamentIds, now, cancellationToken),
+            cancellationToken);
+        var matchCompletenessIssueCount = matchCompletenessIssues.Count;
 
         var matchCompletenessLastSample = await dbContext.Matches
             .AsNoTracking()
@@ -86,22 +68,11 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 && (match.RawStatus == "AET" || match.RawStatus == "AP"))
             .CountAsync(cancellationToken);
 
-        var resultEnrichmentIssueCount = await dbContext.Matches
-            .AsNoTracking()
-            .Where(match =>
-                activeTournamentIds.Contains(match.TournamentId)
-                && match.Status == MatchStatus.Finished
-                && ((match.RawStatus == "AET"
-                        && (match.RegularTimeHomeScore == null
-                            || match.RegularTimeAwayScore == null
-                            || match.AfterExtraTimeHomeScore == null
-                            || match.AfterExtraTimeAwayScore == null))
-                    || (match.RawStatus == "AP"
-                        && (match.RegularTimeHomeScore == null
-                            || match.RegularTimeAwayScore == null
-                            || match.PenaltyHomeScore == null
-                            || match.PenaltyAwayScore == null))))
-            .CountAsync(cancellationToken);
+        var resultEnrichmentIssues = await FilterAcceptedIssuesAsync(
+            "result-enrichment",
+            await GetResultEnrichmentIssuesAsync(activeTournamentIds, cancellationToken),
+            cancellationToken);
+        var resultEnrichmentIssueCount = resultEnrichmentIssues.Count;
 
         var resultEnrichmentLastSample = await dbContext.Matches
             .AsNoTracking()
@@ -116,15 +87,11 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
             .Where(match => activeTournamentIds.Contains(match.TournamentId) && match.Status == MatchStatus.Finished)
             .CountAsync(cancellationToken);
 
-        var statisticsIssueCount = await dbContext.Matches
-            .AsNoTracking()
-            .Where(match =>
-                activeTournamentIds.Contains(match.TournamentId)
-                && match.Status == MatchStatus.Finished
-                && (match.Statistics == null
-                    || match.Statistics.HomeExpectedGoals == null
-                    || match.Statistics.AwayExpectedGoals == null))
-            .CountAsync(cancellationToken);
+        var statisticsIssues = await FilterAcceptedIssuesAsync(
+            "match-statistics",
+            await GetMatchStatisticsIssuesAsync(activeTournamentIds, cancellationToken),
+            cancellationToken);
+        var statisticsIssueCount = statisticsIssues.Count;
 
         var statisticsLastSample = await dbContext.MatchStatistics
             .AsNoTracking()
@@ -145,10 +112,11 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
             })
             .ToListAsync(cancellationToken);
 
-        var squadIssueCount = tournamentTeamRows.Count(row =>
-            !row.HasTransfermarktMapping
-            || row.LatestSnapshotUtc is null
-            || row.LatestSnapshotUtc < staleSquadSnapshotCutoff);
+        var squadIssues = await FilterAcceptedIssuesAsync(
+            "squad-snapshots",
+            await GetSquadSnapshotIssuesAsync(activeTournamentIds, now, cancellationToken),
+            cancellationToken);
+        var squadIssueCount = squadIssues.Count;
 
         var squadLastSample = tournamentTeamRows
             .Select(row => row.LatestSnapshotUtc)
@@ -176,7 +144,11 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
             .Where(run => activeTournamentIds.Contains(run.TournamentId))
             .MaxAsync(run => (DateTimeOffset?)run.StartedAtUtc, cancellationToken);
 
-        var syncIssueCount = staleSyncTournamentCount + syncFailedLast24Hours;
+        var syncIssues = await FilterAcceptedIssuesAsync(
+            "sync-freshness",
+            await GetSyncFreshnessIssuesAsync(now, cancellationToken),
+            cancellationToken);
+        var syncIssueCount = syncIssues.Count;
 
         var checks = new[]
         {
@@ -264,7 +236,89 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
             _ => null
         };
 
-        return issues is null ? NotFound() : Ok(issues);
+        if (issues is null)
+        {
+            return NotFound();
+        }
+
+        var filteredIssues = await FilterAcceptedIssuesAsync(key, issues, cancellationToken);
+        return Ok(filteredIssues.Take(IssueListLimit));
+    }
+
+    [HttpPost("tournament-checks/{key}/accepted-issues")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AcceptTournamentCheckIssues(
+        string key,
+        AcceptDataQualityIssuesRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Issues.Count == 0)
+        {
+            return BadRequest("At least one issue must be selected.");
+        }
+
+        var normalizedIssues = request.Issues
+            .Where(issue =>
+                string.Equals(issue.Key, key, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(issue.EntityType)
+                && !string.IsNullOrWhiteSpace(issue.Issue))
+            .Select(issue => new
+            {
+                CheckKey = key,
+                EntityType = issue.EntityType.Trim(),
+                issue.EntityId,
+                Issue = issue.Issue.Trim()
+            })
+            .DistinctBy(issue => BuildAcceptanceKey(issue.CheckKey, issue.EntityType, issue.EntityId, issue.Issue))
+            .ToList();
+
+        if (normalizedIssues.Count == 0)
+        {
+            return BadRequest("Selected issues do not match the requested check.");
+        }
+
+        var acceptedKeys = await dbContext.DataQualityAcceptedIssues
+            .Where(issue => issue.CheckKey == key)
+            .Select(issue => new
+            {
+                issue.CheckKey,
+                issue.EntityType,
+                issue.EntityId,
+                issue.Issue
+            })
+            .ToListAsync(cancellationToken);
+
+        var existingKeys = acceptedKeys
+            .Select(issue => BuildAcceptanceKey(issue.CheckKey, issue.EntityType, issue.EntityId, issue.Issue))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var now = DateTimeOffset.UtcNow;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var note = request.Note?.Trim() ?? string.Empty;
+
+        foreach (var issue in normalizedIssues)
+        {
+            var acceptanceKey = BuildAcceptanceKey(issue.CheckKey, issue.EntityType, issue.EntityId, issue.Issue);
+            if (existingKeys.Contains(acceptanceKey))
+            {
+                continue;
+            }
+
+            dbContext.DataQualityAcceptedIssues.Add(new DataQualityAcceptedIssue
+            {
+                CheckKey = issue.CheckKey,
+                EntityType = issue.EntityType,
+                EntityId = issue.EntityId,
+                Issue = issue.Issue,
+                Note = note,
+                AcceptedByUserId = userId,
+                AcceptedAtUtc = now
+            });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
     }
 
     private static DataQualityTournamentCheckDto CreateCheck(
@@ -289,6 +343,47 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
             checkedCount,
             lastSampleUtc,
             summary);
+    }
+
+    private async Task<IReadOnlyList<DataQualityIssueDto>> FilterAcceptedIssuesAsync(
+        string key,
+        IReadOnlyList<DataQualityIssueDto> issues,
+        CancellationToken cancellationToken)
+    {
+        if (issues.Count == 0)
+        {
+            return issues;
+        }
+
+        var acceptedRows = await dbContext.DataQualityAcceptedIssues
+            .AsNoTracking()
+            .Where(issue => issue.CheckKey == key)
+            .Select(issue => new
+            {
+                issue.CheckKey,
+                issue.EntityType,
+                issue.EntityId,
+                issue.Issue
+            })
+            .ToListAsync(cancellationToken);
+
+        var acceptedKeys = acceptedRows
+            .Select(issue => BuildAcceptanceKey(issue.CheckKey, issue.EntityType, issue.EntityId, issue.Issue))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return issues
+            .Where(issue => !acceptedKeys.Contains(BuildAcceptanceKey(issue.Key, issue.EntityType, issue.EntityId, issue.Issue)))
+            .ToList();
+    }
+
+    private static string BuildAcceptanceKey(string checkKey, string entityType, int? entityId, string issue)
+    {
+        return string.Join(
+            "|",
+            checkKey.Trim().ToLowerInvariant(),
+            entityType.Trim().ToLowerInvariant(),
+            entityId?.ToString() ?? string.Empty,
+            issue.Trim().ToLowerInvariant());
     }
 
     private async Task<IReadOnlyList<DataQualityIssueDto>> GetTournamentStructureIssuesAsync(
@@ -316,7 +411,6 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 TeamCount = tournament.TournamentTeams.Count,
                 StageCount = tournament.Stages.Count
             })
-            .Take(IssueListLimit)
             .ToListAsync(cancellationToken);
 
         return rows
@@ -379,7 +473,6 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 match.HomeScore,
                 match.AwayScore
             })
-            .Take(IssueListLimit)
             .ToListAsync(cancellationToken);
 
         return rows
@@ -441,7 +534,6 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 match.PenaltyHomeScore,
                 match.PenaltyAwayScore
             })
-            .Take(IssueListLimit)
             .ToListAsync(cancellationToken);
 
         return rows
@@ -488,7 +580,6 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 HomeExpectedGoals = match.Statistics == null ? null : match.Statistics.HomeExpectedGoals,
                 AwayExpectedGoals = match.Statistics == null ? null : match.Statistics.AwayExpectedGoals
             })
-            .Take(IssueListLimit)
             .ToListAsync(cancellationToken);
 
         return rows
@@ -541,7 +632,6 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 || row.LatestSnapshotUtc < staleSquadSnapshotCutoff)
             .OrderBy(row => row.TournamentName)
             .ThenBy(row => row.TeamName)
-            .Take(IssueListLimit)
             .Select(row => new DataQualityIssueDto(
                 "squad-snapshots",
                 "Medium",
@@ -576,7 +666,6 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 tournament.Season,
                 tournament.LastSyncedAtUtc
             })
-            .Take(IssueListLimit)
             .ToListAsync(cancellationToken);
 
         var staleTournaments = staleTournamentRows
@@ -612,7 +701,6 @@ public sealed class DataQualityController(AppDbContext dbContext) : ControllerBa
                 run.StartedAtUtc,
                 run.ErrorMessage
             })
-            .Take(IssueListLimit - staleTournaments.Count)
             .ToListAsync(cancellationToken);
 
         var failedRuns = failedRunRows

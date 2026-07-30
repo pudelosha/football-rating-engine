@@ -30,6 +30,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<TeamPerformanceMatchSnapshot> TeamPerformanceMatchSnapshots => Set<TeamPerformanceMatchSnapshot>();
     public DbSet<SyncServiceConfiguration> SyncServiceConfigurations => Set<SyncServiceConfiguration>();
     public DbSet<RatingConfiguration> RatingConfigurations => Set<RatingConfiguration>();
+    public DbSet<DataQualityAcceptedIssue> DataQualityAcceptedIssues => Set<DataQualityAcceptedIssue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +95,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.Property(configuration => configuration.FormMaxAdjustment).HasPrecision(8, 2);
             entity.Property(configuration => configuration.PerformanceScale).HasPrecision(8, 2);
             entity.Property(configuration => configuration.PerformanceMaxAdjustment).HasPrecision(8, 2);
+        });
+
+        modelBuilder.Entity<DataQualityAcceptedIssue>(entity =>
+        {
+            entity.HasIndex(issue => new { issue.CheckKey, issue.EntityType, issue.EntityId, issue.Issue }).IsUnique();
+            entity.HasIndex(issue => new { issue.CheckKey, issue.AcceptedAtUtc });
+
+            entity.Property(issue => issue.CheckKey).HasMaxLength(80);
+            entity.Property(issue => issue.EntityType).HasMaxLength(80);
+            entity.Property(issue => issue.Issue).HasMaxLength(1000);
+            entity.Property(issue => issue.Note).HasMaxLength(1000);
+            entity.Property(issue => issue.AcceptedByUserId).HasMaxLength(450);
         });
 
         modelBuilder.Entity<TournamentStage>(entity =>

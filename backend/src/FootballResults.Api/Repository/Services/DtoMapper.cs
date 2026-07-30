@@ -64,7 +64,7 @@ internal static class DtoMapper
 
     public static TeamDto ToTeamDto(Team team)
     {
-        return new TeamDto(team.Id, team.Name, team.Abbreviation);
+        return new TeamDto(team.Id, team.Name, team.Abbreviation, team.IsEnabled);
     }
 
     public static MatchDto ToMatchDto(Match match)

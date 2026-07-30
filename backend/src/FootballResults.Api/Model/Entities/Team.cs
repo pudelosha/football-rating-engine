@@ -7,6 +7,7 @@ public sealed class Team
     public string Name { get; set; } = string.Empty;
     public string Abbreviation { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; } = true;
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 

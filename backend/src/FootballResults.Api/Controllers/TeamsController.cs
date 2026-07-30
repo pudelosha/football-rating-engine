@@ -18,10 +18,40 @@ public sealed class TeamsController(AppDbContext dbContext) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<TeamDto>>> GetTeams(CancellationToken cancellationToken)
     {
         var teams = await dbContext.Teams
+            .Where(team => team.IsEnabled)
             .OrderBy(team => team.Name)
             .ToListAsync(cancellationToken);
 
         return Ok(teams.Select(DtoMapper.ToTeamDto).ToList());
+    }
+
+    [HttpGet("admin/teams")]
+    [Authorize(Policy = AuthExtensions.AdminPolicy)]
+    [ProducesResponseType(typeof(IReadOnlyList<AdminTeamDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AdminTeamDto>>> GetAdminTeams(CancellationToken cancellationToken)
+    {
+        var teams = await dbContext.Teams
+            .Include(team => team.TournamentTeams)
+            .ThenInclude(tournamentTeam => tournamentTeam.Tournament)
+            .OrderBy(team => team.Name)
+            .ToListAsync(cancellationToken);
+
+        return Ok(teams
+            .Select(team => new AdminTeamDto(
+                team.Id,
+                team.Name,
+                team.Abbreviation,
+                team.IsEnabled,
+                team.TournamentTeams
+                    .OrderBy(tournamentTeam => tournamentTeam.Tournament.Name)
+                    .ThenBy(tournamentTeam => tournamentTeam.Tournament.Season)
+                    .Select(tournamentTeam => new TeamTournamentAssignmentDto(
+                        tournamentTeam.TournamentId,
+                        tournamentTeam.Tournament.Name,
+                        tournamentTeam.Tournament.Season,
+                        tournamentTeam.Tournament.CompetitionCountry))
+                    .ToList()))
+            .ToList());
     }
 
     [HttpGet("teams/{id:int}")]
@@ -54,6 +84,7 @@ public sealed class TeamsController(AppDbContext dbContext) : ControllerBase
         }
 
         team.Abbreviation = request.Abbreviation.Trim();
+        team.IsEnabled = request.IsEnabled;
         team.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
