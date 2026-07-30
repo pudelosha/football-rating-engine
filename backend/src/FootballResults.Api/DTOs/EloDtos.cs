@@ -64,4 +64,6 @@ public sealed record MatchEloSnapshotDto(
     decimal AwayActual,
     decimal HomeEloChange,
     decimal AwayEloChange,
+    int? HomeScore,
+    int? AwayScore,
     decimal GoalDifferenceMultiplier);

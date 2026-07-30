@@ -48,6 +48,7 @@ type AuthUser = {
   email: string
   displayName?: string
   token: string
+  apiKey?: string
 }
 
 type FieldErrors = Partial<Record<'email' | 'password' | 'currentPassword' | 'confirmPassword' | 'termsAccepted', string>>
@@ -68,6 +69,7 @@ type UserProfile = {
   email: string
   displayName?: string | null
   memberSinceUtc: string
+  apiKeyCreatedAtUtc: string
 }
 
 type AdminUser = {
@@ -277,6 +279,8 @@ type BaseEloMatchSnapshot = {
   homeTeamName: string
   awayTeamId: number
   awayTeamName: string
+  homeScore?: number | null
+  awayScore?: number | null
   homeActual: number
   awayActual: number
 }
@@ -657,6 +661,8 @@ const translations = {
     modelEdge: 'Model edge',
     ratingGap: 'Rating gap',
     neutralRatingGap: 'Neutral rating gap',
+    scenarioHomeRating: 'Home scenario rating',
+    scenarioAwayRating: 'Away scenario rating',
     homeAdvantageValue: 'Home advantage value',
     modelConfidence: 'Model confidence',
     strongestSignal: 'Strongest signal',
@@ -700,9 +706,30 @@ const translations = {
     historicSplitIngredients: 'Real home, draw, and away result split from tracked head-to-head matches',
     historicSample: 'Historic sample',
     noHistoricHeadToHead: 'No tracked head-to-head matches in the selected historical window',
+    goalOutput: 'Goal output',
+    goalOutputIngredients: 'Compares average goals scored per match in the tracked historical window',
+    goalOutputSample: 'Goals per match',
+    noGoalOutputSample: 'No scored-goal sample in the selected historical window',
+    goalOutputHomeEdge: 'Home scoring edge',
+    goalOutputAwayEdge: 'Away scoring edge',
+    goalOutputDrawPressure: 'Draw pressure',
+    goalOutputHomeGpm: 'Home goals/match',
+    goalOutputAwayGpm: 'Away goals/match',
+    goalOutputGap: 'Goal gap',
+    goalOutputDrawBase: 'Draw base',
+    goalOutputAdjustedDraw: 'Adjusted draw',
+    goalOutputSampleSize: 'Sample',
     calibratedModel: 'Calibrated model',
     calibratedModelIngredients: 'Actual model softened toward realistic football 1X2 distributions',
     calibratedModelHomeAdvantageIngredients: 'Actual model, calibrated extremes, and tournament home advantage',
+    modelAgreement: 'Model agreement',
+    modelAgreementIngredients: 'Checks whether the scenario layers point to the same match outcome',
+    modelAgreementSupported: 'support',
+    agreementVeryStrong: 'Very strong agreement',
+    agreementStrong: 'Strong agreement',
+    agreementModerate: 'Moderate agreement',
+    agreementFragile: 'Fragile prediction',
+    agreementConflicted: 'Conflicted model',
     formMomentum: 'Form momentum',
     formMomentumIngredients: 'Base Elo plus current form adjustment',
     formMomentumHomeAdvantageIngredients: 'Base Elo, current form adjustment, and home advantage',
@@ -719,6 +746,13 @@ const translations = {
     apiPanelCopy: 'Use your API key to request tournament match lists, results, live matches, and upcoming fixtures from external tools.',
     apiHeaderTitle: 'Authentication',
     apiHeaderCopy: 'Send your key in the request header below. You can rotate the key from your profile.',
+    apiAuthTokenTitle: 'Auth token sample',
+    apiUserApiKeyTitle: 'User API key',
+    apiKeyUnavailable: 'Current key is stored as a hash and cannot be recovered. Generate a new key to reveal it here.',
+    apiReveal: 'Reveal',
+    apiHide: 'Hide',
+    apiRequestSample: 'Sample request',
+    apiResponseSample: 'Sample response',
     apiEndpointsTitle: 'Match endpoints',
     apiEndpointAll: 'All tournament matches',
     apiEndpointResults: 'Completed results',
@@ -1307,6 +1341,16 @@ const translations = {
     changeEmail: 'Change email',
     emailChanged: 'Email changed',
     rotateApiKeyTitle: 'API key',
+    apiKeyPurposeTitle: 'External API access',
+    apiKeyPurposeCopy: 'Use this key to query the match and rating API from external tools. Send it in the x-api-key request header.',
+    currentApiKey: 'Current API key',
+    apiKeyIssued: 'Issued',
+    apiKeyHidden: 'Stored securely. The existing key cannot be revealed after creation.',
+    revealApiKey: 'Reveal key',
+    hideApiKey: 'Hide key',
+    rotateApiKeyConfirmTitle: 'Rotate API key?',
+    rotateApiKeyConfirmCopy: 'This will invalidate your current API key. External tools using the old key will stop working until you update them.',
+    rotateApiKeyConfirmAction: 'Rotate key',
     rotateApiKey: 'Rotate API key',
     newApiKey: 'New API key',
     apiKeyRotated: 'API key rotated. Store it now; it will not be shown again.',
@@ -1364,6 +1408,8 @@ const translations = {
     modelEdge: 'Przewaga modelu',
     ratingGap: 'Różnica ratingów',
     neutralRatingGap: 'Neutralna różnica ratingów',
+    scenarioHomeRating: 'Rating gospodarzy w scenariuszu',
+    scenarioAwayRating: 'Rating gości w scenariuszu',
     homeAdvantageValue: 'Wartość przewagi gospodarza',
     modelConfidence: 'Pewność modelu',
     strongestSignal: 'Najsilniejszy sygnał',
@@ -1407,9 +1453,30 @@ const translations = {
     historicSplitIngredients: 'Rzeczywisty podział zwycięstw gospodarzy, remisów i gości z historycznych meczów H2H',
     historicSample: 'Próba historyczna',
     noHistoricHeadToHead: 'Brak historycznych meczów H2H w wybranym oknie danych',
+    goalOutput: 'Dorobek bramkowy',
+    goalOutputIngredients: 'Porównuje średnią liczbę strzelonych goli na mecz w historycznym oknie danych',
+    goalOutputSample: 'Gole na mecz',
+    noGoalOutputSample: 'Brak próby strzelonych goli w wybranym oknie historycznym',
+    goalOutputHomeEdge: 'Przewaga bramkowa gospodarzy',
+    goalOutputAwayEdge: 'Przewaga bramkowa gości',
+    goalOutputDrawPressure: 'Presja remisu',
+    goalOutputHomeGpm: 'Gole gospodarzy/mecz',
+    goalOutputAwayGpm: 'Gole gości/mecz',
+    goalOutputGap: 'Różnica bramek',
+    goalOutputDrawBase: 'Baza remisu',
+    goalOutputAdjustedDraw: 'Skorygowany remis',
+    goalOutputSampleSize: 'Próba',
     calibratedModel: 'Model skalibrowany',
     calibratedModelIngredients: 'Aktualny model wygładzony do realistycznych rozkładów piłkarskich 1X2',
     calibratedModelHomeAdvantageIngredients: 'Aktualny model, wygładzone skrajności i przewaga gospodarza',
+    modelAgreement: 'Zgodność modelu',
+    modelAgreementIngredients: 'Sprawdza, czy warstwy scenariuszy wskazują ten sam wynik meczu',
+    modelAgreementSupported: 'wspiera',
+    agreementVeryStrong: 'Bardzo mocna zgodność',
+    agreementStrong: 'Mocna zgodność',
+    agreementModerate: 'Umiarkowana zgodność',
+    agreementFragile: 'Krucha predykcja',
+    agreementConflicted: 'Sprzeczny model',
     formMomentum: 'Momentum formy',
     formMomentumIngredients: 'Base Elo plus aktualna korekta formy',
     formMomentumHomeAdvantageIngredients: 'Base Elo, korekta formy i przewaga gospodarza',
@@ -1426,6 +1493,13 @@ const translations = {
     apiPanelCopy: 'Użyj swojego API key, aby pobierać listy meczów, wyniki, mecze live i nadchodzące spotkania z zewnętrznych narzędzi.',
     apiHeaderTitle: 'Autoryzacja',
     apiHeaderCopy: 'Przekaż klucz w poniższym nagłówku requestu. Klucz możesz zmienić w profilu.',
+    apiAuthTokenTitle: 'Przykład auth token',
+    apiUserApiKeyTitle: 'API key użytkownika',
+    apiKeyUnavailable: 'Aktualny klucz jest przechowywany jako hash i nie można go odzyskać. Wygeneruj nowy klucz, aby zobaczyć go tutaj.',
+    apiReveal: 'Pokaż',
+    apiHide: 'Ukryj',
+    apiRequestSample: 'Przykładowy request',
+    apiResponseSample: 'Przykładowa odpowiedź',
     apiEndpointsTitle: 'Endpointy meczowe',
     apiEndpointAll: 'Wszystkie mecze turnieju',
     apiEndpointResults: 'Zakończone wyniki',
@@ -2012,6 +2086,16 @@ const translations = {
     changeEmail: 'Zmień email',
     emailChanged: 'Email zmieniony',
     rotateApiKeyTitle: 'API key',
+    apiKeyPurposeTitle: 'Dostęp do zewnętrznego API',
+    apiKeyPurposeCopy: 'Użyj tego klucza do odpytywania API meczów i ratingów z zewnętrznych narzędzi. Przekaż go w nagłówku x-api-key.',
+    currentApiKey: 'Aktualny API key',
+    apiKeyIssued: 'Wydany',
+    apiKeyHidden: 'Przechowywany bezpiecznie. Istniejącego klucza nie można ujawnić po utworzeniu.',
+    revealApiKey: 'Pokaż klucz',
+    hideApiKey: 'Ukryj klucz',
+    rotateApiKeyConfirmTitle: 'Wygenerować nowy API key?',
+    rotateApiKeyConfirmCopy: 'To unieważni aktualny API key. Zewnętrzne narzędzia używające starego klucza przestaną działać, dopóki ich nie zaktualizujesz.',
+    rotateApiKeyConfirmAction: 'Wygeneruj klucz',
     rotateApiKey: 'Wygeneruj nowy API key',
     newApiKey: 'Nowy API key',
     apiKeyRotated: 'API key został zmieniony. Zapisz go teraz; nie będzie ponownie pokazany.',
@@ -2341,6 +2425,21 @@ type MatchPrediction = {
   favoriteChance: number
 }
 
+type PredictionOutcomeKey = 'home' | 'draw' | 'away'
+
+type HistoricSplitMatch = {
+  date: string
+  homeTeamName: string
+  awayTeamName: string
+  homeScore?: number | null
+  awayScore?: number | null
+}
+
+type MiniBarTooltipRow = {
+  label: string
+  value: string
+}
+
 const DEFAULT_HOME_ADVANTAGE = 50
 const CALIBRATED_HOME_ADVANTAGE = 40
 
@@ -2354,6 +2453,69 @@ function formatPercent(value: number) {
 
 function formatOdds(value: number) {
   return Number.isFinite(value) ? value.toFixed(2) : '-'
+}
+
+function getFavoriteOutcomeKey(prediction: MatchPrediction): PredictionOutcomeKey {
+  const outcomes: { key: PredictionOutcomeKey; chance: number }[] = [
+    { key: 'home', chance: prediction.homeWin },
+    { key: 'draw', chance: prediction.draw },
+    { key: 'away', chance: prediction.awayWin },
+  ]
+
+  return outcomes.sort((left, right) => right.chance - left.chance)[0].key
+}
+
+function getAgreementLabel(ratio: number, t: (typeof translations)[Language]) {
+  if (ratio >= 0.85) {
+    return t.agreementVeryStrong
+  }
+
+  if (ratio >= 0.7) {
+    return t.agreementStrong
+  }
+
+  if (ratio >= 0.55) {
+    return t.agreementModerate
+  }
+
+  if (ratio >= 0.4) {
+    return t.agreementFragile
+  }
+
+  return t.agreementConflicted
+}
+
+function buildRatingScenarioMetricBars(
+  prediction: MatchPrediction,
+  homeRating: number,
+  awayRating: number,
+  homeAdvantage: number,
+  t: (typeof translations)[Language],
+): Record<'home' | 'draw' | 'away', MiniBarTooltipRow[]> {
+  const baseRows = [
+    { label: t.scenarioHomeRating, value: homeRating.toFixed(2) },
+    { label: t.scenarioAwayRating, value: awayRating.toFixed(2) },
+    { label: t.homeAdvantageValue, value: homeAdvantage === 0 ? t.neutralGround : formatSigned(homeAdvantage) },
+    { label: t.ratingGap, value: formatSigned(prediction.ratingGap) },
+  ]
+
+  return {
+    home: [
+      { label: t.homeWin, value: formatPercent(prediction.homeWin) },
+      { label: t.fairOdds, value: formatOdds(prediction.homeFairOdds) },
+      ...baseRows,
+    ],
+    draw: [
+      { label: t.draw, value: formatPercent(prediction.draw) },
+      { label: t.fairOdds, value: formatOdds(prediction.drawFairOdds) },
+      ...baseRows,
+    ],
+    away: [
+      { label: t.awayWin, value: formatPercent(prediction.awayWin) },
+      { label: t.fairOdds, value: formatOdds(prediction.awayFairOdds) },
+      ...baseRows,
+    ],
+  }
 }
 
 function calculatePrediction(
@@ -2471,6 +2633,11 @@ function calculateHistoricHeadToHeadSplit(
   let homeWins = 0
   let draws = 0
   let awayWins = 0
+  const sourceMatches: Record<'home' | 'draw' | 'away', HistoricSplitMatch[]> = {
+    home: [],
+    draw: [],
+    away: [],
+  }
 
   snapshots.forEach((snapshot) => {
     const sameFixtureOrder = snapshot.homeTeamId === currentHomeTeamId && snapshot.awayTeamId === currentAwayTeamId
@@ -2480,24 +2647,37 @@ function calculateHistoricHeadToHeadSplit(
       return
     }
 
+    const sourceMatch = {
+      date: snapshot.kickoffUtc,
+      homeTeamName: snapshot.homeTeamName,
+      awayTeamName: snapshot.awayTeamName,
+      homeScore: snapshot.homeScore,
+      awayScore: snapshot.awayScore,
+    }
+
     if (snapshot.homeActual === 0.5 || snapshot.awayActual === 0.5) {
       draws += 1
+      sourceMatches.draw.push(sourceMatch)
       return
     }
 
     if (sameFixtureOrder) {
       if (snapshot.homeActual > snapshot.awayActual) {
         homeWins += 1
+        sourceMatches.home.push(sourceMatch)
       } else {
         awayWins += 1
+        sourceMatches.away.push(sourceMatch)
       }
       return
     }
 
     if (snapshot.awayActual > snapshot.homeActual) {
       homeWins += 1
+      sourceMatches.home.push(sourceMatch)
     } else {
       awayWins += 1
+      sourceMatches.away.push(sourceMatch)
     }
   })
 
@@ -2509,12 +2689,87 @@ function calculateHistoricHeadToHeadSplit(
 
   return {
     sampleSize,
+    sourceMatches,
     prediction: buildPredictionFromSplit(
       homeWins,
       draws,
       awayWins,
       labels,
       clamp(sampleSize / 10, 0.25, 1),
+    ),
+  }
+}
+
+function calculateGoalOutputScenario(
+  snapshots: BaseEloMatchSnapshot[],
+  currentHomeTeamId: number,
+  currentAwayTeamId: number,
+  labels: { home: string; draw: string; away: string },
+) {
+  const totals = {
+    homeGoals: 0,
+    homeMatches: 0,
+    awayGoals: 0,
+    awayMatches: 0,
+  }
+
+  snapshots.forEach((snapshot) => {
+    if (snapshot.homeScore === null || snapshot.homeScore === undefined || snapshot.awayScore === null || snapshot.awayScore === undefined) {
+      return
+    }
+
+    if (snapshot.homeTeamId === currentHomeTeamId) {
+      totals.homeGoals += snapshot.homeScore
+      totals.homeMatches += 1
+    } else if (snapshot.awayTeamId === currentHomeTeamId) {
+      totals.homeGoals += snapshot.awayScore
+      totals.homeMatches += 1
+    }
+
+    if (snapshot.homeTeamId === currentAwayTeamId) {
+      totals.awayGoals += snapshot.homeScore
+      totals.awayMatches += 1
+    } else if (snapshot.awayTeamId === currentAwayTeamId) {
+      totals.awayGoals += snapshot.awayScore
+      totals.awayMatches += 1
+    }
+  })
+
+  if (totals.homeMatches === 0 || totals.awayMatches === 0) {
+    return null
+  }
+
+  const homeGoalsPerMatch = totals.homeGoals / totals.homeMatches
+  const awayGoalsPerMatch = totals.awayGoals / totals.awayMatches
+  const totalGoalsPerMatch = homeGoalsPerMatch + awayGoalsPerMatch
+  const drawBase = 0.31
+
+  if (totalGoalsPerMatch <= 0) {
+    return null
+  }
+
+  const goalGap = homeGoalsPerMatch - awayGoalsPerMatch
+  const draw = clamp(drawBase - Math.abs(goalGap) * 0.08, 0.18, 0.33)
+  const homeNoDraw = clamp(homeGoalsPerMatch / totalGoalsPerMatch, 0.12, 0.88)
+  const homeWin = (1 - draw) * homeNoDraw
+  const awayWin = 1 - draw - homeWin
+  const sampleSize = Math.min(totals.homeMatches, totals.awayMatches)
+
+  return {
+    sampleSize,
+    homeSampleSize: totals.homeMatches,
+    awaySampleSize: totals.awayMatches,
+    homeGoalsPerMatch,
+    awayGoalsPerMatch,
+    goalGap,
+    drawBase,
+    adjustedDraw: draw,
+    prediction: buildPredictionFromSplit(
+      homeWin,
+      draw,
+      awayWin,
+      labels,
+      clamp(sampleSize / 30, 0.25, 1),
     ),
   }
 }
@@ -2955,7 +3210,9 @@ function App() {
       {view === 'api' && user && (
         <ApiPanel
           t={t}
-          onProfile={() => navigate('profile')}
+          user={user}
+          language={language}
+          onToast={showToast}
         />
       )}
 
@@ -4041,18 +4298,116 @@ function AdminDashboard({
 
 function ApiPanel({
   t,
-  onProfile,
+  user,
+  language,
+  onToast,
 }: {
   t: (typeof translations)[Language]
-  onProfile: () => void
+  user: AuthUser
+  language: Language
+  onToast: (message: string, tone: ToastTone) => void
 }) {
+  const [apiKey, setApiKey] = useState(user.apiKey ?? '')
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false)
+  const [isGeneratingApiKey, setIsGeneratingApiKey] = useState(false)
+  const sampleMatch = {
+    id: 813,
+    kickoffUtc: '2026-07-27T17:00:00Z',
+    round: '2',
+    status: 'Upcoming',
+    homeTeam: 'Zaglebie Lubin',
+    awayTeam: 'Piast Gliwice',
+    score: { home: null, away: null },
+  }
   const endpoints = [
-    [t.apiEndpointAll, 'GET /api/tournaments/{tournamentId}/matches'],
-    [t.apiEndpointResults, 'GET /api/tournaments/{tournamentId}/matches/results'],
-    [t.apiEndpointLive, 'GET /api/tournaments/{tournamentId}/matches/live'],
-    [t.apiEndpointUpcoming, 'GET /api/tournaments/{tournamentId}/matches/upcoming'],
-    [t.apiEndpointSingle, 'GET /api/tournaments/{tournamentId}/matches/{matchId}'],
+    {
+      key: 'all',
+      label: t.apiEndpointAll,
+      endpoint: 'GET /api/tournaments/{tournamentId}/matches',
+      request: {
+        method: 'GET',
+        url: '/api/tournaments/7/matches',
+        headers: { 'x-api-key': '<your-api-key>' },
+      },
+      response: [sampleMatch],
+    },
+    {
+      key: 'results',
+      label: t.apiEndpointResults,
+      endpoint: 'GET /api/tournaments/{tournamentId}/matches/results',
+      request: {
+        method: 'GET',
+        url: '/api/tournaments/7/matches/results',
+        headers: { 'x-api-key': '<your-api-key>' },
+      },
+      response: [{ ...sampleMatch, status: 'Finished', score: { home: 2, away: 1 } }],
+    },
+    {
+      key: 'live',
+      label: t.apiEndpointLive,
+      endpoint: 'GET /api/tournaments/{tournamentId}/matches/live',
+      request: {
+        method: 'GET',
+        url: '/api/tournaments/7/matches/live',
+        headers: { 'x-api-key': '<your-api-key>' },
+      },
+      response: [{ ...sampleMatch, status: 'Live', minute: 64, score: { home: 1, away: 1 } }],
+    },
+    {
+      key: 'upcoming',
+      label: t.apiEndpointUpcoming,
+      endpoint: 'GET /api/tournaments/{tournamentId}/matches/upcoming',
+      request: {
+        method: 'GET',
+        url: '/api/tournaments/7/matches/upcoming',
+        headers: { 'x-api-key': '<your-api-key>' },
+      },
+      response: [sampleMatch],
+    },
+    {
+      key: 'single',
+      label: t.apiEndpointSingle,
+      endpoint: 'GET /api/tournaments/{tournamentId}/matches/{matchId}',
+      request: {
+        method: 'GET',
+        url: '/api/tournaments/7/matches/813',
+        headers: { 'x-api-key': '<your-api-key>' },
+      },
+      response: sampleMatch,
+    },
   ]
+  const authTokenSample = {
+    authorization: 'Bearer <auth-token>',
+    user: {
+      email: user.email,
+      displayName: user.displayName ?? null,
+    },
+  }
+  const apiKeyValue = isApiKeyVisible
+    ? apiKey || t.apiKeyUnavailable
+    : '********************************'
+  const generateApiKey = async () => {
+    setIsGeneratingApiKey(true)
+    try {
+      const params = new URLSearchParams({ language })
+      const result = await authorizedRequest<RotateApiKeyResponse>(user.token, `/api/users/me/rotate-api-key?${params}`, {
+        method: 'POST',
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setApiKey(result.data.apiKey)
+      setIsApiKeyVisible(true)
+      onToast(result.data.message || t.apiKeyRotated, 'success')
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsGeneratingApiKey(false)
+    }
+  }
 
   return (
     <section className="admin-dashboard">
@@ -4073,9 +4428,23 @@ function ApiPanel({
             <span>{t.apiKeyHeader}</span>
             <code>X-Api-Key: &lt;your-api-key&gt;</code>
           </div>
-          <button type="button" onClick={onProfile}>
-            {t.profile}
-          </button>
+          <div className="api-auth-grid">
+            <div className="api-json-block">
+              <div>
+                <span>{t.apiAuthTokenTitle}</span>
+              </div>
+              <pre>{JSON.stringify(authTokenSample, null, 2)}</pre>
+            </div>
+            <div className="api-json-block">
+              <div>
+                <span>{t.apiUserApiKeyTitle}</span>
+                <button type="button" onClick={apiKey ? () => setIsApiKeyVisible((current) => !current) : generateApiKey} disabled={isGeneratingApiKey}>
+                  {apiKey ? (isApiKeyVisible ? t.apiHide : t.apiReveal) : (isGeneratingApiKey ? '...' : t.rotateApiKey)}
+                </button>
+              </div>
+              <pre>{apiKeyValue}</pre>
+            </div>
+          </div>
         </section>
 
         <section className="details-panel api-doc-card">
@@ -4084,11 +4453,23 @@ function ApiPanel({
             <h2>{t.apiEndpointsTitle}</h2>
           </div>
           <div className="api-endpoint-list">
-            {endpoints.map(([label, endpoint]) => (
-              <div className="api-endpoint-row" key={endpoint}>
-                <span>{label}</span>
-                <code>{endpoint}</code>
-              </div>
+            {endpoints.map((endpoint) => (
+              <article className="api-endpoint-tile static" key={endpoint.key}>
+                <div className="api-json-block api-endpoint-summary">
+                  <strong>{endpoint.label}</strong>
+                  <code>{endpoint.endpoint}</code>
+                </div>
+                <div className="api-endpoint-details">
+                  <div className="api-json-block">
+                    <div><span>{t.apiRequestSample}</span></div>
+                    <pre>{JSON.stringify(endpoint.request, null, 2)}</pre>
+                  </div>
+                  <div className="api-json-block">
+                    <div><span>{t.apiResponseSample}</span></div>
+                    <pre>{JSON.stringify(endpoint.response, null, 2)}</pre>
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
         </section>
@@ -5058,62 +5439,83 @@ function PredictionDetailsPanel({
   const historicHeadToHead = hasHistoricalSnapshot && match?.homeTeam && match.awayTeam
     ? calculateHistoricHeadToHeadSplit(baseEloSnapshots, match.homeTeam.id, match.awayTeam.id, predictionLabels)
     : null
-  const scenarios = homeTeam && awayTeam && tournament
+  const goalOutputScenario = hasHistoricalSnapshot && match?.homeTeam && match.awayTeam
+    ? calculateGoalOutputScenario(baseEloSnapshots, match.homeTeam.id, match.awayTeam.id, predictionLabels)
+    : null
+  const scenarioHomeAdvantage = tournament?.applyHomeAdvantage ? DEFAULT_HOME_ADVANTAGE : 0
+  const actualScenarioPrediction = homeTeam && awayTeam && tournament
+    ? calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels)
+    : null
+  const baseEloScenarioPrediction = homeTeam && awayTeam && tournament
+    ? calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+        homeRating: homeTeam.baseElo,
+        awayRating: awayTeam.baseElo,
+      })
+    : null
+  const formHomeRating = homeTeam ? homeTeam.baseElo + homeTeam.formAdjustment : 0
+  const formAwayRating = awayTeam ? awayTeam.baseElo + awayTeam.formAdjustment : 0
+  const formScenarioPrediction = homeTeam && awayTeam && tournament
+    ? calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+        homeRating: formHomeRating,
+        awayRating: formAwayRating,
+      })
+    : null
+  const squadHomeRating = homeTeam ? homeTeam.baseElo + homeTeam.squadQualityAdjustment : 0
+  const squadAwayRating = awayTeam ? awayTeam.baseElo + awayTeam.squadQualityAdjustment : 0
+  const squadScenarioPrediction = homeTeam && awayTeam && tournament
+    ? calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
+        homeRating: squadHomeRating,
+        awayRating: squadAwayRating,
+      })
+    : null
+  const calibratedNeutralGap = homeTeam && awayTeam ? (homeTeam.finalRating - awayTeam.finalRating) * 0.82 : 0
+  const calibratedHomeRating = calibratedNeutralGap / 2
+  const calibratedAwayRating = -calibratedNeutralGap / 2
+  const calibratedHomeAdvantage = tournament?.applyHomeAdvantage ? CALIBRATED_HOME_ADVANTAGE : 0
+  const calibratedScenarioPrediction = homeTeam && awayTeam && tournament
+    ? calculateCalibratedPrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels)
+    : null
+  const modelScenarios = homeTeam && awayTeam && tournament
     ? [
       {
         title: t.actualModelScenario,
         ingredients: tournament.applyHomeAdvantage ? t.actualModelHomeAdvantageIngredients : t.actualModelIngredients,
-        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels),
-        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).ratingGap)}`,
+        prediction: actualScenarioPrediction,
+        summary: actualScenarioPrediction ? `${formatPercent(actualScenarioPrediction.favoriteChance)} | ${t.ratingGap} ${formatSigned(actualScenarioPrediction.ratingGap)}` : '-',
         isHistoric: false,
+        metricBars: actualScenarioPrediction
+          ? buildRatingScenarioMetricBars(actualScenarioPrediction, homeTeam.finalRating, awayTeam.finalRating, scenarioHomeAdvantage, t)
+          : undefined,
       },
       {
         title: t.baseEloOnly,
         ingredients: tournament.applyHomeAdvantage ? t.baseEloHomeAdvantageIngredients : t.baseEloIngredients,
-        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo,
-          awayRating: awayTeam.baseElo,
-        }),
-        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo,
-          awayRating: awayTeam.baseElo,
-        }).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo,
-          awayRating: awayTeam.baseElo,
-        }).ratingGap)}`,
+        prediction: baseEloScenarioPrediction,
+        summary: baseEloScenarioPrediction ? `${formatPercent(baseEloScenarioPrediction.favoriteChance)} | ${t.ratingGap} ${formatSigned(baseEloScenarioPrediction.ratingGap)}` : '-',
         isHistoric: false,
+        metricBars: baseEloScenarioPrediction
+          ? buildRatingScenarioMetricBars(baseEloScenarioPrediction, homeTeam.baseElo, awayTeam.baseElo, scenarioHomeAdvantage, t)
+          : undefined,
       },
       {
         title: t.formMomentum,
         ingredients: tournament.applyHomeAdvantage ? t.formMomentumHomeAdvantageIngredients : t.formMomentumIngredients,
-        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo + homeTeam.formAdjustment,
-          awayRating: awayTeam.baseElo + awayTeam.formAdjustment,
-        }),
-        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo + homeTeam.formAdjustment,
-          awayRating: awayTeam.baseElo + awayTeam.formAdjustment,
-        }).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo + homeTeam.formAdjustment,
-          awayRating: awayTeam.baseElo + awayTeam.formAdjustment,
-        }).ratingGap)}`,
+        prediction: formScenarioPrediction,
+        summary: formScenarioPrediction ? `${formatPercent(formScenarioPrediction.favoriteChance)} | ${t.ratingGap} ${formatSigned(formScenarioPrediction.ratingGap)}` : '-',
         isHistoric: false,
+        metricBars: formScenarioPrediction
+          ? buildRatingScenarioMetricBars(formScenarioPrediction, formHomeRating, formAwayRating, scenarioHomeAdvantage, t)
+          : undefined,
       },
       {
         title: t.squadAdjusted,
         ingredients: tournament.applyHomeAdvantage ? t.squadAdjustedHomeAdvantageIngredients : t.squadAdjustedIngredients,
-        prediction: calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo + homeTeam.squadQualityAdjustment,
-          awayRating: awayTeam.baseElo + awayTeam.squadQualityAdjustment,
-        }),
-        summary: `${formatPercent(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo + homeTeam.squadQualityAdjustment,
-          awayRating: awayTeam.baseElo + awayTeam.squadQualityAdjustment,
-        }).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculatePrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels, {
-          homeRating: homeTeam.baseElo + homeTeam.squadQualityAdjustment,
-          awayRating: awayTeam.baseElo + awayTeam.squadQualityAdjustment,
-        }).ratingGap)}`,
+        prediction: squadScenarioPrediction,
+        summary: squadScenarioPrediction ? `${formatPercent(squadScenarioPrediction.favoriteChance)} | ${t.ratingGap} ${formatSigned(squadScenarioPrediction.ratingGap)}` : '-',
         isHistoric: false,
+        metricBars: squadScenarioPrediction
+          ? buildRatingScenarioMetricBars(squadScenarioPrediction, squadHomeRating, squadAwayRating, scenarioHomeAdvantage, t)
+          : undefined,
       },
       ...(hasHistoricalSnapshot
         ? [{
@@ -5122,17 +5524,88 @@ function PredictionDetailsPanel({
             prediction: historicHeadToHead?.prediction ?? null,
             summary: historicHeadToHead ? `${t.historicSample}: ${historicHeadToHead.sampleSize}` : t.noHistoricHeadToHead,
             isHistoric: true,
+            historicBars: historicHeadToHead?.sourceMatches,
+          },
+          {
+            title: t.goalOutput,
+            ingredients: t.goalOutputIngredients,
+            prediction: goalOutputScenario?.prediction ?? null,
+            summary: goalOutputScenario
+              ? `${t.goalOutputSample}: ${goalOutputScenario.homeGoalsPerMatch.toFixed(2)} / ${goalOutputScenario.awayGoalsPerMatch.toFixed(2)}`
+              : t.noGoalOutputSample,
+            isHistoric: true,
+            metricBars: goalOutputScenario
+              ? {
+                  home: [
+                    { label: t.goalOutputHomeEdge, value: formatPercent(goalOutputScenario.prediction.homeWin) },
+                    { label: t.goalOutputHomeGpm, value: goalOutputScenario.homeGoalsPerMatch.toFixed(2) },
+                    { label: t.goalOutputAwayGpm, value: goalOutputScenario.awayGoalsPerMatch.toFixed(2) },
+                    { label: t.goalOutputGap, value: formatSigned(goalOutputScenario.goalGap) },
+                    { label: t.goalOutputSampleSize, value: `${goalOutputScenario.homeSampleSize} / ${goalOutputScenario.awaySampleSize}` },
+                  ],
+                  draw: [
+                    { label: t.goalOutputDrawPressure, value: formatPercent(goalOutputScenario.prediction.draw) },
+                    { label: t.goalOutputGap, value: Math.abs(goalOutputScenario.goalGap).toFixed(2) },
+                    { label: t.goalOutputDrawBase, value: formatPercent(goalOutputScenario.drawBase) },
+                    { label: t.goalOutputAdjustedDraw, value: formatPercent(goalOutputScenario.adjustedDraw) },
+                    { label: t.goalOutputSampleSize, value: `${goalOutputScenario.homeSampleSize} / ${goalOutputScenario.awaySampleSize}` },
+                  ],
+                  away: [
+                    { label: t.goalOutputAwayEdge, value: formatPercent(goalOutputScenario.prediction.awayWin) },
+                    { label: t.goalOutputAwayGpm, value: goalOutputScenario.awayGoalsPerMatch.toFixed(2) },
+                    { label: t.goalOutputHomeGpm, value: goalOutputScenario.homeGoalsPerMatch.toFixed(2) },
+                    { label: t.goalOutputGap, value: formatSigned(-goalOutputScenario.goalGap) },
+                    { label: t.goalOutputSampleSize, value: `${goalOutputScenario.awaySampleSize} / ${goalOutputScenario.homeSampleSize}` },
+                  ],
+                }
+              : undefined,
           }]
         : []),
       {
         title: t.calibratedModel,
         ingredients: tournament.applyHomeAdvantage ? t.calibratedModelHomeAdvantageIngredients : t.calibratedModelIngredients,
-        prediction: calculateCalibratedPrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels),
-        summary: `${formatPercent(calculateCalibratedPrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).favoriteChance)} | ${t.ratingGap} ${formatSigned(calculateCalibratedPrediction(homeTeam, awayTeam, tournament.applyHomeAdvantage, predictionLabels).ratingGap)}`,
+        prediction: calibratedScenarioPrediction,
+        summary: calibratedScenarioPrediction ? `${formatPercent(calibratedScenarioPrediction.favoriteChance)} | ${t.ratingGap} ${formatSigned(calibratedScenarioPrediction.ratingGap)}` : '-',
         isHistoric: false,
+        metricBars: calibratedScenarioPrediction
+          ? buildRatingScenarioMetricBars(calibratedScenarioPrediction, calibratedHomeRating, calibratedAwayRating, calibratedHomeAdvantage, t)
+          : undefined,
       },
     ]
     : []
+  const agreementPrediction = modelScenarios[0]?.prediction
+  const agreementOutcome = agreementPrediction ? getFavoriteOutcomeKey(agreementPrediction) : null
+  const agreementScenarios = agreementOutcome
+    ? modelScenarios.filter((scenario) => scenario.prediction)
+    : []
+  const agreementSupport = agreementOutcome
+    ? agreementScenarios.filter((scenario) => scenario.prediction && getFavoriteOutcomeKey(scenario.prediction) === agreementOutcome).length
+    : 0
+  const agreementSupporters = agreementOutcome
+    ? agreementScenarios
+        .filter((scenario) => scenario.prediction && getFavoriteOutcomeKey(scenario.prediction) === agreementOutcome)
+        .map((scenario) => scenario.title)
+    : []
+  const agreementTotal = agreementScenarios.length
+  const agreementRatio = agreementTotal > 0 ? agreementSupport / agreementTotal : 0
+  const scenarios = agreementPrediction && agreementTotal > 0
+    ? [
+        ...modelScenarios,
+        {
+          title: t.modelAgreement,
+          ingredients: t.modelAgreementIngredients,
+          prediction: null,
+          summary: `${agreementSupport} / ${agreementTotal} ${t.modelAgreementSupported} ${agreementPrediction.favoriteLabel}`,
+          isHistoric: false,
+          agreement: {
+            label: getAgreementLabel(agreementRatio, t),
+            support: agreementSupport,
+            total: agreementTotal,
+            supporters: agreementSupporters,
+          },
+        },
+      ]
+    : modelScenarios
 
   const strongestSignal = homeTeam && awayTeam
     ? [
@@ -5268,14 +5741,30 @@ function PredictionDetailsPanel({
                     <div className={`prediction-scenario-card${scenario.isHistoric ? ' historic-split-card' : ''}`} key={scenario.title}>
                       <strong>{scenario.title}</strong>
                       <p>{scenario.ingredients}</p>
-                      {scenarioPrediction ? (
+                      {'agreement' in scenario ? (
+                        <>
+                          <span>{scenario.agreement.label}</span>
+                          <small>{scenario.summary}</small>
+                          <div className="model-agreement-meter" tabIndex={0}>
+                            <i>
+                              <b style={{ width: `${scenario.agreement.total > 0 ? (scenario.agreement.support / scenario.agreement.total) * 100 : 0}%` }} />
+                            </i>
+                            <strong>{scenario.agreement.support}/{scenario.agreement.total}</strong>
+                            <span className="model-agreement-tooltip">
+                              {scenario.agreement.supporters.map((item) => (
+                                <span key={item}>{item}</span>
+                              ))}
+                            </span>
+                          </div>
+                        </>
+                      ) : scenarioPrediction ? (
                         <>
                           <span>{scenarioPrediction.favoriteLabel}</span>
                           <small>{scenario.summary}</small>
                           <div>
-                            <PredictionMiniBar label="1" tone="home" value={scenarioPrediction.homeWin} isDominant={dominant === '1'} />
-                            <PredictionMiniBar label="X" tone="draw" value={scenarioPrediction.draw} isDominant={dominant === 'X'} />
-                            <PredictionMiniBar label="2" tone="away" value={scenarioPrediction.awayWin} isDominant={dominant === '2'} />
+                            <PredictionMiniBar label="1" tone="home" value={scenarioPrediction.homeWin} isDominant={dominant === '1'} tooltipMatches={'historicBars' in scenario ? scenario.historicBars?.home : undefined} tooltipRows={'metricBars' in scenario ? scenario.metricBars?.home : undefined} />
+                            <PredictionMiniBar label="X" tone="draw" value={scenarioPrediction.draw} isDominant={dominant === 'X'} tooltipMatches={'historicBars' in scenario ? scenario.historicBars?.draw : undefined} tooltipRows={'metricBars' in scenario ? scenario.metricBars?.draw : undefined} />
+                            <PredictionMiniBar label="2" tone="away" value={scenarioPrediction.awayWin} isDominant={dominant === '2'} tooltipMatches={'historicBars' in scenario ? scenario.historicBars?.away : undefined} tooltipRows={'metricBars' in scenario ? scenario.metricBars?.away : undefined} />
                           </div>
                         </>
                       ) : (
@@ -5416,17 +5905,48 @@ function PredictionMiniBar({
   tone,
   value,
   isDominant = false,
+  tooltipMatches,
+  tooltipRows,
 }: {
   label: string
   tone: 'home' | 'draw' | 'away'
   value: number
   isDominant?: boolean
+  tooltipMatches?: HistoricSplitMatch[]
+  tooltipRows?: MiniBarTooltipRow[]
 }) {
+  const hasTooltip = Boolean(tooltipMatches?.length || tooltipRows?.length)
+
   return (
-    <span className={`prediction-mini-bar ${tone} ${isDominant ? 'dominant' : ''}`}>
+    <span className={`prediction-mini-bar ${tone} ${isDominant ? 'dominant' : ''}${hasTooltip ? ' has-tooltip' : ''}`} tabIndex={hasTooltip ? 0 : undefined}>
       <small>{label}</small>
       <i><b style={{ width: `${Math.round(value * 100)}%` }} /></i>
       <em>{formatPercent(value)}</em>
+      {hasTooltip && (
+        <span className="historic-bar-tooltip">
+          {tooltipRows?.map((item) => (
+            <span className="metric-tooltip-row" key={`${item.label}-${item.value}`}>
+              <small>{item.label}</small>
+              <strong>{item.value}</strong>
+            </span>
+          ))}
+          {tooltipMatches?.slice(0, 8).map((item, index) => (
+            <span key={`${item.date}-${item.homeTeamName}-${item.awayTeamName}-${index}`}>
+              <small>{formatDate(item.date, '-')}</small>
+              <strong>
+                {item.homeTeamName}
+                {' '}
+                {item.homeScore ?? '-'}:{item.awayScore ?? '-'}
+                {' '}
+                {item.awayTeamName}
+              </strong>
+            </span>
+          ))}
+          {tooltipMatches && tooltipMatches.length > 8 && (
+            <em>+{tooltipMatches.length - 8}</em>
+          )}
+        </span>
+      )}
     </span>
   )
 }
@@ -5932,7 +6452,10 @@ function UserRatingDetailsPanel({
       <div className="admin-dashboard-content ratings-panel-layout">
         <div className="admin-dashboard-hero">
           <p className="eyebrow">{t.userRatingDetailsEyebrow}</p>
-          <h1>{tournament?.name || t.userRatingDetailsTitle}</h1>
+          <h1 className="stacked-page-title">
+            <span>{tournament?.name || t.userRatingDetailsTitle}</span>
+            {tournament?.season && <small>{tournament.season}</small>}
+          </h1>
           <p>{t.userRatingDetailsCopy}</p>
         </div>
 
@@ -10539,7 +11062,10 @@ function SignedInPreview({
   const [newEmail, setNewEmail] = useState(user.email)
   const [emailPassword, setEmailPassword] = useState('')
   const [newApiKey, setNewApiKey] = useState('')
-  const [errors, setErrors] = useState<FieldErrors>({})
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false)
+  const [isRotateApiKeyModalOpen, setIsRotateApiKeyModalOpen] = useState(false)
+  const [passwordErrors, setPasswordErrors] = useState<FieldErrors>({})
+  const [emailErrors, setEmailErrors] = useState<FieldErrors>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null)
 
@@ -10640,7 +11166,7 @@ function SignedInPreview({
       }
     })
 
-    setErrors(nextErrors)
+    setPasswordErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       onToast(t.validationFailed, 'error')
       return
@@ -10665,7 +11191,7 @@ function SignedInPreview({
       setCurrentPassword('')
       setNewPassword('')
       setConfirmNewPassword('')
-      setErrors({})
+      setPasswordErrors({})
       onToast(result.data?.message || t.passwordChanged, 'success')
     } catch {
       onToast(t.genericError, 'error')
@@ -10678,7 +11204,7 @@ function SignedInPreview({
     event.preventDefault()
     const emailError = validateEmail(newEmail, t)
     if (emailError || !emailPassword) {
-      setErrors({ email: emailError, password: emailPassword ? undefined : t.required })
+      setEmailErrors({ email: emailError, password: emailPassword ? undefined : t.required })
       onToast(t.validationFailed, 'error')
       return
     }
@@ -10701,7 +11227,7 @@ function SignedInPreview({
 
       setProfile((current) => current ? { ...current, email: newEmail } : current)
       setEmailPassword('')
-      setErrors({})
+      setEmailErrors({})
       onToast(result.data?.message || t.emailChanged, 'success')
     } catch {
       onToast(t.genericError, 'error')
@@ -10728,6 +11254,7 @@ function SignedInPreview({
       }
 
       setNewApiKey(result.data.apiKey)
+      setIsApiKeyVisible(false)
       onToast(result.data.message || t.apiKeyRotated, 'success')
     } catch {
       onToast(t.genericError, 'error')
@@ -10737,87 +11264,200 @@ function SignedInPreview({
   }
 
   return (
-    <section className="dashboard-section">
-      <div className="dashboard-panel">
-        <p className="eyebrow">{t.profileEyebrow}</p>
-        <h1>{t.profileTitle}</h1>
-        <p>{t.profileCopy}</p>
-        <div className="profile-summary">
-          <span>{profile?.email ?? user.email}</span>
-          <small>{isLoading ? '...' : `${t.memberSince}: ${profile ? new Date(profile.memberSinceUtc).toLocaleDateString() : '-'}`}</small>
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content profile-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.profileEyebrow}</p>
+          <h1>{t.profileTitle}</h1>
+          <p>{t.profileCopy}</p>
         </div>
-        <form className="auth-form account-form" noValidate onSubmit={saveProfile}>
-          <FormField
-            label={t.displayName ?? 'Display name'}
-            type="text"
-            value={displayName}
-            onChange={setDisplayName}
-          />
-          <button className="form-submit" type="submit" disabled={isSubmitting === 'profile'}>
-            {isSubmitting === 'profile' ? '...' : t.saveProfile}
-          </button>
-        </form>
-        <form className="auth-form account-form" noValidate onSubmit={changePassword}>
-          <h2>{t.changePasswordTitle}</h2>
-          <FormField
-            error={errors.currentPassword}
-            label={t.currentPassword}
-            type="password"
-            value={currentPassword}
-            onChange={setCurrentPassword}
-          />
-          <FormField
-            error={errors.password}
-            label={t.newPassword}
-            type="password"
-            value={newPassword}
-            onChange={setNewPassword}
-          />
-          <FormField
-            error={errors.confirmPassword}
-            label={t.confirmNewPassword}
-            type="password"
-            value={confirmNewPassword}
-            onChange={setConfirmNewPassword}
-          />
-          <button className="form-submit" type="submit" disabled={isSubmitting === 'password'}>
-            {isSubmitting === 'password' ? '...' : t.changePassword}
-          </button>
-        </form>
-        <form className="auth-form account-form" noValidate onSubmit={changeEmail}>
-          <h2>{t.changeEmailTitle}</h2>
-          <FormField
-            error={errors.email}
-            label={t.newEmail}
-            type="email"
-            value={newEmail}
-            onChange={setNewEmail}
-          />
-          <FormField
-            error={errors.password}
-            label={t.password}
-            type="password"
-            value={emailPassword}
-            onChange={setEmailPassword}
-          />
-          <button className="form-submit" type="submit" disabled={isSubmitting === 'email'}>
-            {isSubmitting === 'email' ? '...' : t.changeEmail}
-          </button>
-        </form>
-        <div className="account-form api-key-panel">
-          <h2>{t.rotateApiKeyTitle}</h2>
-          <button className="form-submit" type="button" disabled={isSubmitting === 'apiKey'} onClick={rotateApiKey}>
-            {isSubmitting === 'apiKey' ? '...' : t.rotateApiKey}
-          </button>
-          {newApiKey && (
-            <div className="auth-token-note">
-              <span>{t.newApiKey}</span>
-              <code>{newApiKey}</code>
+
+        {(isLoading || isSubmitting) && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        <section className="profile-settings-grid">
+          <form className="details-panel profile-form-panel" noValidate onSubmit={saveProfile}>
+            <div className="details-panel-heading">
+              <MenuIcon name="profile" />
+              <h2>{t.profile}</h2>
             </div>
-          )}
-        </div>
+            <div className="profile-summary-grid">
+              <ProfileSummaryItem label={t.email} value={profile?.email ?? user.email} />
+              <ProfileSummaryItem label={t.displayName} value={profile?.displayName || '-'} />
+              <ProfileSummaryItem label={t.memberSince} value={profile ? new Date(profile.memberSinceUtc).toLocaleDateString() : '-'} />
+              <ProfileSummaryItem label={t.apiKeyIssued} value={profile ? new Date(profile.apiKeyCreatedAtUtc).toLocaleDateString() : '-'} />
+            </div>
+            <FormField
+              label={t.displayName}
+              type="text"
+              value={displayName}
+              onChange={setDisplayName}
+            />
+            <button className="form-submit" type="submit" disabled={isSubmitting === 'profile'}>
+              {t.saveProfile}
+            </button>
+          </form>
+
+          <form className="details-panel profile-form-panel" noValidate onSubmit={changeEmail}>
+            <div className="details-panel-heading">
+              <MenuIcon name="api" />
+              <h2>{t.changeEmailTitle}</h2>
+            </div>
+            <FormField
+              error={emailErrors.email}
+              label={t.newEmail}
+              type="email"
+              value={newEmail}
+              onChange={setNewEmail}
+            />
+            <FormField
+              error={emailErrors.password}
+              label={t.password}
+              type="password"
+              value={emailPassword}
+              onChange={setEmailPassword}
+            />
+            <button className="form-submit" type="submit" disabled={isSubmitting === 'email'}>
+              {t.changeEmail}
+            </button>
+          </form>
+
+          <form className="details-panel profile-form-panel" noValidate onSubmit={changePassword}>
+            <div className="details-panel-heading">
+              <MenuIcon name="admin" />
+              <h2>{t.changePasswordTitle}</h2>
+            </div>
+            <FormField
+              error={passwordErrors.currentPassword}
+              label={t.currentPassword}
+              type="password"
+              value={currentPassword}
+              onChange={setCurrentPassword}
+            />
+            <FormField
+              error={passwordErrors.password}
+              label={t.newPassword}
+              type="password"
+              value={newPassword}
+              onChange={setNewPassword}
+            />
+            <FormField
+              error={passwordErrors.confirmPassword}
+              label={t.confirmNewPassword}
+              type="password"
+              value={confirmNewPassword}
+              onChange={setConfirmNewPassword}
+            />
+            <button className="form-submit" type="submit" disabled={isSubmitting === 'password'}>
+              {t.changePassword}
+            </button>
+          </form>
+
+          <section className="details-panel profile-form-panel api-key-panel">
+            <div className="details-panel-heading">
+              <MenuIcon name="api" />
+              <h2>{t.rotateApiKeyTitle}</h2>
+            </div>
+            <div className="api-key-purpose">
+              <strong>{t.apiKeyPurposeTitle}</strong>
+              <p>{t.apiKeyPurposeCopy}</p>
+            </div>
+            <div className="api-key-current">
+              <span>{t.currentApiKey}</span>
+              <code>{newApiKey && isApiKeyVisible ? newApiKey : '********************************'}</code>
+              <small>{newApiKey ? t.newApiKey : t.apiKeyHidden}</small>
+            </div>
+            <div className="profile-api-actions">
+              <button className="form-submit secondary" type="button" disabled={!newApiKey} onClick={() => setIsApiKeyVisible((current) => !current)}>
+                {isApiKeyVisible ? t.hideApiKey : t.revealApiKey}
+              </button>
+              <button className="form-submit" type="button" disabled={isSubmitting === 'apiKey'} onClick={() => setIsRotateApiKeyModalOpen(true)}>
+                {t.rotateApiKey}
+              </button>
+            </div>
+          </section>
+        </section>
+
+        {isRotateApiKeyModalOpen && (
+          <ApiKeyRotationModal
+            t={t}
+            isRotating={isSubmitting === 'apiKey'}
+            onCancel={() => setIsRotateApiKeyModalOpen(false)}
+            onConfirm={() => {
+              setIsRotateApiKeyModalOpen(false)
+              rotateApiKey()
+            }}
+          />
+        )}
       </div>
     </section>
+  )
+}
+
+function ProfileSummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="profile-summary-item">
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  )
+}
+
+function ApiKeyRotationModal({
+  t,
+  isRotating,
+  onCancel,
+  onConfirm,
+}: {
+  t: (typeof translations)[Language]
+  isRotating: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isRotating) {
+        onCancel()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isRotating, onCancel])
+
+  return createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isRotating && onCancel()}>
+      <section
+        className="delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rotate-api-key-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="delete-modal-icon">
+          <MenuIcon name="api" />
+        </div>
+        <div className="delete-modal-copy">
+          <p className="eyebrow">{t.rotateApiKeyTitle}</p>
+          <h2 id="rotate-api-key-title">{t.rotateApiKeyConfirmTitle}</h2>
+          <p>{t.rotateApiKeyConfirmCopy}</p>
+          <div className="delete-modal-target">
+            <strong>{t.apiKeyPurposeTitle}</strong>
+            <span>{t.apiKeyPurposeCopy}</span>
+          </div>
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" disabled={isRotating} onClick={onCancel}>
+            {t.cancel}
+          </button>
+          <button className="danger" type="button" disabled={isRotating} onClick={onConfirm}>
+            {isRotating ? '...' : t.rotateApiKeyConfirmAction}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
   )
 }
 

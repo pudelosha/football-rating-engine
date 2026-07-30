@@ -119,6 +119,7 @@ public sealed partial class BaseEloRatingService(
         return await dbContext.MatchEloSnapshots
             .Include(snapshot => snapshot.HomeTeam)
             .Include(snapshot => snapshot.AwayTeam)
+            .Include(snapshot => snapshot.HistoricalMatch)
             .Where(snapshot => snapshot.EloRatingRunId == runId)
             .OrderBy(snapshot => snapshot.KickoffUtc)
             .ThenBy(snapshot => snapshot.LiveScoreEventId)
@@ -141,6 +142,8 @@ public sealed partial class BaseEloRatingService(
                 snapshot.AwayActual,
                 snapshot.HomeEloChange,
                 snapshot.AwayEloChange,
+                snapshot.HistoricalMatch.HomeScore,
+                snapshot.HistoricalMatch.AwayScore,
                 snapshot.GoalDifferenceMultiplier))
             .ToListAsync(cancellationToken);
     }

@@ -9,6 +9,13 @@ export default defineConfig({
         target: 'https://localhost:7260',
         changeOrigin: true,
         secure: false,
+        bypass: (req) => {
+          if (req.url === '/api' && req.headers.accept?.includes('text/html')) {
+            return '/index.html'
+          }
+
+          return undefined
+        },
       },
     },
   },

@@ -174,7 +174,7 @@ public sealed class UserAccountService(
 
     private static UserProfileDto ToProfileDto(ApplicationUser user)
     {
-        return new UserProfileDto(user.Email ?? string.Empty, user.DisplayName, user.MemberSinceUtc);
+        return new UserProfileDto(user.Email ?? string.Empty, user.DisplayName, user.MemberSinceUtc, user.ApiKeyCreatedAtUtc);
     }
 
     private async Task<AdminUserDto> ToAdminDtoAsync(ApplicationUser user)
