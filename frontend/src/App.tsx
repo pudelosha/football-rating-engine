@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
 type Language = 'en' | 'pl'
-type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'api' | 'tournaments' | 'predictions' | 'admin' | 'profile' | 'logout' | 'arrow-left'
+type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'api' | 'tournaments' | 'predictions' | 'betting' | 'admin' | 'profile' | 'logout' | 'arrow-left'
 type View =
   | 'landing'
   | 'login'
@@ -25,6 +25,8 @@ type View =
   | 'predictions'
   | 'predictions-tournament'
   | 'prediction-details'
+  | 'betting'
+  | 'betting-create'
   | 'api'
   | 'admin'
   | 'admin-teams'
@@ -569,6 +571,7 @@ type SquadTeamSortKey = 'team' | 'value' | 'mapping' | 'snapshot'
 type RatingTeamSortKey = 'team' | 'baseElo' | 'form' | 'performance' | 'squad' | 'finalRating' | 'confidence'
 type UserTeamSortKey = 'team' | 'country' | 'tournaments' | 'rating' | 'lastSync'
 type SquadPlayerSortKey = 'name' | 'position' | 'age' | 'nationality' | 'value' | 'contract'
+type BettingCandidateSortKey = 'kickoff' | 'tournament' | 'home' | 'away' | 'selection' | 'chance' | 'odds' | 'shape'
 type SortDirection = 'asc' | 'desc'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -595,6 +598,8 @@ const routes: Record<View, string> = {
   predictions: '/predictions',
   'predictions-tournament': '/predictions/0',
   'prediction-details': '/predictions/0/matches/0',
+  betting: '/betting',
+  'betting-create': '/betting/create',
   api: '/api',
   admin: '/admin',
   'admin-teams': '/admin/teams',
@@ -644,6 +649,10 @@ function getViewFromPath(pathname: string): View {
     return 'predictions-tournament'
   }
 
+  if (pathname === routes['betting-create']) {
+    return 'betting-create'
+  }
+
   if (/^\/admin\/squads\/\d+$/.test(pathname)) {
     return 'admin-squad-details'
   }
@@ -670,6 +679,7 @@ const translations = {
     menuMatches: 'Matches',
     menuApi: 'API',
     menuPredictions: 'Predictions',
+    menuBetting: 'Betting',
     menuAdmin: 'Admin',
     menuSoon: 'Soon',
     teamsPanelEyebrow: 'Teams',
@@ -831,6 +841,67 @@ const translations = {
     noPredictionCopy: 'Both teams need matched rating data before the model can estimate this fixture.',
     noFuturePredictions: 'No predictionable matches',
     noFuturePredictionsCopy: 'Predictions are available only for upcoming or live matches. Finished matches are excluded from this view.',
+    bettingPanelEyebrow: 'Betting',
+    bettingPanelTitle: 'Virtual coupon lab',
+    bettingPanelCopy: 'Build simulated coupons from model predictions, track the outcome, and see how fragile multi-match betting slips can be.',
+    bettingCreateCoupon: 'Create new coupon',
+    bettingBackToCoupons: 'Back to coupons',
+    bettingPendingCoupons: 'Pending coupons',
+    bettingClosedCoupons: 'Closed coupons',
+    bettingNoPendingCoupons: 'No pending virtual coupons yet.',
+    bettingNoClosedCoupons: 'No closed virtual coupons yet.',
+    bettingCouponId: 'Coupon',
+    bettingBets: 'Bets',
+    bettingCreated: 'Created',
+    bettingResult: 'Result',
+    bettingWon: 'Won',
+    bettingLost: 'Lost',
+    bettingPending: 'Pending',
+    bettingVoid: 'Void',
+    bettingCreateTitle: 'Match search',
+    bettingCreateCopy: 'Search proposed fixtures, add only the matches you want, and save the coupon for later settlement.',
+    bettingWindowStart: 'From',
+    bettingWindowEnd: 'To',
+    bettingLeanLevel: 'Lean strength',
+    bettingDrawRiskLevel: 'Draw possibility',
+    bettingStake: 'Stake',
+    bettingGenerate: 'Search',
+    bettingCoupon: 'Generated coupon',
+    bettingProposedMatches: 'Proposed matches',
+    bettingSelectedMatches: 'Selected matches',
+    bettingSearchManual: 'Search match manually',
+    bettingManualSearchTitle: 'Search matches',
+    bettingManualSearchCopy: 'Search by team, tournament, round, or date. The closest matching fixtures are listed first.',
+    bettingManualSearchPlaceholder: 'Search team or tournament',
+    bettingAddToCoupon: 'Add',
+    bettingConfirmBet: 'Confirm bet',
+    bettingRemoveFromCoupon: 'Remove',
+    bettingSaveCoupon: 'Create coupon',
+    bettingCouponCreated: 'Virtual coupon created.',
+    bettingCouponCreateFailed: 'Could not create virtual coupon.',
+    bettingNoSelectedMatches: 'No matches selected yet.',
+    bettingNoCoupon: 'No matches found for these filters. Try a wider date range or softer lean settings.',
+    bettingTotalOdds: 'Total multiplier',
+    bettingPotentialPayout: 'Likely payout',
+    bettingSelection: 'Selection',
+    bettingChance: 'Model chance',
+    bettingFairOdds: 'Fair odds',
+    bettingTournament: 'Tournament',
+    bettingKickoff: 'Kickoff',
+    bettingModelShape: 'Shape',
+    bettingSelectedCount: 'selected',
+    bettingNoneSelected: 'None selected',
+    bettingBalancedLean: 'Balanced',
+    bettingSlightLean: 'Slight',
+    bettingModerateLean: 'Moderate',
+    bettingClearLean: 'Clear',
+    bettingStrongLean: 'Strong',
+    bettingHeavyLean: 'Heavy',
+    bettingVeryLowDraw: 'Very low',
+    bettingLowDraw: 'Low',
+    bettingModerateDraw: 'Moderate',
+    bettingHighDraw: 'High',
+    bettingVeryHighDraw: 'Very high',
     apiPanelEyebrow: 'API',
     apiPanelTitle: 'Match data API',
     apiPanelCopy: 'Use your API key to request tournament match lists, results, live matches, and upcoming fixtures from external tools.',
@@ -1479,6 +1550,7 @@ const translations = {
     menuMatches: 'Mecze',
     menuApi: 'API',
     menuPredictions: 'Predykcje',
+    menuBetting: 'Betting',
     menuAdmin: 'Admin',
     menuSoon: 'Wkrótce',
     teamsPanelEyebrow: 'Drużyny',
@@ -1640,6 +1712,67 @@ const translations = {
     noPredictionCopy: 'Obie drużyny muszą mieć ratingi, aby model mógł oszacować ten mecz.',
     noFuturePredictions: 'Brak meczów do predykcji',
     noFuturePredictionsCopy: 'Predykcje są dostępne tylko dla nadchodzących lub live meczów. Zakończone mecze są ukryte w tym widoku.',
+    bettingPanelEyebrow: 'Betting',
+    bettingPanelTitle: 'Laboratorium kuponów',
+    bettingPanelCopy: 'Twórz wirtualne kupony z predykcji modelu, śledź wynik i zobacz, jak łatwo wielomeczowe kupony się wykładają.',
+    bettingCreateCoupon: 'Utwórz nowy kupon',
+    bettingBackToCoupons: 'Wróć do kuponów',
+    bettingPendingCoupons: 'Kupony oczekujące',
+    bettingClosedCoupons: 'Kupony zamknięte',
+    bettingNoPendingCoupons: 'Nie masz jeszcze oczekujących wirtualnych kuponów.',
+    bettingNoClosedCoupons: 'Nie masz jeszcze zamkniętych wirtualnych kuponów.',
+    bettingCouponId: 'Kupon',
+    bettingBets: 'Zakłady',
+    bettingCreated: 'Utworzono',
+    bettingResult: 'Wynik',
+    bettingWon: 'Trafiony',
+    bettingLost: 'Przegrany',
+    bettingPending: 'Oczekuje',
+    bettingVoid: 'Anulowany',
+    bettingCreateTitle: 'Wyszukiwarka meczów',
+    bettingCreateCopy: 'Wyszukaj proponowane mecze, dodaj tylko wybrane pozycje i zapisz kupon do późniejszego rozliczenia.',
+    bettingWindowStart: 'Od',
+    bettingWindowEnd: 'Do',
+    bettingLeanLevel: 'Siła wskazania',
+    bettingDrawRiskLevel: 'Możliwość remisu',
+    bettingStake: 'Stawka',
+    bettingGenerate: 'Szukaj',
+    bettingCoupon: 'Wygenerowany kupon',
+    bettingProposedMatches: 'Proponowane mecze',
+    bettingSelectedMatches: 'Wybrane mecze',
+    bettingSearchManual: 'Szukaj meczu ręcznie',
+    bettingManualSearchTitle: 'Wyszukaj mecze',
+    bettingManualSearchCopy: 'Szukaj po drużynie, turnieju, rundzie lub dacie. Najbliższe pasujące mecze są na górze.',
+    bettingManualSearchPlaceholder: 'Szukaj drużyny lub turnieju',
+    bettingAddToCoupon: 'Dodaj',
+    bettingConfirmBet: 'Potwierdź zakład',
+    bettingRemoveFromCoupon: 'Usuń',
+    bettingSaveCoupon: 'Utwórz kupon',
+    bettingCouponCreated: 'Wirtualny kupon utworzony.',
+    bettingCouponCreateFailed: 'Nie udało się utworzyć wirtualnego kuponu.',
+    bettingNoSelectedMatches: 'Nie wybrano jeszcze żadnych meczów.',
+    bettingNoCoupon: 'Nie znaleziono meczów dla tych filtrów. Spróbuj szerszego zakresu dat lub niższej siły wskazania.',
+    bettingTotalOdds: 'Łączny mnożnik',
+    bettingPotentialPayout: 'Potencjalna wypłata',
+    bettingSelection: 'Typ',
+    bettingChance: 'Szansa modelu',
+    bettingFairOdds: 'Kurs fair',
+    bettingTournament: 'Turniej',
+    bettingKickoff: 'Start',
+    bettingModelShape: 'Profil',
+    bettingSelectedCount: 'wybrane',
+    bettingNoneSelected: 'Brak wyboru',
+    bettingBalancedLean: 'Wyrównane',
+    bettingSlightLean: 'Lekkie',
+    bettingModerateLean: 'Umiarkowane',
+    bettingClearLean: 'Czytelne',
+    bettingStrongLean: 'Silne',
+    bettingHeavyLean: 'Bardzo silne',
+    bettingVeryLowDraw: 'Bardzo niskie',
+    bettingLowDraw: 'Niskie',
+    bettingModerateDraw: 'Umiarkowane',
+    bettingHighDraw: 'Wysokie',
+    bettingVeryHighDraw: 'Bardzo wysokie',
     apiPanelEyebrow: 'API',
     apiPanelTitle: 'API danych meczowych',
     apiPanelCopy: 'Użyj swojego API key, aby pobierać listy meczów, wyniki, mecze live i nadchodzące spotkania z zewnętrznych narzędzi.',
@@ -2598,6 +2731,60 @@ type MatchPrediction = {
 
 type PredictionOutcomeKey = 'home' | 'draw' | 'away'
 
+type BettingLeanFilter = 'balanced' | 'slight' | 'moderate' | 'clear' | 'strong' | 'heavy'
+type BettingDrawRiskFilter = 'very-low' | 'low' | 'moderate' | 'high' | 'very-high'
+
+type BettingCandidate = {
+  tournamentId: number
+  tournamentName: string
+  tournamentSeason: string
+  match: MatchSummary
+  prediction: MatchPrediction
+  shape: ReturnType<typeof getPredictionShape>
+  selectionKey: PredictionOutcomeKey
+  selectionLabel: string
+  selectionChance: number
+  fairOdds: number
+}
+
+type BettingCouponStatus = 'Pending' | 'Won' | 'Lost' | number
+type BettingCouponSelection = 'HomeWin' | 'Draw' | 'AwayWin' | number
+type BettingCouponBetStatus = 'Pending' | 'Won' | 'Lost' | 'Void' | number
+
+type BettingCouponBet = {
+  id: number
+  matchId: number
+  tournamentId: number
+  tournamentName: string
+  tournamentSeason: string
+  kickoffUtc?: string | null
+  homeTeamName: string
+  awayTeamName: string
+  homeScore?: number | null
+  awayScore?: number | null
+  matchStatus: string | number
+  roundInfo: string
+  selection: BettingCouponSelection
+  status: BettingCouponBetStatus
+  predictedChance: number
+  fairOdds: number
+  modelShape: string
+  drawRisk: string
+  settledAtUtc?: string | null
+}
+
+type BettingCoupon = {
+  id: number
+  status: BettingCouponStatus
+  stake: number
+  totalOdds: number
+  potentialPayout: number
+  createdAtUtc: string
+  updatedAtUtc: string
+  closedAtUtc?: string | null
+  bets: BettingCouponBet[]
+}
+
 type HistoricSplitMatch = {
   date: string
   homeTeamName: string
@@ -2634,6 +2821,87 @@ function getFavoriteOutcomeKey(prediction: MatchPrediction): PredictionOutcomeKe
   ]
 
   return outcomes.sort((left, right) => right.chance - left.chance)[0].key
+}
+
+function getDefaultBettingRange() {
+  const now = new Date()
+  const start = new Date(now)
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 7)
+  end.setHours(23, 59, 0, 0)
+
+  return {
+    start: toDateTimeLocalValue(start),
+    end: toDateTimeLocalValue(end),
+  }
+}
+
+function toDateTimeLocalValue(value: Date) {
+  const pad = (input: number) => String(input).padStart(2, '0')
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`
+}
+
+function getLeanRank(shapeTone: string) {
+  const ranks: Record<string, number> = {
+    balanced: 0,
+    slight: 1,
+    moderate: 2,
+    clear: 3,
+    strong: 4,
+    heavy: 5,
+  }
+
+  return ranks[shapeTone] ?? 0
+}
+
+function getDrawRiskRank(riskTone: string) {
+  const ranks: Record<string, number> = {
+    'very-low': 1,
+    low: 2,
+    moderate: 3,
+    high: 4,
+    'very-high': 5,
+  }
+
+  return ranks[riskTone] ?? 5
+}
+
+function getOutcomeValue(prediction: MatchPrediction, key: PredictionOutcomeKey) {
+  if (key === 'home') {
+    return {
+      chance: prediction.homeWin,
+      odds: prediction.homeFairOdds,
+    }
+  }
+
+  if (key === 'away') {
+    return {
+      chance: prediction.awayWin,
+      odds: prediction.awayFairOdds,
+    }
+  }
+
+  return {
+    chance: prediction.draw,
+    odds: prediction.drawFairOdds,
+  }
+}
+
+function withBettingSelection(
+  candidate: BettingCandidate,
+  selectionKey: PredictionOutcomeKey,
+  t: (typeof translations)[Language],
+): BettingCandidate {
+  const selection = getOutcomeValue(candidate.prediction, selectionKey)
+  return {
+    ...candidate,
+    selectionKey,
+    selectionLabel: selectionKey === 'home' ? t.homeWin : selectionKey === 'away' ? t.awayWin : t.draw,
+    selectionChance: selection.chance,
+    fairOdds: selection.odds,
+  }
 }
 
 function getAgreementLabel(ratio: number, t: (typeof translations)[Language]) {
@@ -3111,7 +3379,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'betting' || view === 'betting-create' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -3398,6 +3666,17 @@ function App() {
         />
       )}
 
+      {(view === 'betting' || view === 'betting-create') && user && (
+        <BettingPanel
+          t={t}
+          user={user}
+          onToast={showToast}
+          isCreating={view === 'betting-create'}
+          onCreate={() => navigateTo(routes['betting-create'])}
+          onBack={() => navigateTo(routes.betting)}
+        />
+      )}
+
       {view === 'api' && user && (
         <ApiPanel
           t={t}
@@ -3564,6 +3843,7 @@ function MenuIcon({ name }: { name: MenuIconName }) {
     api: ['M8 8l-4 4 4 4', 'M16 8l4 4-4 4', 'M14 5l-4 14'],
     tournaments: ['M7 4h10v3a5 5 0 0 1-10 0Z', 'M9 19h6', 'M12 12v7', 'M5 5H3v2a3 3 0 0 0 4 2.8', 'M19 5h2v2a3 3 0 0 1-4 2.8'],
     predictions: ['M4 17c4-8 12-8 16 0', 'M8 17c2.7-4.4 5.3-4.4 8 0', 'M12 17v-4', 'M12 4v3', 'M18 6l-2 2', 'M6 6l2 2'],
+    betting: ['M5 6h14v12H5Z', 'M8 9h8', 'M8 13h3', 'M14 13h2', 'M8 16h2', 'M13 16h3'],
     admin: ['M12 3l7 3v5c0 4.5-2.8 7.6-7 9-4.2-1.4-7-4.5-7-9V6Z', 'M9.5 12.2l1.7 1.7 3.4-4'],
     profile: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M4.5 20a7.5 7.5 0 0 1 15 0'],
     logout: ['M10 5H5v14h5', 'M14 8l4 4-4 4', 'M8 12h10'],
@@ -3631,6 +3911,12 @@ function AppMenu({
             <span className="menu-label">
               <MenuIcon name="predictions" />
               <span>{t.menuPredictions}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => onNavigate('betting')}>
+            <span className="menu-label">
+              <MenuIcon name="betting" />
+              <span>{t.menuBetting}</span>
             </span>
           </button>
           <button type="button" onClick={() => onNavigate('api')}>
@@ -6620,6 +6906,774 @@ function TournamentPredictionsPanel({
       </div>
     </section>
   )
+}
+
+function BettingMultiSelect<TValue extends string>({
+  label,
+  emptyLabel,
+  selectedCountLabel,
+  options,
+  selectedValues,
+  onChange,
+}: {
+  label: string
+  emptyLabel: string
+  selectedCountLabel: string
+  options: Array<{ value: TValue; label: string }>
+  selectedValues: TValue[]
+  onChange: (values: TValue[]) => void
+}) {
+  const selectedLabels = options
+    .filter((option) => selectedValues.includes(option.value))
+    .map((option) => option.label)
+  const summary = selectedLabels.length <= 2
+    ? selectedLabels.join(', ') || emptyLabel
+    : `${selectedLabels.length} ${selectedCountLabel}`
+
+  const toggleValue = (value: TValue) => {
+    onChange(
+      selectedValues.includes(value)
+        ? selectedValues.filter((item) => item !== value)
+        : [...selectedValues, value],
+    )
+  }
+
+  return (
+    <div className="betting-multi-field">
+      <span>{label}</span>
+      <details className="betting-multi-select">
+        <summary>
+          <span>{summary}</span>
+          <i aria-hidden="true" />
+        </summary>
+        <div className="betting-multi-options">
+          {options.map((option) => {
+            const isSelected = selectedValues.includes(option.value)
+            return (
+              <button
+                type="button"
+                className={isSelected ? 'active' : ''}
+                onClick={() => toggleValue(option.value)}
+                key={option.value}
+              >
+                <b aria-hidden="true">{isSelected ? '✓' : ''}</b>
+                <span>{option.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </details>
+    </div>
+  )
+}
+
+function BettingPanel({
+  t,
+  user,
+  onToast,
+  isCreating,
+  onCreate,
+  onBack,
+}: {
+  t: (typeof translations)[Language]
+  user: AuthUser
+  onToast: (message: string, tone: ToastTone) => void
+  isCreating: boolean
+  onCreate: () => void
+  onBack: () => void
+}) {
+  const defaultRange = useMemo(getDefaultBettingRange, [])
+  const [startDate, setStartDate] = useState(defaultRange.start)
+  const [endDate, setEndDate] = useState(defaultRange.end)
+  const [leanFilters, setLeanFilters] = useState<BettingLeanFilter[]>(['strong', 'heavy'])
+  const [drawRiskFilters, setDrawRiskFilters] = useState<BettingDrawRiskFilter[]>(['very-low', 'low', 'moderate'])
+  const [stake, setStake] = useState('10')
+  const [coupons, setCoupons] = useState<BettingCoupon[]>([])
+  const [proposedMatches, setProposedMatches] = useState<BettingCandidate[]>([])
+  const [selectedMatches, setSelectedMatches] = useState<BettingCandidate[]>([])
+  const [manualSearch, setManualSearch] = useState('')
+  const [isManualSearchOpen, setIsManualSearchOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [allCandidates, setAllCandidates] = useState<BettingCandidate[]>([])
+
+  const predictionLabels = { home: t.homeWin, draw: t.draw, away: t.awayWin }
+
+  const loadCoupons = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const result = await authorizedRequest<BettingCoupon[]>(user.token, '/api/betting/coupons')
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setCoupons(result.data)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [onToast, t.genericError, user.token])
+
+  const loadCandidates = useCallback(async () => {
+    const tournamentsResult = await authorizedRequest<TournamentSummary[]>(user.token, '/api/tournaments')
+    if (!tournamentsResult.ok || !tournamentsResult.data) {
+      throw new Error(tournamentsResult.message || t.genericError)
+    }
+
+    const activeTournaments = tournamentsResult.data.filter((tournament) => tournament.isActive)
+    const tournamentPayloads = await Promise.all(activeTournaments.map(async (tournament) => {
+      const [detailsResult, matchesResult, ratingsResult] = await Promise.all([
+        authorizedRequest<TournamentDetails>(user.token, `/api/tournaments/${tournament.id}`),
+        authorizedRequest<MatchSummary[]>(user.token, `/api/tournaments/${tournament.id}/matches`),
+        authorizedRequest<CombinedRatingsResponse>(user.token, `/api/tournaments/${tournament.id}/ratings/combined/teams`),
+      ])
+
+      if (!detailsResult.ok || !detailsResult.data || !matchesResult.ok || !matchesResult.data || !ratingsResult.ok || !ratingsResult.data) {
+        return null
+      }
+
+      return {
+        tournament: detailsResult.data,
+        matches: matchesResult.data,
+        ratingsByTeamId: toRecordByTeamId(ratingsResult.data.teams),
+      }
+    }))
+
+    return tournamentPayloads.flatMap((payload) => {
+      if (!payload) {
+        return []
+      }
+
+      return payload.matches
+        .filter(isPredictableMatch)
+        .map((match): BettingCandidate | null => {
+          if (!match.homeTeam || !match.awayTeam) {
+            return null
+          }
+
+          const homeRating = payload.ratingsByTeamId[match.homeTeam.id]
+          const awayRating = payload.ratingsByTeamId[match.awayTeam.id]
+          if (!homeRating || !awayRating) {
+            return null
+          }
+
+          const prediction = calculateCalibratedPrediction(homeRating, awayRating, payload.tournament.applyHomeAdvantage, predictionLabels)
+          const shape = getPredictionShape(prediction, t)
+          const selectionKey = getFavoriteOutcomeKey(prediction)
+          const selection = getOutcomeValue(prediction, selectionKey)
+
+          return {
+            tournamentId: payload.tournament.id,
+            tournamentName: payload.tournament.name,
+            tournamentSeason: payload.tournament.season,
+            match,
+            prediction,
+            shape,
+            selectionKey,
+            selectionLabel: selectionKey === 'home' ? t.homeWin : selectionKey === 'away' ? t.awayWin : t.draw,
+            selectionChance: selection.chance,
+            fairOdds: selection.odds,
+          }
+        })
+        .filter((candidate): candidate is BettingCandidate => Boolean(candidate))
+    })
+  }, [predictionLabels, t, user.token])
+
+  useEffect(() => {
+    void loadCoupons()
+  }, [loadCoupons])
+
+  const generateProposals = async () => {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const candidates = await loadCandidates()
+      setAllCandidates(candidates)
+      const filteredCandidates = candidates
+        .filter((candidate) => {
+          if (!candidate.match.kickoffUtc) {
+            return false
+          }
+
+          const kickoff = new Date(candidate.match.kickoffUtc)
+          return kickoff >= start && kickoff <= end
+        })
+        .filter((candidate) => leanFilters.includes(candidate.shape.shapeTone as BettingLeanFilter))
+        .filter((candidate) => drawRiskFilters.includes(candidate.shape.riskTone as BettingDrawRiskFilter))
+        .sort((left, right) => {
+          const leftScore = left.selectionChance * 100 + getLeanRank(left.shape.shapeTone) * 4 - getDrawRiskRank(left.shape.riskTone) * 2
+          const rightScore = right.selectionChance * 100 + getLeanRank(right.shape.shapeTone) * 4 - getDrawRiskRank(right.shape.riskTone) * 2
+          return rightScore - leftScore
+        })
+        .slice(0, 10)
+
+      setProposedMatches(filteredCandidates)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const addToCoupon = (candidate: BettingCandidate) => {
+    setSelectedMatches((current) => current.some((item) => item.match.id === candidate.match.id) || current.length >= 20
+      ? current
+      : [...current, candidate])
+  }
+
+  const removeFromCoupon = (matchId: number) => {
+    setSelectedMatches((current) => current.filter((item) => item.match.id !== matchId))
+  }
+
+  const createCoupon = async () => {
+    if (selectedMatches.length === 0) {
+      onToast(t.validationFailed, 'error')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const result = await authorizedRequest<BettingCoupon>(user.token, '/api/betting/coupons', {
+        method: 'POST',
+        body: JSON.stringify({
+          stake: Math.max(0, Number(stake) || 0),
+          bets: selectedMatches.map((item) => ({
+            matchId: item.match.id,
+            selection: item.selectionKey === 'home' ? 0 : item.selectionKey === 'draw' ? 1 : 2,
+            predictedChance: item.selectionChance,
+            fairOdds: item.fairOdds,
+            modelShape: item.shape.shape,
+            drawRisk: item.shape.risk,
+          })),
+        }),
+      })
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.bettingCouponCreateFailed, 'error')
+        return
+      }
+
+      setCoupons((current) => [result.data!, ...current])
+      setSelectedMatches([])
+      setProposedMatches([])
+      onBack()
+      onToast(t.bettingCouponCreated, 'success')
+    } catch {
+      onToast(t.bettingCouponCreateFailed, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const openManualSearch = async () => {
+    setIsManualSearchOpen(true)
+    if (allCandidates.length > 0) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      setAllCandidates(await loadCandidates())
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const totalOdds = selectedMatches.reduce((total, item) => total * item.fairOdds, selectedMatches.length > 0 ? 1 : 0)
+  const stakeValue = Math.max(0, Number(stake) || 0)
+  const payout = totalOdds * stakeValue
+  const pendingCoupons = coupons.filter((coupon) => normalizeCouponStatus(coupon.status) === 'pending')
+  const closedCoupons = coupons.filter((coupon) => normalizeCouponStatus(coupon.status) !== 'pending')
+  const manualSearchRows = allCandidates
+    .filter((candidate) => {
+      const query = manualSearch.trim().toLowerCase()
+      if (!query) {
+        return true
+      }
+
+      return [
+        candidate.tournamentName,
+        candidate.tournamentSeason,
+        candidate.match.roundInfo,
+        getTeamDisplayName(candidate.match, 'home'),
+        getTeamDisplayName(candidate.match, 'away'),
+        formatDate(candidate.match.kickoffUtc, ''),
+      ].some((value) => (value ?? '').toLowerCase().includes(query))
+    })
+    .sort((left, right) => new Date(left.match.kickoffUtc || 0).getTime() - new Date(right.match.kickoffUtc || 0).getTime())
+    .slice(0, 10)
+
+  const leanOptions: Array<{ value: BettingLeanFilter; label: string }> = [
+    { value: 'balanced', label: t.bettingBalancedLean },
+    { value: 'slight', label: t.bettingSlightLean },
+    { value: 'moderate', label: t.bettingModerateLean },
+    { value: 'clear', label: t.bettingClearLean },
+    { value: 'strong', label: t.bettingStrongLean },
+    { value: 'heavy', label: t.bettingHeavyLean },
+  ]
+  const drawOptions: Array<{ value: BettingDrawRiskFilter; label: string }> = [
+    { value: 'very-low', label: t.bettingVeryLowDraw },
+    { value: 'low', label: t.bettingLowDraw },
+    { value: 'moderate', label: t.bettingModerateDraw },
+    { value: 'high', label: t.bettingHighDraw },
+    { value: 'very-high', label: t.bettingVeryHighDraw },
+  ]
+
+  return (
+    <section className="admin-dashboard">
+      <div className="admin-dashboard-content ratings-panel-layout betting-panel-layout">
+        <div className="admin-dashboard-hero">
+          <p className="eyebrow">{t.bettingPanelEyebrow}</p>
+          <h1>{isCreating ? t.bettingCreateCoupon : t.bettingPanelTitle}</h1>
+          <p>{t.bettingPanelCopy}</p>
+        </div>
+
+        {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+
+        {!isCreating ? (
+          <>
+            <div className="details-top-actions rating-top-actions">
+              <button type="button" className="positive-action-button" onClick={onCreate}>
+                {t.bettingCreateCoupon}
+              </button>
+            </div>
+            <BettingCouponTable t={t} title={t.bettingPendingCoupons} coupons={pendingCoupons} emptyText={t.bettingNoPendingCoupons} />
+            <BettingCouponTable t={t} title={t.bettingClosedCoupons} coupons={closedCoupons} emptyText={t.bettingNoClosedCoupons} />
+          </>
+        ) : (
+          <>
+            <div className="details-top-actions rating-top-actions">
+              <button type="button" onClick={onBack}>
+                <MenuIcon name="arrow-left" />
+                <span>{t.bettingBackToCoupons}</span>
+              </button>
+            </div>
+
+        <section className="details-panel betting-generator-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="betting" />
+            <h2>{t.bettingCreateTitle}</h2>
+          </div>
+          <p className="panel-muted-copy">{t.bettingCreateCopy}</p>
+          <div className="betting-form-grid">
+            <label>
+              <span>{t.bettingWindowStart}</span>
+              <input type="datetime-local" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            </label>
+            <label>
+              <span>{t.bettingWindowEnd}</span>
+              <input type="datetime-local" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            </label>
+            <BettingMultiSelect
+              label={t.bettingLeanLevel}
+              emptyLabel={t.bettingNoneSelected}
+              selectedCountLabel={t.bettingSelectedCount}
+              options={leanOptions}
+              selectedValues={leanFilters}
+              onChange={setLeanFilters}
+            />
+            <BettingMultiSelect
+              label={t.bettingDrawRiskLevel}
+              emptyLabel={t.bettingNoneSelected}
+              selectedCountLabel={t.bettingSelectedCount}
+              options={drawOptions}
+              selectedValues={drawRiskFilters}
+              onChange={setDrawRiskFilters}
+            />
+          </div>
+          <button type="button" className="betting-generate-button" onClick={generateProposals}>
+            {t.bettingGenerate}
+          </button>
+        </section>
+
+        <section className="details-panel">
+          <div className="details-panel-heading">
+            <MenuIcon name="matches" />
+            <h2>{t.bettingProposedMatches}</h2>
+          </div>
+          <BettingCandidateTable
+            t={t}
+            candidates={proposedMatches}
+            selectedMatches={selectedMatches}
+            onAdd={addToCoupon}
+            onRemove={removeFromCoupon}
+          />
+        </section>
+
+        <section className="details-panel">
+          <div className="details-panel-heading spread">
+            <div>
+              <MenuIcon name="predictions" />
+              <h2>{t.bettingSelectedMatches}</h2>
+            </div>
+            <div className="betting-selected-toolbar">
+              <button type="button" onClick={openManualSearch}>{t.bettingSearchManual}</button>
+              <label className="betting-stake-control">
+                <span>{t.bettingStake}</span>
+                <input type="number" min="0" step="0.01" value={stake} onChange={(event) => setStake(event.target.value)} />
+              </label>
+              <span><small>{t.bettingTotalOdds}</small><strong>{formatOdds(totalOdds)}</strong></span>
+              <span><small>{t.bettingPotentialPayout}</small><strong>{payout.toFixed(2)}</strong></span>
+            </div>
+          </div>
+
+          {selectedMatches.length > 0 ? (
+            <div className="tournament-table-shell compact-table-shell">
+              <table className="tournament-table betting-coupon-table">
+                <thead>
+                  <tr>
+                    <th>{t.bettingKickoff}</th>
+                    <th>{t.bettingTournament}</th>
+                    <th>{t.homeTeam}</th>
+                    <th>{t.awayTeam}</th>
+                    <th>{t.bettingSelection}</th>
+                    <th>{t.bettingChance}</th>
+                    <th>{t.bettingFairOdds}</th>
+                    <th>{t.bettingModelShape}</th>
+                    <th>{t.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedMatches.map((item) => (
+                    <tr key={`${item.tournamentId}-${item.match.id}`}>
+                      <td>{formatDate(item.match.kickoffUtc, '-')}</td>
+                      <td>
+                        <strong>{item.tournamentName}</strong>
+                        <span>{item.tournamentSeason}</span>
+                      </td>
+                      <td>{getTeamDisplayName(item.match, 'home')}</td>
+                      <td>{getTeamDisplayName(item.match, 'away')}</td>
+                      <td><strong>{item.selectionLabel}</strong></td>
+                      <td>{formatPercent(item.selectionChance)}</td>
+                      <td>{formatOdds(item.fairOdds)}</td>
+                      <td>
+                        <strong>{item.shape.shape}</strong>
+                        <span>{item.shape.risk}</span>
+                      </td>
+                      <td>
+                        <button type="button" className="table-row-action danger" onClick={() => removeFromCoupon(item.match.id)}>{t.bettingRemoveFromCoupon}</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="delete-modal-target betting-empty-state">
+              <strong>{t.bettingNoSelectedMatches}</strong>
+            </div>
+          )}
+          <button type="button" className="betting-generate-button" onClick={createCoupon}>{t.bettingSaveCoupon}</button>
+        </section>
+
+        {isManualSearchOpen && (
+          <div className="modal-backdrop">
+            <div className="delete-modal betting-search-modal">
+              <div className="delete-modal-icon">
+                <MenuIcon name="matches" />
+              </div>
+              <p className="eyebrow">{t.bettingSearchManual}</p>
+              <h2>{t.bettingManualSearchTitle}</h2>
+              <p>{t.bettingManualSearchCopy}</p>
+              <input
+                className="betting-manual-search"
+                type="search"
+                value={manualSearch}
+                placeholder={t.bettingManualSearchPlaceholder}
+                onChange={(event) => setManualSearch(event.target.value)}
+              />
+              <BettingCandidateTable
+                t={t}
+                candidates={manualSearchRows}
+                selectedMatches={selectedMatches}
+                onAdd={addToCoupon}
+                onRemove={removeFromCoupon}
+              />
+              <div className="delete-modal-actions">
+                <button type="button" onClick={() => setIsManualSearchOpen(false)}>{t.cancel}</button>
+              </div>
+            </div>
+          </div>
+        )}
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function BettingCandidateTable({
+  t,
+  candidates,
+  selectedMatches,
+  onAdd,
+  onRemove,
+}: {
+  t: (typeof translations)[Language]
+  candidates: BettingCandidate[]
+  selectedMatches: BettingCandidate[]
+  onAdd: (candidate: BettingCandidate) => void
+  onRemove: (matchId: number) => void
+}) {
+  const [sortKey, setSortKey] = useState<BettingCandidateSortKey>('kickoff')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [pendingCandidate, setPendingCandidate] = useState<BettingCandidate | null>(null)
+  const [pendingSelection, setPendingSelection] = useState<PredictionOutcomeKey>('home')
+  const selectedIds = new Set(selectedMatches.map((item) => item.match.id))
+  const openConfirm = (candidate: BettingCandidate) => {
+    setPendingCandidate(candidate)
+    setPendingSelection(candidate.selectionKey)
+  }
+  const confirmSelection = () => {
+    if (!pendingCandidate) {
+      return
+    }
+
+    onAdd(withBettingSelection(pendingCandidate, pendingSelection, t))
+    setPendingCandidate(null)
+  }
+  const requestSort = (key: BettingCandidateSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')
+      return
+    }
+
+    setSortKey(key)
+    setSortDirection(key === 'chance' ? 'desc' : 'asc')
+  }
+  const sortedCandidates = [...candidates].sort((left, right) => {
+    let comparison = 0
+    if (sortKey === 'kickoff') {
+      comparison = new Date(left.match.kickoffUtc || 0).getTime() - new Date(right.match.kickoffUtc || 0).getTime()
+    } else if (sortKey === 'tournament') {
+      comparison = compareText(left.tournamentName, right.tournamentName)
+    } else if (sortKey === 'home') {
+      comparison = compareText(getTeamDisplayName(left.match, 'home'), getTeamDisplayName(right.match, 'home'))
+    } else if (sortKey === 'away') {
+      comparison = compareText(getTeamDisplayName(left.match, 'away'), getTeamDisplayName(right.match, 'away'))
+    } else if (sortKey === 'selection') {
+      comparison = compareText(left.selectionLabel, right.selectionLabel)
+    } else if (sortKey === 'chance') {
+      comparison = left.selectionChance - right.selectionChance
+    } else if (sortKey === 'odds') {
+      comparison = left.fairOdds - right.fairOdds
+    } else if (sortKey === 'shape') {
+      comparison = compareText(left.shape.shape, right.shape.shape)
+    }
+
+    return sortDirection === 'asc' ? comparison : -comparison
+  })
+  const headers: Array<{ key: BettingCandidateSortKey; label: string }> = [
+    { key: 'kickoff', label: t.bettingKickoff },
+    { key: 'tournament', label: t.bettingTournament },
+    { key: 'home', label: t.homeTeam },
+    { key: 'away', label: t.awayTeam },
+    { key: 'selection', label: t.bettingSelection },
+    { key: 'chance', label: t.bettingChance },
+    { key: 'odds', label: t.bettingFairOdds },
+    { key: 'shape', label: t.bettingModelShape },
+  ]
+  const confirmModal = pendingCandidate ? createPortal(
+    <div className="modal-backdrop" role="presentation" onMouseDown={() => setPendingCandidate(null)}>
+      <div className="delete-modal betting-confirm-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="delete-modal-icon">
+          <MenuIcon name="betting" />
+        </div>
+        <p className="eyebrow">{t.bettingConfirmBet}</p>
+        <div className="betting-confirm-teams">
+          <span>
+            <small>{t.homeTeam}</small>
+            <strong>{getTeamDisplayName(pendingCandidate.match, 'home')}</strong>
+          </span>
+          <span>
+            <small>{t.awayTeam}</small>
+            <strong>{getTeamDisplayName(pendingCandidate.match, 'away')}</strong>
+          </span>
+        </div>
+        <div className="betting-segment-control" role="group" aria-label={t.bettingSelection}>
+          {([
+            ['home', t.homeWin, pendingCandidate.prediction.homeWin, pendingCandidate.prediction.homeFairOdds],
+            ['draw', t.draw, pendingCandidate.prediction.draw, pendingCandidate.prediction.drawFairOdds],
+            ['away', t.awayWin, pendingCandidate.prediction.awayWin, pendingCandidate.prediction.awayFairOdds],
+          ] as const).map(([value, label, chance, odds]) => (
+            <button
+              type="button"
+              className={pendingSelection === value ? 'active' : ''}
+              onClick={() => setPendingSelection(value)}
+              key={value}
+            >
+              <strong>{label}</strong>
+              <b>{formatPercent(chance)}</b>
+              <small>{formatOdds(odds)}</small>
+            </button>
+          ))}
+        </div>
+        <div className="delete-modal-actions">
+          <button type="button" onClick={() => setPendingCandidate(null)}>{t.cancel}</button>
+          <button type="button" onClick={confirmSelection}>{t.bettingAddToCoupon}</button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  ) : null
+
+  if (candidates.length === 0) {
+    return (
+      <div className="delete-modal-target betting-empty-state">
+        <strong>{t.bettingNoCoupon}</strong>
+      </div>
+    )
+  }
+
+  return (
+    <div className="tournament-table-shell compact-table-shell">
+      <table className="tournament-table betting-coupon-table">
+        <thead>
+          <tr>
+            {headers.map((header) => (
+              <th key={header.key}>
+                <button
+                  className="table-sort-button"
+                  type="button"
+                  aria-sort={sortKey === header.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  onClick={() => requestSort(header.key)}
+                >
+                  <span>{header.label}</span>
+                  <span className="sort-indicator" aria-hidden="true">{sortKey === header.key ? (sortDirection === 'asc' ? '\u25B2' : '\u25BC') : '\u2195'}</span>
+                </button>
+              </th>
+            ))}
+            <th>{t.actions}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedCandidates.map((item) => {
+            const isSelected = selectedIds.has(item.match.id)
+            return (
+              <tr key={`${item.tournamentId}-${item.match.id}`}>
+                <td>{formatDate(item.match.kickoffUtc, '-')}</td>
+                <td>
+                  <strong>{item.tournamentName}</strong>
+                  <span>{item.tournamentSeason}</span>
+                </td>
+                <td>{getTeamDisplayName(item.match, 'home')}</td>
+                <td>{getTeamDisplayName(item.match, 'away')}</td>
+                <td><strong>{item.selectionLabel}</strong></td>
+                <td>{formatPercent(item.selectionChance)}</td>
+                <td>{formatOdds(item.fairOdds)}</td>
+                <td>
+                  <strong>{item.shape.shape}</strong>
+                  <span>{item.shape.risk}</span>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className={isSelected ? 'table-row-action subtle' : 'table-row-action'}
+                    onClick={() => isSelected ? onRemove(item.match.id) : openConfirm(item)}
+                  >
+                    {isSelected ? t.bettingRemoveFromCoupon : t.bettingAddToCoupon}
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {confirmModal}
+    </div>
+  )
+}
+
+function BettingCouponTable({
+  t,
+  title,
+  coupons,
+  emptyText,
+}: {
+  t: (typeof translations)[Language]
+  title: string
+  coupons: BettingCoupon[]
+  emptyText: string
+}) {
+  return (
+    <section className="details-panel">
+      <div className="details-panel-heading">
+        <MenuIcon name="betting" />
+        <h2>{title}</h2>
+      </div>
+      {coupons.length > 0 ? (
+        <div className="tournament-table-shell compact-table-shell">
+          <table className="tournament-table betting-coupon-table">
+            <thead>
+              <tr>
+                <th>{t.bettingCouponId}</th>
+                <th>{t.bettingBets}</th>
+                <th>{t.bettingTotalOdds}</th>
+                <th>{t.bettingStake}</th>
+                <th>{t.bettingPotentialPayout}</th>
+                <th>{t.bettingCreated}</th>
+                <th>{t.bettingResult}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {coupons.map((coupon) => (
+                <tr key={coupon.id}>
+                  <td><strong>#{coupon.id}</strong></td>
+                  <td>
+                    <strong>{coupon.bets.length}</strong>
+                    <span>{coupon.bets.map((bet) => `${bet.homeTeamName} - ${bet.awayTeamName}`).join(', ')}</span>
+                  </td>
+                  <td>{formatOdds(coupon.totalOdds)}</td>
+                  <td>{coupon.stake.toFixed(2)}</td>
+                  <td>{coupon.potentialPayout.toFixed(2)}</td>
+                  <td>{formatDate(coupon.createdAtUtc, '-')}</td>
+                  <td><span className={`coupon-status ${normalizeCouponStatus(coupon.status)}`}>{formatCouponStatus(coupon.status, t)}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="delete-modal-target betting-empty-state">
+          <strong>{emptyText}</strong>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function normalizeCouponStatus(status: BettingCouponStatus) {
+  const value = String(status).toLowerCase()
+  if (value === '1' || value === 'won') {
+    return 'won'
+  }
+  if (value === '2' || value === 'lost') {
+    return 'lost'
+  }
+  return 'pending'
+}
+
+function formatCouponStatus(status: BettingCouponStatus, t: (typeof translations)[Language]) {
+  const normalized = normalizeCouponStatus(status)
+  if (normalized === 'won') {
+    return t.bettingWon
+  }
+  if (normalized === 'lost') {
+    return t.bettingLost
+  }
+  return t.bettingPending
 }
 
 function PredictionDetailsPanel({

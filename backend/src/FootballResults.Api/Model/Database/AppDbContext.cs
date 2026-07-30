@@ -31,6 +31,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<SyncServiceConfiguration> SyncServiceConfigurations => Set<SyncServiceConfiguration>();
     public DbSet<RatingConfiguration> RatingConfigurations => Set<RatingConfiguration>();
     public DbSet<DataQualityAcceptedIssue> DataQualityAcceptedIssues => Set<DataQualityAcceptedIssue>();
+    public DbSet<BettingCoupon> BettingCoupons => Set<BettingCoupon>();
+    public DbSet<BettingCouponBet> BettingCouponBets => Set<BettingCouponBet>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,6 +109,45 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.Property(issue => issue.Issue).HasMaxLength(1000);
             entity.Property(issue => issue.Note).HasMaxLength(1000);
             entity.Property(issue => issue.AcceptedByUserId).HasMaxLength(450);
+        });
+
+        modelBuilder.Entity<BettingCoupon>(entity =>
+        {
+            entity.HasIndex(coupon => new { coupon.UserId, coupon.Status, coupon.CreatedAtUtc });
+
+            entity.Property(coupon => coupon.UserId).HasMaxLength(450);
+            entity.Property(coupon => coupon.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(coupon => coupon.Stake).HasPrecision(18, 2);
+            entity.Property(coupon => coupon.TotalOdds).HasPrecision(18, 4);
+            entity.Property(coupon => coupon.PotentialPayout).HasPrecision(18, 2);
+
+            entity.HasOne(coupon => coupon.User)
+                .WithMany()
+                .HasForeignKey(coupon => coupon.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BettingCouponBet>(entity =>
+        {
+            entity.HasIndex(bet => new { bet.BettingCouponId, bet.MatchId }).IsUnique();
+            entity.HasIndex(bet => bet.MatchId);
+
+            entity.Property(bet => bet.Selection).HasConversion<string>().HasMaxLength(32);
+            entity.Property(bet => bet.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(bet => bet.PredictedChance).HasPrecision(9, 4);
+            entity.Property(bet => bet.FairOdds).HasPrecision(18, 4);
+            entity.Property(bet => bet.ModelShape).HasMaxLength(120);
+            entity.Property(bet => bet.DrawRisk).HasMaxLength(120);
+
+            entity.HasOne(bet => bet.BettingCoupon)
+                .WithMany(coupon => coupon.Bets)
+                .HasForeignKey(bet => bet.BettingCouponId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(bet => bet.Match)
+                .WithMany()
+                .HasForeignKey(bet => bet.MatchId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TournamentStage>(entity =>

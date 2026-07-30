@@ -2534,6 +2534,425 @@ p {
   overflow: visible;
 }
 
+.betting-panel-layout {
+  gap: 18px;
+}
+
+.betting-generator-panel {
+  position: relative;
+  z-index: 8;
+  gap: 18px;
+  overflow: visible;
+}
+
+.betting-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.betting-form-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.betting-form-grid label span,
+.betting-multi-field > span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.betting-form-grid input,
+.betting-form-grid select {
+  min-height: 42px;
+  width: 100%;
+  padding: 0 14px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.betting-form-grid select {
+  padding-right: 36px;
+  background:
+    linear-gradient(45deg, transparent 50%, #b0d86b 50%) calc(100% - 18px) 50% / 7px 7px no-repeat,
+    linear-gradient(135deg, #b0d86b 50%, transparent 50%) calc(100% - 13px) 50% / 7px 7px no-repeat,
+    rgba(255, 255, 255, 0.08);
+  appearance: none;
+}
+
+.betting-form-grid input:focus,
+.betting-form-grid select:focus {
+  box-shadow: 0 0 0 2px rgba(176, 216, 107, 0.24);
+}
+
+.betting-form-grid input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+.betting-form-grid input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  filter: brightness(0) invert(1);
+}
+
+.betting-form-grid select option {
+  color: #fff9ea;
+  background: #1f2a23;
+  font-weight: 850;
+}
+
+.betting-multi-field {
+  position: relative;
+  display: grid;
+  gap: 7px;
+}
+
+.betting-multi-select {
+  position: relative;
+  z-index: 20;
+}
+
+.betting-multi-select summary {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  color: #fff9ea;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+  list-style: none;
+}
+
+.betting-multi-select summary::-webkit-details-marker {
+  display: none;
+}
+
+.betting-multi-select summary i {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-right: 2px solid #b0d86b;
+  border-bottom: 2px solid #b0d86b;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.betting-multi-select[open] summary {
+  box-shadow: 0 0 0 2px rgba(176, 216, 107, 0.24);
+}
+
+.betting-multi-options {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(31, 42, 35, 0.98);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.35);
+}
+
+.betting-multi-options button {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  color: rgba(255, 249, 234, 0.78);
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  font-weight: 850;
+  text-align: left;
+}
+
+.betting-multi-options button:hover,
+.betting-multi-options button.active {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.betting-multi-options button b {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: #101915;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 12px;
+}
+
+.betting-multi-options button.active b {
+  background: rgba(16, 25, 21, 0.18);
+}
+
+.betting-generate-button {
+  min-height: 42px;
+  color: #101915;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.betting-selected-toolbar {
+  display: grid;
+  width: min(760px, 100%);
+  grid-template-columns: auto minmax(120px, 150px) repeat(2, minmax(120px, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.betting-selected-toolbar > span,
+.betting-stake-control {
+  display: grid;
+  grid-template-rows: 16px 42px;
+  gap: 6px;
+  padding: 0;
+}
+
+.betting-selected-toolbar small,
+.betting-stake-control span {
+  color: rgba(255, 249, 234, 0.55);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.betting-selected-toolbar strong {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #b0d86b;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 18px;
+}
+
+.betting-selected-toolbar > button {
+  align-self: end;
+  min-height: 42px;
+  padding: 0 16px;
+  color: #101915;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.betting-stake-control input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  color: #b0d86b;
+  border: 0;
+  border-radius: 8px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.table-row-action {
+  min-width: 92px;
+  min-height: 36px;
+  padding: 0 14px;
+  color: #101915;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.table-row-action.subtle {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.table-row-action.danger {
+  color: #fff9ea;
+  background: rgba(165, 63, 49, 0.92);
+}
+
+.betting-action-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.betting-action-row button {
+  min-height: 42px;
+  padding: 0 18px;
+  color: #101915;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.betting-action-row button:first-child {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.betting-coupon-table {
+  min-width: 1120px;
+}
+
+.betting-coupon-table td span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 249, 234, 0.54);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.betting-empty-state {
+  min-height: 96px;
+  align-content: center;
+}
+
+.betting-search-modal {
+  width: min(1120px, calc(100vw - 40px));
+}
+
+.betting-confirm-modal {
+  width: min(620px, calc(100vw - 40px));
+}
+
+.betting-confirm-teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.betting-confirm-teams span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.betting-confirm-teams small {
+  color: rgba(255, 249, 234, 0.56);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.betting-confirm-teams strong {
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.betting-segment-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.betting-segment-control button {
+  display: grid;
+  min-height: 92px;
+  gap: 4px;
+  place-items: center;
+  color: rgba(255, 249, 234, 0.72);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.betting-segment-control button.active {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.betting-segment-control button strong {
+  font-size: 15px;
+}
+
+.betting-segment-control button b {
+  font-size: 28px;
+}
+
+.betting-segment-control button small {
+  font-size: 13px;
+  opacity: 0.78;
+}
+
+.betting-manual-search {
+  min-height: 46px;
+  width: 100%;
+  padding: 0 14px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.panel-muted-copy {
+  margin: -8px 0 0;
+  color: rgba(255, 249, 234, 0.66);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.coupon-status {
+  display: inline-grid;
+  min-width: 84px;
+  min-height: 32px;
+  place-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.coupon-status.lost {
+  color: #fff9ea;
+  background: rgba(165, 63, 49, 0.88);
+}
+
+.coupon-status.pending {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .prediction-mini-bar {
   position: relative;
   display: grid;
@@ -4291,6 +4710,11 @@ p {
 .details-top-actions button:first-child {
   color: #fff9ea;
   background: rgba(255, 255, 255, 0.09);
+}
+
+.details-top-actions button.positive-action-button {
+  color: #101915;
+  background: #b0d86b;
 }
 
 .details-top-actions button.active-toggle.on {
