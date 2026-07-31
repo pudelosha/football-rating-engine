@@ -1,5 +1,5 @@
 export type Language = 'en' | 'pl'
-export type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'api' | 'tournaments' | 'predictions' | 'betting' | 'admin' | 'profile' | 'logout' | 'arrow-left' | 'search' | 'trash'
+export type MenuIconName = 'home' | 'dashboard' | 'ratings' | 'teams' | 'matches' | 'api' | 'tournaments' | 'predictions' | 'betting' | 'admin' | 'profile' | 'logout' | 'arrow-left' | 'search' | 'trash'
 export type View =
   | 'landing'
   | 'login'

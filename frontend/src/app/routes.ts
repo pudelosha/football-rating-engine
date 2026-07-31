@@ -39,10 +39,6 @@ export const routes: Record<View, string> = {
 }
 
 export function getViewFromPath(pathname: string): View {
-  if (pathname === routes.dashboard) {
-    return 'home'
-  }
-
   if (pathname === '/admin/tournaments/new' || /^\/admin\/tournaments\/\d+\/edit$/.test(pathname)) {
     return 'admin-tournament-form'
   }
@@ -86,4 +82,3 @@ export function getViewFromPath(pathname: string): View {
   const match = Object.entries(routes).find(([, route]) => route === pathname)
   return (match?.[0] as View | undefined) ?? 'landing'
 }
-

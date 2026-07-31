@@ -2,6 +2,7 @@ import type { MenuIconName } from '../../types'
 
 const paths: Record<MenuIconName, string[]> = {
   home: ['M4 11.2 12 4l8 7.2', 'M6.8 10.2V20h10.4v-9.8', 'M10 20v-5h4v5'],
+  dashboard: ['M4 13h7V4H4Z', 'M13 20h7V4h-7Z', 'M4 20h7v-5H4Z'],
   ratings: ['M5 19V9', 'M12 19V5', 'M19 19v-7', 'M4 19h16'],
   teams: ['M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M3.8 19a4.2 4.2 0 0 1 8.4 0', 'M11.8 19a4.2 4.2 0 0 1 8.4 0'],
   matches: ['M7 3v4', 'M17 3v4', 'M4 8h16', 'M5 5h14v15H5Z', 'M8 12h3', 'M13 12h3', 'M8 16h3'],

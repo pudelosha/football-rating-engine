@@ -20,6 +20,7 @@ import {
 import { ApiPage } from './features/api/pages/ApiPage'
 import { AuthPage, ConfirmEmailPage, EmailActionPage, ResetPasswordPage } from './features/auth/pages/AuthPages'
 import { BettingPanel } from './features/betting/pages/BettingPanel'
+import { DashboardPage } from './features/dashboard/pages/DashboardPage'
 import { HomePage } from './features/home/pages/HomePage'
 import { UserMatchDetailsPanel, UserMatchesPanel } from './features/matches/pages/MatchesPages'
 import { PredictionDetailsPanel, PredictionsPanel, TournamentPredictionsPanel } from './features/predictions/pages/PredictionsPages'
@@ -69,7 +70,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'betting' || view === 'betting-create' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'dashboard' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'betting' || view === 'betting-create' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -266,6 +267,15 @@ function App() {
           t={t}
           user={user}
           onNavigate={navigate}
+        />
+      )}
+
+      {view === 'dashboard' && user && (
+        <DashboardPage
+          language={language}
+          t={t}
+          user={user}
+          onToast={showToast}
         />
       )}
 
@@ -542,6 +552,12 @@ function AppMenu({
             <span className="menu-label">
               <MenuIcon name="home" />
               <span>{t.menuHome}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => onNavigate('dashboard')}>
+            <span className="menu-label">
+              <MenuIcon name="dashboard" />
+              <span>Analytics Board</span>
             </span>
           </button>
           <button type="button" onClick={() => onNavigate('ratings')}>
