@@ -1,12 +1,29 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { authorizedRequest } from '../../../shared/api/httpClient'
-import { FormField } from '../../../shared/components/FormField/FormField'
-import { MenuIcon } from '../../../shared/components/Icons'
 import { FullPageProcessingOverlay } from '../../../shared/components/Spinner'
-import { translations } from '../../../i18n'
-import type { AuthActionResponse, AuthUser, FieldErrors, Language, RotateApiKeyResponse, ToastTone, UserProfile } from '../../../shared/types'
-import { validateEmail, validatePassword } from '../../../shared/utils/validation'
+import type { FieldErrors, Language, UserProfile } from '../../../shared/types'
+import { ApiKeyPanel } from '../components/ApiKeyPanel'
+import { ApiKeyRotationModal } from '../components/ApiKeyRotationModal'
+import { ChangeEmailForm } from '../components/ChangeEmailForm'
+import { ChangePasswordForm } from '../components/ChangePasswordForm'
+import { ProfileDetailsForm } from '../components/ProfileDetailsForm'
+import {
+  fetchProfile,
+  rotateApiKey,
+  updateEmail,
+  updatePassword,
+  updateProfile,
+} from '../services/profileService'
+import {
+  validateEmailChangeForm,
+  validatePasswordChangeForm,
+} from '../model/profileValidation'
+import type {
+  ProfileSessionExpiredHandler,
+  ProfileSubmitTarget,
+  ProfileToastHandler,
+  ProfileTranslation,
+  ProfileUser,
+} from '../types'
 
 export function ProfilePage({
   t,
@@ -15,11 +32,11 @@ export function ProfilePage({
   onSessionExpired,
   onToast,
 }: {
-  t: (typeof translations)[Language]
+  t: ProfileTranslation
   language: Language
-  user: AuthUser
-  onSessionExpired: () => void
-  onToast: (message: string, tone: ToastTone) => void
+  user: ProfileUser
+  onSessionExpired: ProfileSessionExpiredHandler
+  onToast: ProfileToastHandler
 }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [displayName, setDisplayName] = useState(user.displayName ?? '')
@@ -34,20 +51,18 @@ export function ProfilePage({
   const [passwordErrors, setPasswordErrors] = useState<FieldErrors>({})
   const [emailErrors, setEmailErrors] = useState<FieldErrors>({})
   const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState<ProfileSubmitTarget | null>(null)
 
   useEffect(() => {
     let isMounted = true
 
-    authorizedRequest<UserProfile>(user.token, '/api/users/me')
+    fetchProfile(user.token)
       .then((result) => {
         if (!isMounted) {
           return
         }
 
-        if (result.status === 401) {
-          onToast(t.sessionExpired, 'error')
-          onSessionExpired()
+        if (handleUnauthorized(result.status)) {
           return
         }
 
@@ -89,11 +104,9 @@ export function ProfilePage({
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsSubmitting('profile')
+
     try {
-      const result = await authorizedRequest<AuthActionResponse>(user.token, '/api/users/me', {
-        method: 'PUT',
-        body: JSON.stringify({ displayName: displayName.trim() || null, language }),
-      })
+      const result = await updateProfile(user.token, displayName, language)
 
       if (handleUnauthorized(result.status)) {
         return
@@ -115,22 +128,11 @@ export function ProfilePage({
 
   const changePassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nextErrors: FieldErrors = {
-      password: validatePassword(newPassword, t),
-    }
-
-    if (!currentPassword) {
-      nextErrors.currentPassword = t.required
-    } else if (!confirmNewPassword) {
-      nextErrors.confirmPassword = t.required
-    } else if (newPassword !== confirmNewPassword) {
-      nextErrors.confirmPassword = t.passwordMismatch
-    }
-
-    Object.keys(nextErrors).forEach((key) => {
-      if (!nextErrors[key as keyof FieldErrors]) {
-        delete nextErrors[key as keyof FieldErrors]
-      }
+    const nextErrors = validatePasswordChangeForm({
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
+      t,
     })
 
     setPasswordErrors(nextErrors)
@@ -141,10 +143,7 @@ export function ProfilePage({
 
     setIsSubmitting('password')
     try {
-      const result = await authorizedRequest<AuthActionResponse>(user.token, '/api/users/me/change-password', {
-        method: 'POST',
-        body: JSON.stringify({ currentPassword, newPassword, language }),
-      })
+      const result = await updatePassword(user.token, currentPassword, newPassword, language)
 
       if (handleUnauthorized(result.status)) {
         return
@@ -169,19 +168,17 @@ export function ProfilePage({
 
   const changeEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const emailError = validateEmail(newEmail, t)
-    if (emailError || !emailPassword) {
-      setEmailErrors({ email: emailError, password: emailPassword ? undefined : t.required })
+    const nextErrors = validateEmailChangeForm(newEmail, emailPassword, t)
+
+    setEmailErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
       onToast(t.validationFailed, 'error')
       return
     }
 
     setIsSubmitting('email')
     try {
-      const result = await authorizedRequest<AuthActionResponse>(user.token, '/api/users/me/change-email', {
-        method: 'POST',
-        body: JSON.stringify({ newEmail, password: emailPassword, language }),
-      })
+      const result = await updateEmail(user.token, newEmail, emailPassword, language)
 
       if (handleUnauthorized(result.status)) {
         return
@@ -203,13 +200,10 @@ export function ProfilePage({
     }
   }
 
-  const rotateApiKey = async () => {
+  const handleRotateApiKey = async () => {
     setIsSubmitting('apiKey')
     try {
-      const params = new URLSearchParams({ language })
-      const result = await authorizedRequest<RotateApiKeyResponse>(user.token, `/api/users/me/rotate-api-key?${params}`, {
-        method: 'POST',
-      })
+      const result = await rotateApiKey(user.token, language)
 
       if (handleUnauthorized(result.status)) {
         return
@@ -244,106 +238,48 @@ export function ProfilePage({
         )}
 
         <section className="profile-settings-grid">
-          <form className="details-panel profile-form-panel" noValidate onSubmit={saveProfile}>
-            <div className="details-panel-heading">
-              <MenuIcon name="profile" />
-              <h2>{t.profile}</h2>
-            </div>
-            <div className="profile-summary-grid">
-              <ProfileSummaryItem label={t.email} value={profile?.email ?? user.email} />
-              <ProfileSummaryItem label={t.displayName} value={profile?.displayName || '-'} />
-              <ProfileSummaryItem label={t.memberSince} value={profile ? new Date(profile.memberSinceUtc).toLocaleDateString() : '-'} />
-              <ProfileSummaryItem label={t.apiKeyIssued} value={profile ? new Date(profile.apiKeyCreatedAtUtc).toLocaleDateString() : '-'} />
-            </div>
-            <FormField
-              label={t.displayName}
-              type="text"
-              value={displayName}
-              onChange={setDisplayName}
-            />
-            <button className="form-submit" type="submit" disabled={isSubmitting === 'profile'}>
-              {t.saveProfile}
-            </button>
-          </form>
+          <ProfileDetailsForm
+            displayName={displayName}
+            isSubmitting={isSubmitting}
+            profile={profile}
+            t={t}
+            user={user}
+            onDisplayNameChange={setDisplayName}
+            onSubmit={saveProfile}
+          />
 
-          <form className="details-panel profile-form-panel" noValidate onSubmit={changeEmail}>
-            <div className="details-panel-heading">
-              <MenuIcon name="api" />
-              <h2>{t.changeEmailTitle}</h2>
-            </div>
-            <FormField
-              error={emailErrors.email}
-              label={t.newEmail}
-              type="email"
-              value={newEmail}
-              onChange={setNewEmail}
-            />
-            <FormField
-              error={emailErrors.password}
-              label={t.password}
-              type="password"
-              value={emailPassword}
-              onChange={setEmailPassword}
-            />
-            <button className="form-submit" type="submit" disabled={isSubmitting === 'email'}>
-              {t.changeEmail}
-            </button>
-          </form>
+          <ChangeEmailForm
+            emailErrors={emailErrors}
+            emailPassword={emailPassword}
+            isSubmitting={isSubmitting}
+            newEmail={newEmail}
+            t={t}
+            onEmailChange={setNewEmail}
+            onPasswordChange={setEmailPassword}
+            onSubmit={changeEmail}
+          />
 
-          <form className="details-panel profile-form-panel" noValidate onSubmit={changePassword}>
-            <div className="details-panel-heading">
-              <MenuIcon name="admin" />
-              <h2>{t.changePasswordTitle}</h2>
-            </div>
-            <FormField
-              error={passwordErrors.currentPassword}
-              label={t.currentPassword}
-              type="password"
-              value={currentPassword}
-              onChange={setCurrentPassword}
-            />
-            <FormField
-              error={passwordErrors.password}
-              label={t.newPassword}
-              type="password"
-              value={newPassword}
-              onChange={setNewPassword}
-            />
-            <FormField
-              error={passwordErrors.confirmPassword}
-              label={t.confirmNewPassword}
-              type="password"
-              value={confirmNewPassword}
-              onChange={setConfirmNewPassword}
-            />
-            <button className="form-submit" type="submit" disabled={isSubmitting === 'password'}>
-              {t.changePassword}
-            </button>
-          </form>
+          <ChangePasswordForm
+            confirmNewPassword={confirmNewPassword}
+            currentPassword={currentPassword}
+            isSubmitting={isSubmitting}
+            newPassword={newPassword}
+            passwordErrors={passwordErrors}
+            t={t}
+            onConfirmNewPasswordChange={setConfirmNewPassword}
+            onCurrentPasswordChange={setCurrentPassword}
+            onNewPasswordChange={setNewPassword}
+            onSubmit={changePassword}
+          />
 
-          <section className="details-panel profile-form-panel api-key-panel">
-            <div className="details-panel-heading">
-              <MenuIcon name="api" />
-              <h2>{t.rotateApiKeyTitle}</h2>
-            </div>
-            <div className="api-key-purpose">
-              <strong>{t.apiKeyPurposeTitle}</strong>
-              <p>{t.apiKeyPurposeCopy}</p>
-            </div>
-            <div className="api-key-current">
-              <span>{t.currentApiKey}</span>
-              <code>{newApiKey && isApiKeyVisible ? newApiKey : '********************************'}</code>
-              <small>{newApiKey ? t.newApiKey : t.apiKeyHidden}</small>
-            </div>
-            <div className="profile-api-actions">
-              <button className="form-submit secondary" type="button" disabled={!newApiKey} onClick={() => setIsApiKeyVisible((current) => !current)}>
-                {isApiKeyVisible ? t.hideApiKey : t.revealApiKey}
-              </button>
-              <button className="form-submit" type="button" disabled={isSubmitting === 'apiKey'} onClick={() => setIsRotateApiKeyModalOpen(true)}>
-                {t.rotateApiKey}
-              </button>
-            </div>
-          </section>
+          <ApiKeyPanel
+            isApiKeyVisible={isApiKeyVisible}
+            isSubmitting={isSubmitting}
+            newApiKey={newApiKey}
+            t={t}
+            onRevealToggle={() => setIsApiKeyVisible((current) => !current)}
+            onRotateClick={() => setIsRotateApiKeyModalOpen(true)}
+          />
         </section>
 
         {isRotateApiKeyModalOpen && (
@@ -353,77 +289,11 @@ export function ProfilePage({
             onCancel={() => setIsRotateApiKeyModalOpen(false)}
             onConfirm={() => {
               setIsRotateApiKeyModalOpen(false)
-              rotateApiKey()
+              handleRotateApiKey()
             }}
           />
         )}
       </div>
     </section>
-  )
-}
-
-function ProfileSummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="profile-summary-item">
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </span>
-  )
-}
-
-function ApiKeyRotationModal({
-  t,
-  isRotating,
-  onCancel,
-  onConfirm,
-}: {
-  t: (typeof translations)[Language]
-  isRotating: boolean
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isRotating) {
-        onCancel()
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [isRotating, onCancel])
-
-  return createPortal(
-    <div className="modal-backdrop" role="presentation" onMouseDown={() => !isRotating && onCancel()}>
-      <section
-        className="delete-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rotate-api-key-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="delete-modal-icon">
-          <MenuIcon name="api" />
-        </div>
-        <div className="delete-modal-copy">
-          <p className="eyebrow">{t.rotateApiKeyTitle}</p>
-          <h2 id="rotate-api-key-title">{t.rotateApiKeyConfirmTitle}</h2>
-          <p>{t.rotateApiKeyConfirmCopy}</p>
-          <div className="delete-modal-target">
-            <strong>{t.apiKeyPurposeTitle}</strong>
-            <span>{t.apiKeyPurposeCopy}</span>
-          </div>
-        </div>
-        <div className="delete-modal-actions">
-          <button type="button" disabled={isRotating} onClick={onCancel}>
-            {t.cancel}
-          </button>
-          <button className="danger" type="button" disabled={isRotating} onClick={onConfirm}>
-            {isRotating ? '...' : t.rotateApiKeyConfirmAction}
-          </button>
-        </div>
-      </section>
-    </div>,
-    document.body,
   )
 }

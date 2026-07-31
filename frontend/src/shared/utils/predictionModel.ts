@@ -1,5 +1,5 @@
 import type { Translation } from '../../i18n'
-import type { CombinedTeamRating, MatchPrediction, PredictionShape } from '../types'
+import type { BaseEloMatchSnapshot, CombinedTeamRating, HistoricSplitMatch, MatchPrediction, PredictionShape } from '../types'
 
 export const DEFAULT_HOME_ADVANTAGE = 50
 export const CALIBRATED_HOME_ADVANTAGE = 40
@@ -81,6 +81,187 @@ export function calculateCalibratedPrediction(
     awayRating: -calibratedNeutralGap / 2,
     homeAdvantage: calibratedHomeAdvantage,
   })
+}
+
+export function buildPredictionFromSplit(
+  homeWin: number,
+  draw: number,
+  awayWin: number,
+  labels: { home: string; draw: string; away: string },
+  confidence: number,
+): MatchPrediction {
+  const total = homeWin + draw + awayWin
+  const normalizedHome = total > 0 ? homeWin / total : 0
+  const normalizedDraw = total > 0 ? draw / total : 0
+  const normalizedAway = total > 0 ? awayWin / total : 0
+  const outcomes = [
+    { label: labels.home, chance: normalizedHome },
+    { label: labels.draw, chance: normalizedDraw },
+    { label: labels.away, chance: normalizedAway },
+  ].sort((left, right) => right.chance - left.chance)
+
+  return {
+    homeWin: normalizedHome,
+    draw: normalizedDraw,
+    awayWin: normalizedAway,
+    homeFairOdds: normalizedHome > 0 ? 1 / normalizedHome : Number.POSITIVE_INFINITY,
+    drawFairOdds: normalizedDraw > 0 ? 1 / normalizedDraw : Number.POSITIVE_INFINITY,
+    awayFairOdds: normalizedAway > 0 ? 1 / normalizedAway : Number.POSITIVE_INFINITY,
+    ratingGap: 0,
+    confidence,
+    favoriteLabel: outcomes[0]?.label ?? labels.draw,
+    favoriteChance: outcomes[0]?.chance ?? 0,
+  }
+}
+
+export function calculateHistoricHeadToHeadSplit(
+  snapshots: BaseEloMatchSnapshot[],
+  currentHomeTeamId: number,
+  currentAwayTeamId: number,
+  labels: { home: string; draw: string; away: string },
+) {
+  let homeWins = 0
+  let draws = 0
+  let awayWins = 0
+  const sourceMatches: Record<'home' | 'draw' | 'away', HistoricSplitMatch[]> = {
+    home: [],
+    draw: [],
+    away: [],
+  }
+
+  snapshots.forEach((snapshot) => {
+    const sameFixtureOrder = snapshot.homeTeamId === currentHomeTeamId && snapshot.awayTeamId === currentAwayTeamId
+    const switchedFixtureOrder = snapshot.homeTeamId === currentAwayTeamId && snapshot.awayTeamId === currentHomeTeamId
+
+    if (!sameFixtureOrder && !switchedFixtureOrder) {
+      return
+    }
+
+    const sourceMatch = {
+      date: snapshot.kickoffUtc,
+      homeTeamName: snapshot.homeTeamName,
+      awayTeamName: snapshot.awayTeamName,
+      homeScore: snapshot.homeScore,
+      awayScore: snapshot.awayScore,
+    }
+
+    if (snapshot.homeActual === 0.5 || snapshot.awayActual === 0.5) {
+      draws += 1
+      sourceMatches.draw.push(sourceMatch)
+      return
+    }
+
+    if (sameFixtureOrder) {
+      if (snapshot.homeActual > snapshot.awayActual) {
+        homeWins += 1
+        sourceMatches.home.push(sourceMatch)
+      } else {
+        awayWins += 1
+        sourceMatches.away.push(sourceMatch)
+      }
+      return
+    }
+
+    if (snapshot.awayActual > snapshot.homeActual) {
+      homeWins += 1
+      sourceMatches.home.push(sourceMatch)
+    } else {
+      awayWins += 1
+      sourceMatches.away.push(sourceMatch)
+    }
+  })
+
+  const sampleSize = homeWins + draws + awayWins
+
+  if (sampleSize === 0) {
+    return null
+  }
+
+  return {
+    sampleSize,
+    sourceMatches,
+    prediction: buildPredictionFromSplit(
+      homeWins,
+      draws,
+      awayWins,
+      labels,
+      clamp(sampleSize / 10, 0.25, 1),
+    ),
+  }
+}
+
+export function calculateGoalOutputScenario(
+  snapshots: BaseEloMatchSnapshot[],
+  currentHomeTeamId: number,
+  currentAwayTeamId: number,
+  labels: { home: string; draw: string; away: string },
+) {
+  const totals = {
+    homeGoals: 0,
+    homeMatches: 0,
+    awayGoals: 0,
+    awayMatches: 0,
+  }
+
+  snapshots.forEach((snapshot) => {
+    if (snapshot.homeScore === null || snapshot.homeScore === undefined || snapshot.awayScore === null || snapshot.awayScore === undefined) {
+      return
+    }
+
+    if (snapshot.homeTeamId === currentHomeTeamId) {
+      totals.homeGoals += snapshot.homeScore
+      totals.homeMatches += 1
+    } else if (snapshot.awayTeamId === currentHomeTeamId) {
+      totals.homeGoals += snapshot.awayScore
+      totals.homeMatches += 1
+    }
+
+    if (snapshot.homeTeamId === currentAwayTeamId) {
+      totals.awayGoals += snapshot.homeScore
+      totals.awayMatches += 1
+    } else if (snapshot.awayTeamId === currentAwayTeamId) {
+      totals.awayGoals += snapshot.awayScore
+      totals.awayMatches += 1
+    }
+  })
+
+  if (totals.homeMatches === 0 || totals.awayMatches === 0) {
+    return null
+  }
+
+  const homeGoalsPerMatch = totals.homeGoals / totals.homeMatches
+  const awayGoalsPerMatch = totals.awayGoals / totals.awayMatches
+  const totalGoalsPerMatch = homeGoalsPerMatch + awayGoalsPerMatch
+  const drawBase = 0.31
+
+  if (totalGoalsPerMatch <= 0) {
+    return null
+  }
+
+  const goalGap = homeGoalsPerMatch - awayGoalsPerMatch
+  const draw = clamp(drawBase - Math.abs(goalGap) * 0.08, 0.18, 0.33)
+  const homeNoDraw = clamp(homeGoalsPerMatch / totalGoalsPerMatch, 0.12, 0.88)
+  const homeWin = (1 - draw) * homeNoDraw
+  const awayWin = 1 - draw - homeWin
+  const sampleSize = Math.min(totals.homeMatches, totals.awayMatches)
+
+  return {
+    sampleSize,
+    homeSampleSize: totals.homeMatches,
+    awaySampleSize: totals.awayMatches,
+    homeGoalsPerMatch,
+    awayGoalsPerMatch,
+    goalGap,
+    drawBase,
+    adjustedDraw: draw,
+    prediction: buildPredictionFromSplit(
+      homeWin,
+      draw,
+      awayWin,
+      labels,
+      clamp(sampleSize / 30, 0.25, 1),
+    ),
+  }
 }
 
 export function getPredictionShape(prediction: MatchPrediction, t: Translation): PredictionShape {
