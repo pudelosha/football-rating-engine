@@ -20,6 +20,7 @@ import {
 import { ApiPage } from './features/api/pages/ApiPage'
 import { AuthPage, ConfirmEmailPage, EmailActionPage, ResetPasswordPage } from './features/auth/pages/AuthPages'
 import { BettingPanel } from './features/betting/pages/BettingPanel'
+import { HomePage } from './features/home/pages/HomePage'
 import { UserMatchDetailsPanel, UserMatchesPanel } from './features/matches/pages/MatchesPages'
 import { PredictionDetailsPanel, PredictionsPanel, TournamentPredictionsPanel } from './features/predictions/pages/PredictionsPages'
 import { ProfilePage } from './features/profile/pages/ProfilePage'
@@ -182,10 +183,11 @@ function App() {
       )}
 
       {view === 'landing' && user && (
-        <LoggedInDashboard
+        <HomePage
+          language={language}
           t={t}
           user={user}
-          onOpenProfile={() => navigate('profile')}
+          onNavigate={navigate}
         />
       )}
 
@@ -259,10 +261,11 @@ function App() {
       )}
 
       {view === 'home' && user && (
-        <LoggedInDashboard
+        <HomePage
+          language={language}
           t={t}
           user={user}
-          onOpenProfile={() => navigate('profile')}
+          onNavigate={navigate}
         />
       )}
 
@@ -767,57 +770,6 @@ function LandingPage({
         <p>{t.ctaCopy}</p>
       </section>
     </>
-  )
-}
-
-function LoggedInDashboard({
-  t,
-  user,
-  onOpenProfile,
-}: {
-  t: (typeof translations)[Language]
-  user: AuthUser
-  onOpenProfile: () => void
-}) {
-  const displayName = user.displayName || user.email.split('@')[0]
-
-  return (
-    <section className="home-dashboard">
-      <HeroField />
-      <div className="hero-shade" />
-      <div className="home-dashboard-content">
-        <div className="dashboard-hero">
-          <p className="eyebrow">{t.dashboardEyebrow}</p>
-          <h1>{t.dashboardHomeTitle}</h1>
-          <p>{t.dashboardHomeCopy}</p>
-          <div className="dashboard-user-strip">
-            <span>{displayName}</span>
-            <button className="form-submit compact" type="button" onClick={onOpenProfile}>
-              {t.dashboardProfileAction}
-            </button>
-          </div>
-        </div>
-
-        <div className="dashboard-card-grid">
-          {t.dashboardCards.map(([title, value, description]) => (
-            <article className="dashboard-card" key={title}>
-              <span>{value}</span>
-              <h2>{title}</h2>
-              <p>{description}</p>
-            </article>
-          ))}
-        </div>
-
-        <div className="dashboard-signal-panel">
-          <h2>{t.dashboardSignalsTitle}</h2>
-          <div>
-            {t.dashboardSignals.map((signal) => (
-              <span key={signal}>{signal}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
   )
 }
 
