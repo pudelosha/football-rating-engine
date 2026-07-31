@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { BettingCandidate, BettingCandidateSortKey, PredictionOutcomeKey, SortDirection } from '../../../shared/types'
 import { compareText, formatDate, formatOdds, formatPercent, getTeamDisplayName, withBettingSelection } from '../../../shared/utils'
 import type { BettingTranslation } from '../types'
+import { hasCandidateStarted } from '../model/bettingModel'
 import { BettingConfirmModal } from './BettingConfirmModal'
 
 export function BettingCandidateTable({
@@ -112,6 +113,7 @@ export function BettingCandidateTable({
         <tbody>
           {sortedCandidates.map((item) => {
             const isSelected = selectedIds.has(item.match.id)
+            const hasStarted = hasCandidateStarted(item)
             return (
               <tr key={`${item.tournamentId}-${item.match.id}`}>
                 <td>{formatDate(item.match.kickoffUtc, '-')}</td>
@@ -132,9 +134,10 @@ export function BettingCandidateTable({
                   <button
                     type="button"
                     className={isSelected ? 'table-row-action subtle' : 'table-row-action'}
+                    disabled={hasStarted && !isSelected}
                     onClick={() => isSelected ? onRemove(item.match.id) : openConfirm(item)}
                   >
-                    {isSelected ? t.bettingRemoveFromCoupon : t.bettingAddToCoupon}
+                    {isSelected ? t.bettingRemoveFromCoupon : hasStarted ? t.bettingLocked : t.bettingAddToCoupon}
                   </button>
                 </td>
               </tr>

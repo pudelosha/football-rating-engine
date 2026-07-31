@@ -2,6 +2,7 @@ import { MenuIcon } from '../../../shared/components/Icons'
 import type { BettingCandidate } from '../../../shared/types'
 import { formatDate, formatOdds, formatPercent, getTeamDisplayName } from '../../../shared/utils'
 import type { BettingTranslation } from '../types'
+import { hasCandidateStarted } from '../model/bettingModel'
 
 export function SelectedMatchesPanel({
   payout,
@@ -24,6 +25,8 @@ export function SelectedMatchesPanel({
   onRemove: (matchId: number) => void
   onStakeChange: (value: string) => void
 }) {
+  const hasStartedSelection = selectedMatches.some(hasCandidateStarted)
+
   return (
     <section className="details-panel">
       <div className="details-panel-heading spread betting-selected-heading">
@@ -94,7 +97,14 @@ export function SelectedMatchesPanel({
           <span><small>{t.bettingTotalOdds}</small><strong>{formatOdds(totalOdds)}</strong></span>
           <span><small>{t.bettingPotentialPayout}</small><strong>{payout.toFixed(2)}</strong></span>
         </div>
-        <button type="button" className="betting-generate-button" onClick={onCreateCoupon}>{t.bettingSaveCoupon}</button>
+        <button
+          type="button"
+          className="betting-generate-button"
+          disabled={selectedMatches.length === 0 || hasStartedSelection}
+          onClick={onCreateCoupon}
+        >
+          {hasStartedSelection ? t.bettingLocked : t.bettingSaveCoupon}
+        </button>
       </div>
     </section>
   )

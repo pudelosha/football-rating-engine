@@ -14,7 +14,8 @@ namespace FootballResults.Api.Controllers;
 [Route("api/betting/coupons")]
 public sealed class BettingCouponsController(
     AppDbContext dbContext,
-    IUserAccountService userAccountService) : ControllerBase
+    IUserAccountService userAccountService,
+    IBettingSlipSettlementService bettingSlipSettlementService) : ControllerBase
 {
     private const int MaxBetsPerCoupon = 20;
 
@@ -45,7 +46,7 @@ public sealed class BettingCouponsController(
         var changed = false;
         foreach (var coupon in coupons)
         {
-            changed |= RefreshCouponStatus(coupon);
+            changed |= bettingSlipSettlementService.RefreshCouponStatus(coupon);
         }
 
         if (changed)
@@ -54,6 +55,48 @@ public sealed class BettingCouponsController(
         }
 
         return Ok(coupons.Select(ToDto).ToList());
+    }
+
+    [HttpGet("summary")]
+    [ProducesResponseType(typeof(BettingCouponSummaryDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<BettingCouponSummaryDto>> GetSummary(CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var coupons = await dbContext.BettingCoupons
+            .Include(coupon => coupon.Bets)
+            .ThenInclude(bet => bet.Match)
+            .Where(coupon => coupon.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var changed = false;
+        foreach (var coupon in coupons)
+        {
+            changed |= bettingSlipSettlementService.RefreshCouponStatus(coupon);
+        }
+
+        if (changed)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var pendingCount = coupons.Count(coupon => coupon.Status is BettingCouponStatus.Pending or BettingCouponStatus.Locked);
+        var successfulCoupons = coupons.Where(coupon => coupon.Status == BettingCouponStatus.Won).ToList();
+        var unsuccessfulCoupons = coupons.Where(coupon => coupon.Status == BettingCouponStatus.Lost).ToList();
+        var successfulPayout = successfulCoupons.Sum(coupon => coupon.PotentialPayout);
+        var unsuccessfulStake = unsuccessfulCoupons.Sum(coupon => coupon.Stake);
+
+        return Ok(new BettingCouponSummaryDto(
+            pendingCount,
+            successfulCoupons.Count,
+            unsuccessfulCoupons.Count,
+            decimal.Round(successfulPayout, 2),
+            decimal.Round(unsuccessfulStake, 2),
+            decimal.Round(successfulPayout - unsuccessfulStake, 2)));
     }
 
     [HttpPost]
@@ -102,6 +145,21 @@ public sealed class BettingCouponsController(
         }
 
         var now = DateTimeOffset.UtcNow;
+        var startedMatches = matches.Values
+            .Where(match =>
+                match.Status is MatchStatus.Live or MatchStatus.Finished ||
+                (match.KickoffUtc.HasValue && match.KickoffUtc.Value <= now))
+            .Select(match => $"{match.HomeTeam?.Name ?? match.HomeTeamNameSnapshot} vs {match.AwayTeam?.Name ?? match.AwayTeamNameSnapshot}")
+            .ToList();
+
+        if (startedMatches.Count > 0)
+        {
+            return BadRequest(new
+            {
+                message = $"Slip contains matches that already started: {string.Join(", ", startedMatches)}."
+            });
+        }
+
         var totalOdds = request.Bets.Aggregate(1m, (total, bet) => total * Math.Max(1m, bet.FairOdds));
         var coupon = new BettingCoupon
         {
@@ -124,7 +182,7 @@ public sealed class BettingCouponsController(
         };
 
         dbContext.BettingCoupons.Add(coupon);
-        RefreshCouponStatus(coupon, matches);
+        bettingSlipSettlementService.RefreshCouponStatus(coupon, matches, now);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         foreach (var bet in coupon.Bets)
@@ -165,74 +223,6 @@ public sealed class BettingCouponsController(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return NoContent();
-    }
-
-    private static bool RefreshCouponStatus(
-        BettingCoupon coupon,
-        IReadOnlyDictionary<int, Match>? matchesById = null)
-    {
-        if (coupon.Status != BettingCouponStatus.Pending)
-        {
-            return false;
-        }
-
-        var allSettled = true;
-        var hasLost = false;
-        var changed = false;
-        var now = DateTimeOffset.UtcNow;
-
-        foreach (var bet in coupon.Bets)
-        {
-            var match = matchesById?.GetValueOrDefault(bet.MatchId) ?? bet.Match;
-            if (match.Status is MatchStatus.Postponed or MatchStatus.Cancelled)
-            {
-                if (bet.Status != BettingCouponBetStatus.Void)
-                {
-                    bet.Status = BettingCouponBetStatus.Void;
-                    bet.SettledAtUtc = now;
-                    changed = true;
-                }
-
-                continue;
-            }
-
-            if (match.Status != MatchStatus.Finished || !match.HomeScore.HasValue || !match.AwayScore.HasValue)
-            {
-                allSettled = false;
-                continue;
-            }
-
-            var winningSelection = match.HomeScore > match.AwayScore
-                ? BettingCouponSelection.HomeWin
-                : match.HomeScore < match.AwayScore
-                    ? BettingCouponSelection.AwayWin
-                    : BettingCouponSelection.Draw;
-            var newStatus = bet.Selection == winningSelection ? BettingCouponBetStatus.Won : BettingCouponBetStatus.Lost;
-            hasLost |= newStatus == BettingCouponBetStatus.Lost;
-
-            if (bet.Status != newStatus)
-            {
-                bet.Status = newStatus;
-                bet.SettledAtUtc = now;
-                changed = true;
-            }
-        }
-
-        if (!allSettled)
-        {
-            return changed;
-        }
-
-        var couponStatus = hasLost ? BettingCouponStatus.Lost : BettingCouponStatus.Won;
-        if (coupon.Status == couponStatus)
-        {
-            return changed;
-        }
-
-        coupon.Status = couponStatus;
-        coupon.ClosedAtUtc = now;
-        coupon.UpdatedAtUtc = now;
-        return true;
     }
 
     private static BettingCouponDto ToDto(BettingCoupon coupon)

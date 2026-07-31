@@ -41,6 +41,7 @@ public static class ServiceExtensions
         services.AddScoped<IPerformanceRatingService, PerformanceRatingService>();
         services.AddScoped<ISquadQualityService, SquadQualityService>();
         services.AddScoped<ICombinedRatingService, CombinedRatingService>();
+        services.AddScoped<IBettingSlipSettlementService, BettingSlipSettlementService>();
         services.AddScoped<IApiKeyService, ApiKeyService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IAuthService, AuthService>();
@@ -50,6 +51,7 @@ public static class ServiceExtensions
         services.AddHostedService<LiveMatchSyncHostedService>();
         services.AddHostedService<MatchFinalizationHostedService>();
         services.AddHostedService<ResultsReconciliationHostedService>();
+        services.AddHostedService<BettingSlipValidationHostedService>();
 
         return services;
     }

@@ -10,8 +10,8 @@ import { MatchExplorerPanel } from '../components/MatchExplorerPanel'
 import { RatingsSnapshotPanel } from '../components/RatingsSnapshotPanel'
 import { buildHomeDashboardData, getHomeCopy, type HomeTournamentDataset } from '../model/homeModel'
 import {
+  fetchHomeBettingSummary,
   fetchHomeCombinedRatings,
-  fetchHomeCoupons,
   fetchHomeTournamentMatches,
   fetchHomeTournaments,
 } from '../services/homeService'
@@ -32,7 +32,7 @@ export function HomePage({
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: '2-digit', month: 'short' })
   const copy = useMemo(() => getHomeCopy(language), [language])
   const emptyDashboardData = useMemo(
-    () => buildHomeDashboardData({ copy, coupons: [], datasets: [], t }),
+    () => buildHomeDashboardData({ copy, datasets: [], t }),
     [copy, t],
   )
   const [dashboardData, setDashboardData] = useState<HomeDashboardData | null>(null)
@@ -42,9 +42,9 @@ export function HomePage({
     setIsLoading(true)
 
     try {
-      const [tournamentsResult, couponsResult] = await Promise.all([
+      const [tournamentsResult, bettingSummaryResult] = await Promise.all([
         fetchHomeTournaments(user.token),
-        fetchHomeCoupons(user.token),
+        fetchHomeBettingSummary(user.token),
       ])
 
       const tournaments = tournamentsResult.ok && tournamentsResult.data
@@ -68,7 +68,7 @@ export function HomePage({
 
       setDashboardData(buildHomeDashboardData({
         copy,
-        coupons: couponsResult.ok && couponsResult.data ? couponsResult.data : [],
+        bettingSummary: bettingSummaryResult.ok && bettingSummaryResult.data ? bettingSummaryResult.data : undefined,
         datasets,
         t,
       }))

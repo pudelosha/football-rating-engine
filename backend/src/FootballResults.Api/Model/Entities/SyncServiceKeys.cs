@@ -6,4 +6,5 @@ public static class SyncServiceKeys
     public const string Live = "live-results";
     public const string Finalize = "match-finalizer";
     public const string Results = "results-safety-net";
+    public const string SlipValidator = "slip-validator";
 }

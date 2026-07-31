@@ -29,6 +29,9 @@ export function normalizeCouponStatus(status: BettingCouponStatus) {
   if (value === '2' || value === 'lost') {
     return 'lost'
   }
+  if (value === '3' || value === 'locked') {
+    return 'locked'
+  }
   return 'pending'
 }
 
@@ -40,14 +43,32 @@ export function formatCouponStatus(status: BettingCouponStatus, t: BettingTransl
   if (normalized === 'lost') {
     return t.bettingLost
   }
+  if (normalized === 'locked') {
+    return t.bettingLocked
+  }
   return t.bettingPending
 }
 
 export function getCouponGroups(coupons: BettingCoupon[]) {
   return {
-    pendingCoupons: coupons.filter((coupon) => normalizeCouponStatus(coupon.status) === 'pending'),
-    closedCoupons: coupons.filter((coupon) => normalizeCouponStatus(coupon.status) !== 'pending'),
+    pendingCoupons: coupons.filter((coupon) => {
+      const status = normalizeCouponStatus(coupon.status)
+      return status === 'pending' || status === 'locked'
+    }),
+    closedCoupons: coupons.filter((coupon) => {
+      const status = normalizeCouponStatus(coupon.status)
+      return status !== 'pending' && status !== 'locked'
+    }),
   }
+}
+
+export function hasCandidateStarted(candidate: BettingCandidate) {
+  const status = String(candidate.match.status).toLowerCase()
+  return status === '2' ||
+    status === '3' ||
+    status === 'live' ||
+    status === 'finished' ||
+    Boolean(candidate.match.kickoffUtc && new Date(candidate.match.kickoffUtc).getTime() <= Date.now())
 }
 
 export function getBettingFilterOptions(t: BettingTranslation) {
@@ -132,6 +153,7 @@ export function filterProposalCandidates({
   startDate: Date
 }) {
   return candidates
+    .filter((candidate) => !hasCandidateStarted(candidate))
     .filter((candidate) => {
       if (!candidate.match.kickoffUtc) {
         return false
@@ -157,6 +179,7 @@ export function filterManualSearchCandidates(candidates: BettingCandidate[], sea
   }
 
   return candidates
+    .filter((candidate) => !hasCandidateStarted(candidate))
     .filter((candidate) => [
       candidate.tournamentName,
       candidate.tournamentSeason,

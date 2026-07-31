@@ -1,5 +1,5 @@
 import type {
-  BettingCoupon,
+  BettingCouponSummary,
   CombinedRatingsResponse,
   CombinedTeamRating,
   Language,
@@ -18,9 +18,9 @@ export function getHomeCopy(language: Language): HomeCopy {
       readyCopy: 'Przykladowe wskazniki ponizej pokazuja glowne obszary produktu; live widgety mozna pozniej podpiac w ten uklad.',
       actions: ['Zobacz ratingi', 'Sprawdz predykcje', 'Utworz kupon'],
       pulse: [
-        ['Nadchodzace mecze', 'Spotkania oczekujace na start w sledzonych turniejach.'],
-        ['Sygnaly predykcji', 'Przyszle mecze z mierzalnym wskazaniem modelu.'],
-        ['Swieze warstwy ratingu', 'Base Elo, forma, performance i kadra jako osobne warstwy.'],
+        ['Nadchodzace mecze', 'Spotkania oczekujace na start w najblizszych 48 godzinach.'],
+        ['Sygnaly predykcji', 'Przyszle mecze z mierzalnym wskazaniem modelu w najblizszych 7 dniach.'],
+        ['Swieze warstwy ratingu', 'Dostepne warstwy modelu: Base Elo, forma, performance i kadra.'],
         ['Wirtualne kupony', 'Oczekujace kupony symulacyjne do mierzenia ryzyka i zachowania modelu.'],
       ],
       featuredPredictions: 'Wyroznione predykcje',
@@ -39,8 +39,9 @@ export function getHomeCopy(language: Language): HomeCopy {
       openBetting: 'Otworz betting lab',
       betting: [
         ['Oczekujace', 'Kupony czekajace na koncowe wyniki.'],
-        ['Zamkniete', 'Rozliczone kupony oznaczone jako trafione lub nietrafione.'],
-        ['Przykladowy mnoznik', 'Pokazuje jak szybko rosnie ryzyko przy wielu meczach.'],
+        ['Trafione', 'Kupony zakonczone pelnym sukcesem.'],
+        ['Nietrafione', 'Kupony przegrane przez co najmniej jeden nietrafiony typ.'],
+        ['Bilans', 'Wyplaty z trafionych kuponow minus stawki stracone na nietrafionych.'],
       ],
     }
   }
@@ -49,12 +50,12 @@ export function getHomeCopy(language: Language): HomeCopy {
     copy: 'Start from ratings, predictions, match data, or the virtual betting lab. This dashboard gives you a fast read on what the model can do next.',
     ready: 'Workspace ready',
     readyCopy: 'Sample indicators below show the main product areas; live widgets can plug into this layout later.',
-    actions: ['View ratings', 'Check predictions', 'Create coupon'],
+    actions: ['View ratings', 'Check predictions', 'Create slip'],
     pulse: [
-      ['Upcoming matches', 'Fixtures waiting for kickoff across tracked tournaments.'],
-      ['Prediction signals', 'Future matches with a measurable model lean.'],
-      ['Fresh rating layers', 'Base Elo, form, performance, and squad snapshots prepared separately.'],
-      ['Virtual coupons', 'Pending simulated slips used to measure risk and model behavior.'],
+      ['Upcoming matches', 'Fixtures waiting for kickoff in the next 48 hours.'],
+      ['Prediction signals', 'Future matches with a measurable model lean in the next 7 days.'],
+      ['Fresh rating layers', 'Available model layers: Base Elo, form, performance, and squad.'],
+      ['Virtual slips', 'Pending simulated slips used to measure risk and model behavior.'],
     ],
     featuredPredictions: 'Featured predictions',
     openPredictions: 'Open predictions',
@@ -68,12 +69,13 @@ export function getHomeCopy(language: Language): HomeCopy {
       ['Live', 'Follow games when live sync is active.'],
     ],
     bettingLab: 'Betting lab',
-    bettingCopy: 'Create virtual coupons to understand accumulator risk. The point is analysis and feedback, not promotion.',
+    bettingCopy: 'Create virtual slips to understand accumulator risk. The point is analysis and feedback, not promotion.',
     openBetting: 'Open betting lab',
     betting: [
-      ['Pending', 'Coupons waiting for final results.'],
-      ['Closed', 'Finished coupons marked as won or lost.'],
-      ['Sample multiplier', 'Shows how quickly multi-match risk compounds.'],
+      ['Pending', 'Slips waiting for final results.'],
+      ['Successful', 'Slips settled with every selected outcome matched.'],
+      ['Unsuccessful', 'Slips lost because at least one selection missed.'],
+      ['Net result', 'Winning payouts minus base stakes lost on unsuccessful slips.'],
     ],
   }
 }
@@ -121,6 +123,16 @@ function isUpcomingMatch(match: MatchSummary) {
   return String(match.status) === '1' || String(match.status) === 'Upcoming' || String(match.syncState) === '1' || String(match.syncState) === 'Scheduled'
 }
 
+function isWithinHours(match: MatchSummary, hours: number) {
+  if (!match.kickoffUtc) {
+    return false
+  }
+
+  const kickoffTime = new Date(match.kickoffUtc).getTime()
+  const now = Date.now()
+  return kickoffTime >= now && kickoffTime <= now + hours * 60 * 60 * 1000
+}
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value)
 }
@@ -135,19 +147,6 @@ function formatAdjustment(value: number) {
 
 function getRatingByTeamId(ratings?: CombinedRatingsResponse) {
   return Object.fromEntries((ratings?.teams ?? []).map((team) => [team.teamId, team]))
-}
-
-function getCouponStatus(coupon: BettingCoupon) {
-  const value = String(coupon.status).toLowerCase()
-  if (value === '1' || value === 'won') {
-    return 'won'
-  }
-
-  if (value === '2' || value === 'lost') {
-    return 'lost'
-  }
-
-  return 'pending'
 }
 
 function getOutcomeChance(team: CombinedTeamRating, key: 'base' | 'form' | 'squad' | 'final') {
@@ -166,25 +165,42 @@ function getOutcomeChance(team: CombinedTeamRating, key: 'base' | 'form' | 'squa
   return team.finalRating
 }
 
+function countAvailableRatingLayers(datasets: HomeTournamentDataset[]) {
+  const teams = datasets.flatMap((dataset) => dataset.ratings?.teams ?? [])
+
+  if (teams.length === 0) {
+    return 0
+  }
+
+  const layers = [
+    teams.some((team) => Number.isFinite(team.baseElo)),
+    teams.some((team) => team.hasFormRating),
+    teams.some((team) => team.hasPerformanceRating),
+    teams.some((team) => team.hasSquadQualityRating),
+  ]
+
+  return layers.filter(Boolean).length
+}
+
 export function buildHomeDashboardData({
   copy,
-  coupons,
+  bettingSummary,
   datasets,
   t,
 }: {
   copy: HomeCopy
-  coupons: BettingCoupon[]
+  bettingSummary?: BettingCouponSummary
   datasets: HomeTournamentDataset[]
   t: HomeTranslation
 }): HomeDashboardData {
   const matches = datasets.flatMap((dataset) => dataset.matches.map((match) => ({ match, tournament: dataset.tournament, ratings: dataset.ratings })))
   const upcomingMatches = matches.filter(({ match }) => isUpcomingMatch(match))
+  const upcomingMatchesIn48Hours = upcomingMatches.filter(({ match }) => isWithinHours(match, 48))
+  const predictionWindowMatches = upcomingMatches.filter(({ match }) => isWithinHours(match, 24 * 7))
   const liveMatches = matches.filter(({ match }) => isLiveMatch(match))
   const finishedMatches = matches.filter(({ match }) => isFinishedMatch(match))
-  const pendingCoupons = coupons.filter((coupon) => getCouponStatus(coupon) === 'pending')
-  const closedCoupons = coupons.filter((coupon) => getCouponStatus(coupon) !== 'pending')
   const predictionLabels = { home: t.homeWin, draw: t.draw, away: t.awayWin }
-  const predictionRows = matches
+  const predictionRows = predictionWindowMatches
     .filter(({ match }) => isPredictableMatch(match) && match.homeTeam && match.awayTeam)
     .map(({ match, tournament, ratings }) => {
       const ratingsByTeamId = getRatingByTeamId(ratings)
@@ -224,7 +240,7 @@ export function buildHomeDashboardData({
   const ratingsSnapshot: RatingsSnapshotRow[] = datasets
     .flatMap((dataset) => (dataset.ratings?.teams ?? []).map((team) => ({ team, tournament: dataset.tournament })))
     .sort((left, right) => right.team.finalRating - left.team.finalRating)
-    .slice(0, 4)
+    .slice(0, 5)
     .map(({ team, tournament }) => ({
       team: team.teamName,
       tournament: tournament.name,
@@ -234,16 +250,19 @@ export function buildHomeDashboardData({
       final: formatRating(getOutcomeChance(team, 'final')),
     }))
 
-  const topPendingCoupon = [...pendingCoupons].sort((left, right) => right.totalOdds - left.totalOdds)[0]
   const predictionOpportunityCount = predictionRows.length
-  const ratedTournamentCount = datasets.filter((dataset) => dataset.ratings?.teams.length).length
+  const availableRatingLayerCount = countAvailableRatingLayers(datasets)
+  const pendingCouponCount = bettingSummary?.pendingCount ?? 0
+  const successfulCouponCount = bettingSummary?.successfulCount ?? 0
+  const unsuccessfulCouponCount = bettingSummary?.unsuccessfulCount ?? 0
+  const netResult = bettingSummary?.netResult ?? 0
 
   return {
     pulseCards: [
-      { icon: 'matches', value: formatNumber(upcomingMatches.length), label: copy.pulse[0][0], detail: copy.pulse[0][1] },
+      { icon: 'matches', value: formatNumber(upcomingMatchesIn48Hours.length), label: copy.pulse[0][0], detail: copy.pulse[0][1] },
       { icon: 'predictions', value: formatNumber(predictionOpportunityCount), label: copy.pulse[1][0], detail: copy.pulse[1][1] },
-      { icon: 'ratings', value: formatNumber(ratedTournamentCount), label: copy.pulse[2][0], detail: copy.pulse[2][1] },
-      { icon: 'betting', value: formatNumber(pendingCoupons.length), label: copy.pulse[3][0], detail: copy.pulse[3][1] },
+      { icon: 'ratings', value: formatNumber(availableRatingLayerCount), label: copy.pulse[2][0], detail: copy.pulse[2][1] },
+      { icon: 'betting', value: formatNumber(pendingCouponCount), label: copy.pulse[3][0], detail: copy.pulse[3][1] },
     ],
     featuredPredictions: predictionRows.slice(0, 3).map(({ sortChance, sortKickoff, ...row }) => row),
     ratingsSnapshot,
@@ -253,9 +272,10 @@ export function buildHomeDashboardData({
       { label: copy.explorer[2][0], value: formatNumber(liveMatches.length), copy: copy.explorer[2][1] },
     ],
     bettingItems: [
-      { label: copy.betting[0][0], value: formatNumber(pendingCoupons.length), copy: copy.betting[0][1] },
-      { label: copy.betting[1][0], value: formatNumber(closedCoupons.length), copy: copy.betting[1][1] },
-      { label: copy.betting[2][0], value: topPendingCoupon ? `x${formatOdds(topPendingCoupon.totalOdds)}` : 'x0.00', copy: copy.betting[2][1] },
+      { label: copy.betting[0][0], value: formatNumber(pendingCouponCount), copy: copy.betting[0][1] },
+      { label: copy.betting[1][0], value: formatNumber(successfulCouponCount), copy: copy.betting[1][1] },
+      { label: copy.betting[2][0], value: formatNumber(unsuccessfulCouponCount), copy: copy.betting[2][1] },
+      { label: copy.betting[3][0], value: netResult.toFixed(2), copy: copy.betting[3][1] },
     ],
   }
 }

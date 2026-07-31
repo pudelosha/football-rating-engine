@@ -19,6 +19,7 @@ import {
   filterProposalCandidates,
   getBettingFilterOptions,
   getCouponGroups,
+  hasCandidateStarted,
   toCouponPayload,
 } from '../model/bettingModel'
 import {
@@ -140,6 +141,10 @@ export function BettingPanel({
   }
 
   const addToCoupon = (candidate: BettingCandidate) => {
+    if (hasCandidateStarted(candidate)) {
+      return
+    }
+
     setSelectedMatches((current) => current.some((item) => item.match.id === candidate.match.id) || current.length >= 20
       ? current
       : [...current, candidate])
@@ -152,6 +157,11 @@ export function BettingPanel({
   const createCoupon = async () => {
     if (selectedMatches.length === 0) {
       onToast(t.validationFailed, 'error')
+      return
+    }
+
+    if (selectedMatches.some(hasCandidateStarted)) {
+      onToast(t.bettingCouponCreateFailed, 'error')
       return
     }
 

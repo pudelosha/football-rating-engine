@@ -1233,6 +1233,10 @@ p {
   max-width: 820px;
 }
 
+.modern-home-hero .eyebrow {
+  color: #b0d86b;
+}
+
 .home-command-card {
   display: grid;
   gap: 8px;
@@ -1440,7 +1444,7 @@ p {
 }
 
 .home-betting-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .admin-dashboard {
@@ -3235,6 +3239,11 @@ p {
 .coupon-status.pending {
   color: #fff9ea;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.coupon-status.locked {
+  color: #101915;
+  background: rgba(224, 201, 105, 0.86);
 }
 
 .coupon-delete-button {

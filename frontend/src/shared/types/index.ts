@@ -610,7 +610,7 @@ export type BettingCandidate = {
   fairOdds: number
 }
 
-export type BettingCouponStatus = 'Pending' | 'Won' | 'Lost' | number
+export type BettingCouponStatus = 'Pending' | 'Won' | 'Lost' | 'Locked' | number
 export type BettingCouponSelection = 'HomeWin' | 'Draw' | 'AwayWin' | number
 export type BettingCouponBetStatus = 'Pending' | 'Won' | 'Lost' | 'Void' | number
 
@@ -646,6 +646,15 @@ export type BettingCoupon = {
   updatedAtUtc: string
   closedAtUtc?: string | null
   bets: BettingCouponBet[]
+}
+
+export type BettingCouponSummary = {
+  pendingCount: number
+  successfulCount: number
+  unsuccessfulCount: number
+  successfulPayout: number
+  unsuccessfulStake: number
+  netResult: number
 }
 
 export type HistoricSplitMatch = {
@@ -684,4 +693,3 @@ export type UserTeamDirectoryRow = {
   latestRatingContext?: UserTeamContext
   lastSyncedAtUtc?: string | null
 }
-

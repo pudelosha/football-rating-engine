@@ -25,6 +25,14 @@ public sealed record BettingCouponDto(
     DateTimeOffset? ClosedAtUtc,
     IReadOnlyList<BettingCouponBetDto> Bets);
 
+public sealed record BettingCouponSummaryDto(
+    int PendingCount,
+    int SuccessfulCount,
+    int UnsuccessfulCount,
+    decimal SuccessfulPayout,
+    decimal UnsuccessfulStake,
+    decimal NetResult);
+
 public sealed record BettingCouponBetDto(
     int Id,
     int MatchId,

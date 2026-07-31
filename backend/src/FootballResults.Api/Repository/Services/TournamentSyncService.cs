@@ -10,6 +10,7 @@ namespace FootballResults.Api.Repository.Services;
 public sealed class TournamentSyncService(
     AppDbContext dbContext,
     ILiveScoreClient liveScoreClient,
+    IBettingSlipSettlementService bettingSlipSettlementService,
     IOptions<TournamentSyncOptions> options) : ITournamentSyncService
 {
     public async Task<SyncTournamentResponse> SyncAsync(
@@ -65,6 +66,10 @@ public sealed class TournamentSyncService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (mode is TournamentSyncMode.Live or TournamentSyncMode.Finalize or TournamentSyncMode.Results)
+        {
+            await bettingSlipSettlementService.ValidatePendingAndLockedSlipsAsync(cancellationToken);
+        }
 
         return new SyncTournamentResponse(
             syncRun.Id,
@@ -154,6 +159,7 @@ public sealed class TournamentSyncService(
         var liveConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Live, syncOptions.EnableLiveSync, syncOptions.LiveIntervalSeconds);
         var finalizeConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Finalize, syncOptions.EnableFinalizeSync, syncOptions.FinalizeIntervalSeconds);
         var resultsConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Results, syncOptions.EnableResultsSync, syncOptions.ResultsIntervalSeconds);
+        var slipValidatorConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.SlipValidator, syncOptions.EnableSlipValidation, syncOptions.SlipValidationIntervalSeconds);
 
         var syncRuns = await dbContext.TournamentSyncRuns
             .Where(syncRun => syncRun.StartedAtUtc >= since)
@@ -185,6 +191,7 @@ public sealed class TournamentSyncService(
 
         var liveEligibleCount = await CountLiveEligibleTournamentsAsync(syncOptions, cancellationToken);
         var finalizeEligibleCount = await CountFinalizeEligibleTournamentsAsync(syncOptions, cancellationToken);
+        var slipEligibleCount = await CountSlipValidationEligibleAsync(cancellationToken);
 
         return
         [
@@ -253,7 +260,23 @@ public sealed class TournamentSyncService(
                 latestSuccessByMode,
                 latestFailureByMode,
                 syncRuns,
-                now)
+                now),
+            new SyncServiceHealthDto(
+                SyncServiceKeys.SlipValidator,
+                "Betting slip validator",
+                null,
+                slipValidatorConfig.IsEnabled,
+                slipValidatorConfig.IsEnabled ? "Healthy" : "Disabled",
+                slipValidatorConfig.IntervalMinutes,
+                null,
+                null,
+                null,
+                string.Empty,
+                activeTournamentCount,
+                slipEligibleCount,
+                0,
+                0,
+                "Locks slips after first kickoff and settles them as won or lost when all selected matches are final.")
         ];
     }
 
@@ -418,7 +441,11 @@ public sealed class TournamentSyncService(
 
     private static bool IsConfigurableService(string serviceKey)
     {
-        return serviceKey is SyncServiceKeys.Schedule or SyncServiceKeys.Live or SyncServiceKeys.Finalize or SyncServiceKeys.Results;
+        return serviceKey is SyncServiceKeys.Schedule
+            or SyncServiceKeys.Live
+            or SyncServiceKeys.Finalize
+            or SyncServiceKeys.Results
+            or SyncServiceKeys.SlipValidator;
     }
 
     private sealed record EffectiveSyncServiceConfiguration(bool IsEnabled, int IntervalMinutes);
@@ -462,6 +489,12 @@ public sealed class TournamentSyncService(
                     (!match.RegularTimeHomeScore.HasValue ||
                         !match.RegularTimeAwayScore.HasValue ||
                         match.Statistics == null))), cancellationToken);
+    }
+
+    private Task<int> CountSlipValidationEligibleAsync(CancellationToken cancellationToken)
+    {
+        return dbContext.BettingCoupons
+            .CountAsync(coupon => coupon.Status == BettingCouponStatus.Pending || coupon.Status == BettingCouponStatus.Locked, cancellationToken);
     }
 
     private async Task<IReadOnlyList<LiveScoreFixtureRow>> FetchRowsForModeAsync(

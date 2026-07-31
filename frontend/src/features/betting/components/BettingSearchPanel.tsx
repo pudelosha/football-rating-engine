@@ -40,11 +40,25 @@ export function BettingSearchPanel({
       <div className="betting-form-grid">
         <label>
           <span>{t.bettingWindowStart}</span>
-          <input type="datetime-local" value={startDate} onChange={(event) => onStartDateChange(event.target.value)} />
+          <input
+            type="datetime-local"
+            value={startDate}
+            onChange={(event) => {
+              onStartDateChange(event.target.value)
+              event.currentTarget.blur()
+            }}
+          />
         </label>
         <label>
           <span>{t.bettingWindowEnd}</span>
-          <input type="datetime-local" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} />
+          <input
+            type="datetime-local"
+            value={endDate}
+            onChange={(event) => {
+              onEndDateChange(event.target.value)
+              event.currentTarget.blur()
+            }}
+          />
         </label>
         <BettingMultiSelect
           label={t.bettingLeanLevel}
