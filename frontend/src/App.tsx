@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
 type Language = 'en' | 'pl'
-type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'api' | 'tournaments' | 'predictions' | 'betting' | 'admin' | 'profile' | 'logout' | 'arrow-left'
+type MenuIconName = 'home' | 'ratings' | 'teams' | 'matches' | 'api' | 'tournaments' | 'predictions' | 'betting' | 'admin' | 'profile' | 'logout' | 'arrow-left' | 'search' | 'trash'
 type View =
   | 'landing'
   | 'login'
@@ -852,6 +852,9 @@ const translations = {
     bettingNoClosedCoupons: 'No closed virtual coupons yet.',
     bettingCouponId: 'Coupon',
     bettingBets: 'Bets',
+    bettingBetCount: 'Bet count',
+    bettingSearchCoupons: 'Search coupons',
+    bettingSearchCouponsPlaceholder: 'Search by team, tournament, or coupon',
     bettingCreated: 'Created',
     bettingResult: 'Result',
     bettingWon: 'Won',
@@ -873,12 +876,15 @@ const translations = {
     bettingManualSearchTitle: 'Search matches',
     bettingManualSearchCopy: 'Search by team, tournament, round, or date. The closest matching fixtures are listed first.',
     bettingManualSearchPlaceholder: 'Search team or tournament',
+    bettingManualSearchLimitNote: 'Enter a search phrase to list up to 10 closest matching games.',
     bettingAddToCoupon: 'Add',
     bettingConfirmBet: 'Confirm bet',
     bettingRemoveFromCoupon: 'Remove',
     bettingSaveCoupon: 'Create coupon',
     bettingCouponCreated: 'Virtual coupon created.',
     bettingCouponCreateFailed: 'Could not create virtual coupon.',
+    bettingCouponDeleted: 'Virtual coupon deleted.',
+    bettingCouponDeleteFailed: 'Could not delete virtual coupon.',
     bettingNoSelectedMatches: 'No matches selected yet.',
     bettingNoCoupon: 'No matches found for these filters. Try a wider date range or softer lean settings.',
     bettingTotalOdds: 'Total multiplier',
@@ -1723,6 +1729,9 @@ const translations = {
     bettingNoClosedCoupons: 'Nie masz jeszcze zamkniętych wirtualnych kuponów.',
     bettingCouponId: 'Kupon',
     bettingBets: 'Zakłady',
+    bettingBetCount: 'Liczba zakładów',
+    bettingSearchCoupons: 'Szukaj kuponów',
+    bettingSearchCouponsPlaceholder: 'Szukaj po drużynie, turnieju lub kuponie',
     bettingCreated: 'Utworzono',
     bettingResult: 'Wynik',
     bettingWon: 'Trafiony',
@@ -1744,12 +1753,15 @@ const translations = {
     bettingManualSearchTitle: 'Wyszukaj mecze',
     bettingManualSearchCopy: 'Szukaj po drużynie, turnieju, rundzie lub dacie. Najbliższe pasujące mecze są na górze.',
     bettingManualSearchPlaceholder: 'Szukaj drużyny lub turnieju',
+    bettingManualSearchLimitNote: 'Wpisz frazę, aby wyświetlić maksymalnie 10 najbliższych pasujących meczów.',
     bettingAddToCoupon: 'Dodaj',
     bettingConfirmBet: 'Potwierdź zakład',
     bettingRemoveFromCoupon: 'Usuń',
     bettingSaveCoupon: 'Utwórz kupon',
     bettingCouponCreated: 'Wirtualny kupon utworzony.',
     bettingCouponCreateFailed: 'Nie udało się utworzyć wirtualnego kuponu.',
+    bettingCouponDeleted: 'Wirtualny kupon usunięty.',
+    bettingCouponDeleteFailed: 'Nie udało się usunąć wirtualnego kuponu.',
     bettingNoSelectedMatches: 'Nie wybrano jeszcze żadnych meczów.',
     bettingNoCoupon: 'Nie znaleziono meczów dla tych filtrów. Spróbuj szerszego zakresu dat lub niższej siły wskazania.',
     bettingTotalOdds: 'Łączny mnożnik',
@@ -3848,6 +3860,8 @@ function MenuIcon({ name }: { name: MenuIconName }) {
     profile: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M4.5 20a7.5 7.5 0 0 1 15 0'],
     logout: ['M10 5H5v14h5', 'M14 8l4 4-4 4', 'M8 12h10'],
     'arrow-left': ['M19 12H5', 'M12 5l-7 7 7 7'],
+    search: ['M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Z', 'M16 16l5 5'],
+    trash: ['M4 7h16', 'M10 11v6', 'M14 11v6', 'M6 7l1 14h10l1-14', 'M9 7V4h6v3'],
   }
 
   return (
@@ -5495,7 +5509,7 @@ function UserTeamsPanel({
         )}
 
         <section className="details-panel team-directory-panel">
-          <div className="details-panel-heading spread">
+          <div className="details-panel-heading spread betting-selected-heading">
             <div>
               <MenuIcon name="teams" />
               <h2>{t.menuTeams}</h2>
@@ -5858,7 +5872,7 @@ function UserTeamDetailsPanel({
         </section>
 
         <section className="details-panel">
-          <div className="details-panel-heading spread">
+          <div className="details-panel-heading spread betting-selected-heading">
             <div>
               <MenuIcon name="matches" />
               <h2>{t.teamMatchHistory}</h2>
@@ -7173,6 +7187,27 @@ function BettingPanel({
     }
   }
 
+  const deleteCoupon = async (couponId: number) => {
+    setIsLoading(true)
+    try {
+      const result = await authorizedRequest(user.token, `/api/betting/coupons/${couponId}`, {
+        method: 'DELETE',
+      })
+
+      if (!result.ok) {
+        onToast(result.message || t.bettingCouponDeleteFailed, 'error')
+        return
+      }
+
+      setCoupons((current) => current.filter((coupon) => coupon.id !== couponId))
+      onToast(t.bettingCouponDeleted, 'success')
+    } catch {
+      onToast(t.bettingCouponDeleteFailed, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const openManualSearch = async () => {
     setIsManualSearchOpen(true)
     if (allCandidates.length > 0) {
@@ -7194,11 +7229,11 @@ function BettingPanel({
   const payout = totalOdds * stakeValue
   const pendingCoupons = coupons.filter((coupon) => normalizeCouponStatus(coupon.status) === 'pending')
   const closedCoupons = coupons.filter((coupon) => normalizeCouponStatus(coupon.status) !== 'pending')
+  const normalizedManualSearch = manualSearch.trim().toLowerCase()
   const manualSearchRows = allCandidates
     .filter((candidate) => {
-      const query = manualSearch.trim().toLowerCase()
-      if (!query) {
-        return true
+      if (!normalizedManualSearch) {
+        return false
       }
 
       return [
@@ -7208,7 +7243,7 @@ function BettingPanel({
         getTeamDisplayName(candidate.match, 'home'),
         getTeamDisplayName(candidate.match, 'away'),
         formatDate(candidate.match.kickoffUtc, ''),
-      ].some((value) => (value ?? '').toLowerCase().includes(query))
+      ].some((value) => (value ?? '').toLowerCase().includes(normalizedManualSearch))
     })
     .sort((left, right) => new Date(left.match.kickoffUtc || 0).getTime() - new Date(right.match.kickoffUtc || 0).getTime())
     .slice(0, 10)
@@ -7249,7 +7284,14 @@ function BettingPanel({
                 {t.bettingCreateCoupon}
               </button>
             </div>
-            <BettingCouponTable t={t} title={t.bettingPendingCoupons} coupons={pendingCoupons} emptyText={t.bettingNoPendingCoupons} />
+            <BettingCouponTable
+              t={t}
+              title={t.bettingPendingCoupons}
+              coupons={pendingCoupons}
+              emptyText={t.bettingNoPendingCoupons}
+              filterable
+              onDelete={deleteCoupon}
+            />
             <BettingCouponTable t={t} title={t.bettingClosedCoupons} coupons={closedCoupons} emptyText={t.bettingNoClosedCoupons} />
           </>
         ) : (
@@ -7313,19 +7355,16 @@ function BettingPanel({
         </section>
 
         <section className="details-panel">
-          <div className="details-panel-heading spread">
+          <div className="details-panel-heading spread betting-selected-heading">
             <div>
               <MenuIcon name="predictions" />
               <h2>{t.bettingSelectedMatches}</h2>
             </div>
             <div className="betting-selected-toolbar">
-              <button type="button" onClick={openManualSearch}>{t.bettingSearchManual}</button>
-              <label className="betting-stake-control">
-                <span>{t.bettingStake}</span>
-                <input type="number" min="0" step="0.01" value={stake} onChange={(event) => setStake(event.target.value)} />
-              </label>
-              <span><small>{t.bettingTotalOdds}</small><strong>{formatOdds(totalOdds)}</strong></span>
-              <span><small>{t.bettingPotentialPayout}</small><strong>{payout.toFixed(2)}</strong></span>
+              <button type="button" onClick={openManualSearch}>
+                <MenuIcon name="search" />
+                <span>{t.bettingSearchManual}</span>
+              </button>
             </div>
           </div>
 
@@ -7375,12 +7414,30 @@ function BettingPanel({
               <strong>{t.bettingNoSelectedMatches}</strong>
             </div>
           )}
-          <button type="button" className="betting-generate-button" onClick={createCoupon}>{t.bettingSaveCoupon}</button>
+          <div className="betting-coupon-footer">
+            <div className="betting-coupon-summary">
+              <label className="betting-stake-control">
+                <span>{t.bettingStake}</span>
+                <input type="number" min="0" step="0.01" value={stake} onChange={(event) => setStake(event.target.value)} />
+              </label>
+              <span><small>{t.bettingTotalOdds}</small><strong>{formatOdds(totalOdds)}</strong></span>
+              <span><small>{t.bettingPotentialPayout}</small><strong>{payout.toFixed(2)}</strong></span>
+            </div>
+            <button type="button" className="betting-generate-button" onClick={createCoupon}>{t.bettingSaveCoupon}</button>
+          </div>
         </section>
 
         {isManualSearchOpen && (
           <div className="modal-backdrop">
             <div className="delete-modal betting-search-modal">
+              <button
+                type="button"
+                className="modal-close-button"
+                aria-label={t.cancel}
+                onClick={() => setIsManualSearchOpen(false)}
+              >
+                x
+              </button>
               <div className="delete-modal-icon">
                 <MenuIcon name="matches" />
               </div>
@@ -7394,13 +7451,16 @@ function BettingPanel({
                 placeholder={t.bettingManualSearchPlaceholder}
                 onChange={(event) => setManualSearch(event.target.value)}
               />
-              <BettingCandidateTable
-                t={t}
-                candidates={manualSearchRows}
-                selectedMatches={selectedMatches}
-                onAdd={addToCoupon}
-                onRemove={removeFromCoupon}
-              />
+              <p className="betting-manual-note">{t.bettingManualSearchLimitNote}</p>
+              {normalizedManualSearch && (
+                <BettingCandidateTable
+                  t={t}
+                  candidates={manualSearchRows}
+                  selectedMatches={selectedMatches}
+                  onAdd={addToCoupon}
+                  onRemove={removeFromCoupon}
+                />
+              )}
               <div className="delete-modal-actions">
                 <button type="button" onClick={() => setIsManualSearchOpen(false)}>{t.cancel}</button>
               </div>
@@ -7601,45 +7661,103 @@ function BettingCouponTable({
   title,
   coupons,
   emptyText,
+  filterable = false,
+  onDelete,
 }: {
   t: (typeof translations)[Language]
   title: string
   coupons: BettingCoupon[]
   emptyText: string
+  filterable?: boolean
+  onDelete?: (couponId: number) => void
 }) {
+  const [search, setSearch] = useState('')
+  const filteredCoupons = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    if (!normalizedSearch) {
+      return coupons
+    }
+
+    return coupons.filter((coupon) => [
+      `#${coupon.id}`,
+      coupon.id.toString(),
+      formatDate(coupon.createdAtUtc, ''),
+      formatCouponStatus(coupon.status, t),
+      ...coupon.bets.flatMap((bet) => [
+        bet.tournamentName,
+        bet.tournamentSeason,
+        bet.homeTeamName,
+        bet.awayTeamName,
+        bet.roundInfo,
+      ]),
+    ].some((value) => (value ?? '').toLowerCase().includes(normalizedSearch)))
+  }, [coupons, search, t])
+
   return (
     <section className="details-panel">
-      <div className="details-panel-heading">
-        <MenuIcon name="betting" />
-        <h2>{title}</h2>
+      <div className="details-panel-heading spread">
+        <div>
+          <MenuIcon name="betting" />
+          <h2>{title}</h2>
+        </div>
+        {filterable && (
+          <label className="tournament-search compact betting-coupon-search">
+            <span>{t.bettingSearchCoupons}</span>
+            <input
+              placeholder={t.bettingSearchCouponsPlaceholder}
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+        )}
       </div>
-      {coupons.length > 0 ? (
+      {filteredCoupons.length > 0 ? (
         <div className="tournament-table-shell compact-table-shell">
           <table className="tournament-table betting-coupon-table">
             <thead>
               <tr>
                 <th>{t.bettingCouponId}</th>
+                <th>{t.bettingBetCount}</th>
                 <th>{t.bettingBets}</th>
                 <th>{t.bettingTotalOdds}</th>
                 <th>{t.bettingStake}</th>
                 <th>{t.bettingPotentialPayout}</th>
                 <th>{t.bettingCreated}</th>
                 <th>{t.bettingResult}</th>
+                {onDelete && <th aria-label={t.delete}></th>}
               </tr>
             </thead>
             <tbody>
-              {coupons.map((coupon) => (
+              {filteredCoupons.map((coupon) => (
                 <tr key={coupon.id}>
                   <td><strong>#{coupon.id}</strong></td>
+                  <td><strong>{coupon.bets.length}</strong></td>
                   <td>
-                    <strong>{coupon.bets.length}</strong>
-                    <span>{coupon.bets.map((bet) => `${bet.homeTeamName} - ${bet.awayTeamName}`).join(', ')}</span>
+                    <span className="coupon-bet-list">
+                      {coupon.bets.map((bet) => (
+                        <b key={bet.id}>{bet.homeTeamName} - {bet.awayTeamName}</b>
+                      ))}
+                    </span>
                   </td>
                   <td>{formatOdds(coupon.totalOdds)}</td>
                   <td>{coupon.stake.toFixed(2)}</td>
                   <td>{coupon.potentialPayout.toFixed(2)}</td>
                   <td>{formatDate(coupon.createdAtUtc, '-')}</td>
                   <td><span className={`coupon-status ${normalizeCouponStatus(coupon.status)}`}>{formatCouponStatus(coupon.status, t)}</span></td>
+                  {onDelete && (
+                    <td>
+                      <button
+                        type="button"
+                        className="coupon-delete-button"
+                        aria-label={`${t.delete} #${coupon.id}`}
+                        title={`${t.delete} #${coupon.id}`}
+                        onClick={() => onDelete(coupon.id)}
+                      >
+                        <MenuIcon name="trash" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -7647,7 +7765,7 @@ function BettingCouponTable({
         </div>
       ) : (
         <div className="delete-modal-target betting-empty-state">
-          <strong>{emptyText}</strong>
+          <strong>{coupons.length === 0 ? emptyText : t.bettingNoCoupon}</strong>
         </div>
       )}
     </section>

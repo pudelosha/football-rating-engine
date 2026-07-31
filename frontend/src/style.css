@@ -2711,15 +2711,18 @@ p {
   font-weight: 950;
 }
 
-.betting-selected-toolbar {
-  display: grid;
-  width: min(760px, 100%);
-  grid-template-columns: auto minmax(120px, 150px) repeat(2, minmax(120px, 1fr));
-  gap: 10px;
-  align-items: stretch;
+.betting-selected-heading {
+  align-items: start;
 }
 
-.betting-selected-toolbar > span,
+.betting-selected-toolbar {
+  display: flex;
+  width: auto;
+  align-items: center;
+  justify-self: end;
+}
+
+.betting-coupon-summary > span,
 .betting-stake-control {
   display: grid;
   grid-template-rows: 16px 42px;
@@ -2727,7 +2730,7 @@ p {
   padding: 0;
 }
 
-.betting-selected-toolbar small,
+.betting-coupon-summary small,
 .betting-stake-control span {
   color: rgba(255, 249, 234, 0.55);
   font-size: 10px;
@@ -2735,7 +2738,7 @@ p {
   text-transform: uppercase;
 }
 
-.betting-selected-toolbar strong {
+.betting-coupon-summary strong {
   display: flex;
   min-height: 42px;
   align-items: center;
@@ -2747,7 +2750,10 @@ p {
 }
 
 .betting-selected-toolbar > button {
-  align-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 42px;
   padding: 0 16px;
   color: #101915;
@@ -2756,6 +2762,26 @@ p {
   background: #b0d86b;
   font-size: 13px;
   font-weight: 950;
+}
+
+.betting-selected-toolbar > button .menu-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.betting-coupon-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 12px;
+  align-items: end;
+}
+
+.betting-coupon-summary {
+  display: grid;
+  max-width: 560px;
+  grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(118px, 138px));
+  gap: 10px;
+  align-items: start;
 }
 
 .betting-stake-control input {
@@ -2827,13 +2853,43 @@ p {
   font-weight: 850;
 }
 
+.betting-coupon-table td .coupon-bet-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 0;
+}
+
+.betting-coupon-table td .coupon-bet-list b {
+  color: rgba(255, 249, 234, 0.78);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.betting-coupon-table td .coupon-status {
+  display: inline-grid;
+  margin-top: 0;
+  color: #101915;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.betting-coupon-table td .coupon-status.lost,
+.betting-coupon-table td .coupon-status.pending {
+  color: #fff9ea;
+}
+
 .betting-empty-state {
   min-height: 96px;
   align-content: center;
 }
 
 .betting-search-modal {
-  width: min(1120px, calc(100vw - 40px));
+  width: min(1520px, calc(100vw - 32px));
+}
+
+.betting-search-modal h2 {
+  color: #fff9ea;
 }
 
 .betting-confirm-modal {
@@ -2923,6 +2979,13 @@ p {
   font-weight: 850;
 }
 
+.betting-manual-note {
+  margin: -4px 0 0;
+  color: rgba(255, 249, 234, 0.62);
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .panel-muted-copy {
   margin: -8px 0 0;
   color: rgba(255, 249, 234, 0.66);
@@ -2951,6 +3014,27 @@ p {
 .coupon-status.pending {
   color: #fff9ea;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.coupon-delete-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: rgba(255, 249, 234, 0.72);
+  border: 0;
+  border-radius: 8px;
+  background: rgba(165, 63, 49, 0.14);
+}
+
+.coupon-delete-button:hover {
+  color: #fff9ea;
+  background: rgba(165, 63, 49, 0.9);
+}
+
+.coupon-delete-button .menu-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .prediction-mini-bar {
@@ -4781,6 +4865,18 @@ p {
   width: min(460px, 46%);
 }
 
+.details-panel-heading.spread.betting-selected-heading {
+  align-items: start;
+}
+
+.details-panel-heading.spread > .betting-selected-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  width: auto;
+  align-items: center;
+  justify-self: end;
+}
+
 .rating-checkpoint-controls {
   display: flex;
   flex: 1;
@@ -5308,6 +5404,7 @@ p {
 }
 
 .delete-modal {
+  position: relative;
   display: grid;
   width: min(520px, 100%);
   gap: 18px;
@@ -5317,6 +5414,34 @@ p {
   background: rgba(35, 43, 37, 0.94);
   box-shadow: 0 34px 100px rgba(0, 0, 0, 0.42);
   animation: auth-card-in 220ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.delete-modal.betting-search-modal {
+  width: min(1520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.09);
+  font-size: 16px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.modal-close-button:hover {
+  color: #101915;
+  background: #b0d86b;
 }
 
 .delete-modal-icon {

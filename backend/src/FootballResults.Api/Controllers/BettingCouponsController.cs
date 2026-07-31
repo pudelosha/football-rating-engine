@@ -135,6 +135,38 @@ public sealed class BettingCouponsController(
         return CreatedAtAction(nameof(GetCoupons), new { id = coupon.Id }, ToDto(coupon));
     }
 
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteCoupon(int id, CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var coupon = await dbContext.BettingCoupons
+            .FirstOrDefaultAsync(coupon => coupon.Id == id && coupon.UserId == userId, cancellationToken);
+
+        if (coupon is null)
+        {
+            return NotFound();
+        }
+
+        if (coupon.Status != BettingCouponStatus.Pending)
+        {
+            return Conflict(new { message = "Only pending coupons can be deleted." });
+        }
+
+        dbContext.BettingCoupons.Remove(coupon);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
     private static bool RefreshCouponStatus(
         BettingCoupon coupon,
         IReadOnlyDictionary<int, Match>? matchesById = null)
