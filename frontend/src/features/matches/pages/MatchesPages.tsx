@@ -3,6 +3,7 @@ import { MenuIcon } from '../../../shared/components/Icons'
 import { FullPageProcessingOverlay } from '../../../shared/components/Spinner'
 import type {
   MatchSummary,
+  MatchPredictionSnapshot,
   PublicMatchSortKey,
   SortDirection,
   TournamentDetails,
@@ -11,6 +12,7 @@ import type {
 } from '../../../shared/types'
 import { MatchFilters } from '../components/MatchFilters'
 import { PublicMatchesTable } from '../components/PublicMatchesTable'
+import { StoredPredictionModal } from '../components/StoredPredictionModal'
 import { TournamentMatchesTable } from '../components/TournamentMatchesTable'
 import {
   getDisplayedMatches,
@@ -19,7 +21,7 @@ import {
   getRoundOptions,
   getSortedTournaments,
 } from '../model/matchesModel'
-import { fetchTournaments, fetchTournamentWithMatches } from '../services/matchesService'
+import { fetchMatchPredictionSnapshot, fetchTournaments, fetchTournamentWithMatches } from '../services/matchesService'
 import type {
   BackHandler,
   MatchesToastHandler,
@@ -146,6 +148,9 @@ export function UserMatchDetailsPanel({
   const [roundFilter, setRoundFilter] = useState('all')
   const [sortKey, setSortKey] = useState<PublicMatchSortKey>('kickoff')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [storedPrediction, setStoredPrediction] = useState<MatchPredictionSnapshot | null>(null)
+  const [storedPredictionMatch, setStoredPredictionMatch] = useState<MatchSummary | null>(null)
+  const [isLoadingStoredPrediction, setIsLoadingStoredPrediction] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -218,6 +223,25 @@ export function UserMatchDetailsPanel({
     setSortKey(key)
   }
 
+  const openStoredPrediction = async (match: MatchSummary) => {
+    setIsLoadingStoredPrediction(true)
+    try {
+      const result = await fetchMatchPredictionSnapshot(user.token, tournamentId, match.id)
+
+      if (!result.ok || !result.data) {
+        onToast(result.message || t.genericError, 'error')
+        return
+      }
+
+      setStoredPrediction(result.data)
+      setStoredPredictionMatch(match)
+    } catch {
+      onToast(t.genericError, 'error')
+    } finally {
+      setIsLoadingStoredPrediction(false)
+    }
+  }
+
   return (
     <section className="admin-dashboard">
       <div className="admin-dashboard-content ratings-panel-layout">
@@ -235,6 +259,9 @@ export function UserMatchDetailsPanel({
         </div>
 
         {isLoading && (
+          <FullPageProcessingOverlay label={t.loading} />
+        )}
+        {isLoadingStoredPrediction && (
           <FullPageProcessingOverlay label={t.loading} />
         )}
 
@@ -263,9 +290,22 @@ export function UserMatchDetailsPanel({
             sortDirection={sortDirection}
             sortKey={sortKey}
             t={t}
+            onOpenPredictionSnapshot={openStoredPrediction}
             onSort={requestSort}
           />
         </section>
+
+        {storedPrediction && storedPredictionMatch && (
+          <StoredPredictionModal
+            match={storedPredictionMatch}
+            snapshot={storedPrediction}
+            t={t}
+            onClose={() => {
+              setStoredPrediction(null)
+              setStoredPredictionMatch(null)
+            }}
+          />
+        )}
       </div>
     </section>
   )

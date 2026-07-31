@@ -7,4 +7,5 @@ public static class SyncServiceKeys
     public const string Finalize = "match-finalizer";
     public const string Results = "results-safety-net";
     public const string SlipValidator = "slip-validator";
+    public const string PredictionSnapshot = "prediction-snapshot";
 }

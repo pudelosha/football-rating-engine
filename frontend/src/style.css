@@ -82,7 +82,7 @@ button:disabled {
   width: 100%;
   min-height: 64px;
   grid-template-columns: 1fr auto;
-  align-items: center;
+  align-items: stretch;
   gap: 24px;
   padding: 10px max(24px, calc((100vw - 1160px) / 2));
   color: #f7f2e7;
@@ -2318,6 +2318,173 @@ p {
 
 .public-matches-table {
   min-width: 1020px;
+}
+
+.match-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stored-prediction-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #07110c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.public-matches-table .stored-prediction-button {
+  background: var(--accent);
+  color: #07110c;
+}
+
+.stored-prediction-button:hover {
+  background: #d3ff7b;
+  box-shadow: 0 0 20px rgba(176, 216, 107, 0.22);
+}
+
+.stored-prediction-button .menu-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.public-matches-table th:last-child,
+.public-matches-table td:last-child {
+  width: 54px;
+  text-align: center;
+}
+
+.stored-prediction-modal {
+  max-width: 980px;
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: hidden;
+}
+
+.stored-prediction-scroll {
+  max-height: calc(100vh - 330px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding-right: 2px;
+}
+
+.stored-prediction-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.stored-prediction-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(82px, auto));
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 4px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(176, 216, 107, 0.12), transparent 58%),
+    rgba(255, 255, 255, 0.065);
+  padding: 22px;
+}
+
+.stored-prediction-team,
+.stored-prediction-score,
+.stored-prediction-call {
+  min-width: 0;
+}
+
+.stored-prediction-team {
+  align-self: start;
+}
+
+.stored-prediction-team.right {
+  text-align: right;
+}
+
+.stored-prediction-score.right {
+  text-align: center;
+}
+
+.stored-prediction-score {
+  text-align: center;
+}
+
+.stored-prediction-team strong {
+  color: var(--paper);
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.stored-prediction-score strong {
+  color: var(--paper);
+  display: block;
+  font-size: 2rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.stored-prediction-call {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.stored-prediction-call small {
+  color: #fff9ea;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.stored-prediction-call strong {
+  color: var(--paper);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.15;
+  max-width: 190px;
+}
+
+.stored-prediction-call strong.stored-prediction-tone.home {
+  color: rgba(176, 216, 107, 0.94);
+  text-shadow: 0 0 20px rgba(176, 216, 107, 0.16);
+}
+
+.stored-prediction-call strong.stored-prediction-tone.away {
+  color: rgba(119, 164, 198, 0.96);
+  text-shadow: 0 0 22px rgba(96, 132, 158, 0.22);
+}
+
+.stored-prediction-call strong.stored-prediction-tone.draw {
+  color: #e4ce6b;
+  text-shadow: 0 0 20px rgba(228, 206, 107, 0.18);
+}
+
+.stored-prediction-call strong.stored-outcome-match {
+  color: rgba(176, 216, 107, 0.94);
+  text-shadow: 0 0 20px rgba(176, 216, 107, 0.16);
+}
+
+.stored-prediction-call strong.stored-outcome-miss {
+  color: #ff9b6a;
+  text-shadow: 0 0 20px rgba(255, 108, 95, 0.18);
+}
+
+.stored-prediction-stack {
+  margin-top: 12px;
+}
+
+.stored-prediction-bar {
+  background:
+    linear-gradient(90deg, rgba(176, 216, 107, 0.42), rgba(228, 206, 107, 0.28), rgba(96, 132, 158, 0.38));
 }
 
 .predictions-table {

@@ -1,6 +1,7 @@
 import type { MatchSummary, PublicMatchSortKey, SortDirection } from '../../../shared/types'
 import { formatDate, matchStatusText } from '../../../shared/utils'
 import type { MatchesTranslation } from '../types'
+import { MenuIcon } from '../../../shared/components/Icons'
 
 export function PublicMatchesTable({
   isLoading,
@@ -9,6 +10,7 @@ export function PublicMatchesTable({
   sortKey,
   t,
   onSort,
+  onOpenPredictionSnapshot,
 }: {
   isLoading: boolean
   matches: MatchSummary[]
@@ -16,6 +18,7 @@ export function PublicMatchesTable({
   sortKey: PublicMatchSortKey
   t: MatchesTranslation
   onSort: (key: PublicMatchSortKey) => void
+  onOpenPredictionSnapshot: (match: MatchSummary) => void
 }) {
   const matchHeaders: Array<{ key: PublicMatchSortKey; label: string }> = [
     { key: 'kickoff', label: t.kickoff },
@@ -44,6 +47,7 @@ export function PublicMatchesTable({
                 </button>
               </th>
             ))}
+            <th aria-label={t.storedPrediction} />
           </tr>
         </thead>
         <tbody>
@@ -55,11 +59,24 @@ export function PublicMatchesTable({
               <td>{match.awayTeam?.name || match.awayTeamNameSnapshot || '-'}</td>
               <td>{match.homeScore ?? '-'} : {match.awayScore ?? '-'}</td>
               <td>{matchStatusText(match.status, t)}</td>
+              <td>
+                {match.hasPredictionSnapshot && (
+                  <button
+                    className="stored-prediction-button"
+                    type="button"
+                    title={t.storedPrediction}
+                    aria-label={t.storedPrediction}
+                    onClick={() => onOpenPredictionSnapshot(match)}
+                  >
+                    <MenuIcon name="predictions" />
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
           {!isLoading && matches.length === 0 && (
             <tr>
-              <td className="empty-table" colSpan={6}>-</td>
+              <td className="empty-table" colSpan={7}>-</td>
             </tr>
           )}
         </tbody>

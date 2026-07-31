@@ -14,6 +14,7 @@ namespace FootballResults.Api.Controllers;
 [Route("api/tournaments/{tournamentId:int}/matches")]
 public sealed class TournamentMatchesController(
     IMatchQueryService matchQueryService,
+    IMatchPredictionSnapshotService matchPredictionSnapshotService,
     AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
@@ -35,6 +36,22 @@ public sealed class TournamentMatchesController(
     {
         var match = await matchQueryService.GetTournamentMatchAsync(tournamentId, matchId, cancellationToken);
         return match is null ? NotFound() : Ok(match);
+    }
+
+    [HttpGet("{matchId:int}/prediction-snapshot")]
+    [ProducesResponseType(typeof(MatchPredictionSnapshotDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MatchPredictionSnapshotDto>> GetPredictionSnapshot(
+        int tournamentId,
+        int matchId,
+        CancellationToken cancellationToken)
+    {
+        var snapshot = await matchPredictionSnapshotService.GetMatchPredictionSnapshotAsync(
+            tournamentId,
+            matchId,
+            cancellationToken);
+
+        return snapshot is null ? NotFound() : Ok(snapshot);
     }
 
     [HttpPut("{matchId:int}")]

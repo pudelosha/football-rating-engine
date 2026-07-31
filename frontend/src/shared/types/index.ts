@@ -447,6 +447,47 @@ export type MatchSummary = {
   syncState: string | number
   roundInfo: string
   lastSyncedAtUtc?: string | null
+  hasPredictionSnapshot: boolean
+}
+
+export type MatchPredictionSnapshot = {
+  id: number
+  matchId: number
+  tournamentId: number
+  capturedAtUtc: string
+  source: string
+  baseEloRunId?: number | null
+  formRatingRunId?: number | null
+  performanceRatingRunId?: number | null
+  snapshotStartSeasonOffset?: number | null
+  ratingCalculatedAtUtc: string
+  homeTeamId: number
+  awayTeamId: number
+  homeTeamName: string
+  awayTeamName: string
+  homeBaseElo: number
+  awayBaseElo: number
+  homeFormAdjustment: number
+  awayFormAdjustment: number
+  homePerformanceAdjustment: number
+  awayPerformanceAdjustment: number
+  homeSquadQualityAdjustment: number
+  awaySquadQualityAdjustment: number
+  homeFinalRating: number
+  awayFinalRating: number
+  homeRatingConfidence: number
+  awayRatingConfidence: number
+  applyHomeAdvantage: boolean
+  homeAdvantage: number
+  ratingGap: number
+  homeWinProbability: number
+  drawProbability: number
+  awayWinProbability: number
+  homeFairOdds: number
+  drawFairOdds: number
+  awayFairOdds: number
+  favoriteOutcome: string
+  favoriteProbability: number
 }
 
 export type TournamentSyncRun = {

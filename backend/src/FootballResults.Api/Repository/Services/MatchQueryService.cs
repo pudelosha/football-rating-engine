@@ -51,6 +51,7 @@ public sealed class MatchQueryService(AppDbContext dbContext) : IMatchQueryServi
         return dbContext.Matches
             .Include(match => match.HomeTeam)
             .Include(match => match.AwayTeam)
+            .Include(match => match.PredictionSnapshot)
             .Where(match => match.TournamentId == tournamentId)
             .OrderBy(match => match.KickoffUtc)
             .ThenBy(match => match.Id);

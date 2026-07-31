@@ -44,4 +44,5 @@ public sealed class Match
     public Team? HomeTeam { get; set; }
     public Team? AwayTeam { get; set; }
     public MatchStatistics? Statistics { get; set; }
+    public MatchPredictionSnapshot? PredictionSnapshot { get; set; }
 }

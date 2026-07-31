@@ -13,6 +13,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<TournamentTeam> TournamentTeams => Set<TournamentTeam>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<MatchStatistics> MatchStatistics => Set<MatchStatistics>();
+    public DbSet<MatchPredictionSnapshot> MatchPredictionSnapshots => Set<MatchPredictionSnapshot>();
     public DbSet<TournamentSyncRun> TournamentSyncRuns => Set<TournamentSyncRun>();
     public DbSet<ExternalTeamMapping> ExternalTeamMappings => Set<ExternalTeamMapping>();
     public DbSet<SquadQualitySnapshot> SquadQualitySnapshots => Set<SquadQualitySnapshot>();
@@ -248,6 +249,60 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
                 .WithOne(match => match.Statistics)
                 .HasForeignKey<MatchStatistics>(statistics => statistics.MatchId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MatchPredictionSnapshot>(entity =>
+        {
+            entity.HasIndex(snapshot => snapshot.MatchId).IsUnique();
+            entity.HasIndex(snapshot => new { snapshot.TournamentId, snapshot.CapturedAtUtc });
+            entity.HasIndex(snapshot => snapshot.HomeTeamId);
+            entity.HasIndex(snapshot => snapshot.AwayTeamId);
+
+            entity.Property(snapshot => snapshot.Source).HasMaxLength(80);
+            entity.Property(snapshot => snapshot.HomeTeamName).HasMaxLength(200);
+            entity.Property(snapshot => snapshot.AwayTeamName).HasMaxLength(200);
+            entity.Property(snapshot => snapshot.HomeBaseElo).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.AwayBaseElo).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.HomeFormAdjustment).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.AwayFormAdjustment).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.HomePerformanceAdjustment).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.AwayPerformanceAdjustment).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.HomeSquadQualityAdjustment).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.AwaySquadQualityAdjustment).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.HomeFinalRating).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.AwayFinalRating).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.HomeRatingConfidence).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.AwayRatingConfidence).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.HomeAdvantage).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.RatingGap).HasPrecision(9, 2);
+            entity.Property(snapshot => snapshot.HomeWinProbability).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.DrawProbability).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.AwayWinProbability).HasPrecision(9, 4);
+            entity.Property(snapshot => snapshot.HomeFairOdds).HasPrecision(18, 4);
+            entity.Property(snapshot => snapshot.DrawFairOdds).HasPrecision(18, 4);
+            entity.Property(snapshot => snapshot.AwayFairOdds).HasPrecision(18, 4);
+            entity.Property(snapshot => snapshot.FavoriteOutcome).HasMaxLength(32);
+            entity.Property(snapshot => snapshot.FavoriteProbability).HasPrecision(9, 4);
+
+            entity.HasOne(snapshot => snapshot.Match)
+                .WithOne(match => match.PredictionSnapshot)
+                .HasForeignKey<MatchPredictionSnapshot>(snapshot => snapshot.MatchId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(snapshot => snapshot.Tournament)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.TournamentId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(snapshot => snapshot.HomeTeam)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.HomeTeamId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(snapshot => snapshot.AwayTeam)
+                .WithMany()
+                .HasForeignKey(snapshot => snapshot.AwayTeamId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TournamentSyncRun>(entity =>

@@ -92,7 +92,50 @@ internal static class DtoMapper
             match.RawStatus,
             match.SyncState,
             match.RoundInfo,
-            match.LastSyncedAtUtc);
+            match.LastSyncedAtUtc,
+            match.PredictionSnapshot is not null);
+    }
+
+    public static MatchPredictionSnapshotDto ToMatchPredictionSnapshotDto(MatchPredictionSnapshot snapshot)
+    {
+        return new MatchPredictionSnapshotDto(
+            snapshot.Id,
+            snapshot.MatchId,
+            snapshot.TournamentId,
+            snapshot.CapturedAtUtc,
+            snapshot.Source,
+            snapshot.BaseEloRunId,
+            snapshot.FormRatingRunId,
+            snapshot.PerformanceRatingRunId,
+            snapshot.SnapshotStartSeasonOffset,
+            snapshot.RatingCalculatedAtUtc,
+            snapshot.HomeTeamId,
+            snapshot.AwayTeamId,
+            snapshot.HomeTeamName,
+            snapshot.AwayTeamName,
+            snapshot.HomeBaseElo,
+            snapshot.AwayBaseElo,
+            snapshot.HomeFormAdjustment,
+            snapshot.AwayFormAdjustment,
+            snapshot.HomePerformanceAdjustment,
+            snapshot.AwayPerformanceAdjustment,
+            snapshot.HomeSquadQualityAdjustment,
+            snapshot.AwaySquadQualityAdjustment,
+            snapshot.HomeFinalRating,
+            snapshot.AwayFinalRating,
+            snapshot.HomeRatingConfidence,
+            snapshot.AwayRatingConfidence,
+            snapshot.ApplyHomeAdvantage,
+            snapshot.HomeAdvantage,
+            snapshot.RatingGap,
+            snapshot.HomeWinProbability,
+            snapshot.DrawProbability,
+            snapshot.AwayWinProbability,
+            snapshot.HomeFairOdds,
+            snapshot.DrawFairOdds,
+            snapshot.AwayFairOdds,
+            snapshot.FavoriteOutcome,
+            snapshot.FavoriteProbability);
     }
 
     public static TournamentSyncRunDto ToSyncRunDto(TournamentSyncRun syncRun)

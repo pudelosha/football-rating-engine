@@ -11,6 +11,7 @@ public sealed class TournamentSyncService(
     AppDbContext dbContext,
     ILiveScoreClient liveScoreClient,
     IBettingSlipSettlementService bettingSlipSettlementService,
+    IMatchPredictionSnapshotService matchPredictionSnapshotService,
     IOptions<TournamentSyncOptions> options) : ITournamentSyncService
 {
     public async Task<SyncTournamentResponse> SyncAsync(
@@ -68,6 +69,7 @@ public sealed class TournamentSyncService(
         await dbContext.SaveChangesAsync(cancellationToken);
         if (mode is TournamentSyncMode.Live or TournamentSyncMode.Finalize or TournamentSyncMode.Results)
         {
+            await matchPredictionSnapshotService.CaptureMissingFinishedMatchSnapshotsAsync(tournamentId, cancellationToken);
             await bettingSlipSettlementService.ValidatePendingAndLockedSlipsAsync(cancellationToken);
         }
 
@@ -160,6 +162,7 @@ public sealed class TournamentSyncService(
         var finalizeConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Finalize, syncOptions.EnableFinalizeSync, syncOptions.FinalizeIntervalSeconds);
         var resultsConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Results, syncOptions.EnableResultsSync, syncOptions.ResultsIntervalSeconds);
         var slipValidatorConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.SlipValidator, syncOptions.EnableSlipValidation, syncOptions.SlipValidationIntervalSeconds);
+        var predictionSnapshotConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.PredictionSnapshot, syncOptions.EnablePredictionSnapshot, syncOptions.PredictionSnapshotIntervalSeconds);
 
         var syncRuns = await dbContext.TournamentSyncRuns
             .Where(syncRun => syncRun.StartedAtUtc >= since)
@@ -192,6 +195,7 @@ public sealed class TournamentSyncService(
         var liveEligibleCount = await CountLiveEligibleTournamentsAsync(syncOptions, cancellationToken);
         var finalizeEligibleCount = await CountFinalizeEligibleTournamentsAsync(syncOptions, cancellationToken);
         var slipEligibleCount = await CountSlipValidationEligibleAsync(cancellationToken);
+        var predictionSnapshotEligibleCount = await CountPredictionSnapshotEligibleAsync(cancellationToken);
 
         return
         [
@@ -276,7 +280,23 @@ public sealed class TournamentSyncService(
                 slipEligibleCount,
                 0,
                 0,
-                "Locks slips after first kickoff and settles them as won or lost when all selected matches are final.")
+                "Locks slips after first kickoff and settles them as won or lost when all selected matches are final."),
+            new SyncServiceHealthDto(
+                SyncServiceKeys.PredictionSnapshot,
+                "Prediction snapshot service",
+                null,
+                predictionSnapshotConfig.IsEnabled,
+                predictionSnapshotConfig.IsEnabled ? "Healthy" : "Disabled",
+                predictionSnapshotConfig.IntervalMinutes,
+                null,
+                null,
+                null,
+                string.Empty,
+                activeTournamentCount,
+                predictionSnapshotEligibleCount,
+                0,
+                0,
+                "Stores immutable 1X2 prediction snapshots for finished matches before later rating rebuilds can change the model view.")
         ];
     }
 
@@ -445,7 +465,8 @@ public sealed class TournamentSyncService(
             or SyncServiceKeys.Live
             or SyncServiceKeys.Finalize
             or SyncServiceKeys.Results
-            or SyncServiceKeys.SlipValidator;
+            or SyncServiceKeys.SlipValidator
+            or SyncServiceKeys.PredictionSnapshot;
     }
 
     private sealed record EffectiveSyncServiceConfiguration(bool IsEnabled, int IntervalMinutes);
@@ -495,6 +516,17 @@ public sealed class TournamentSyncService(
     {
         return dbContext.BettingCoupons
             .CountAsync(coupon => coupon.Status == BettingCouponStatus.Pending || coupon.Status == BettingCouponStatus.Locked, cancellationToken);
+    }
+
+    private Task<int> CountPredictionSnapshotEligibleAsync(CancellationToken cancellationToken)
+    {
+        return dbContext.Matches
+            .CountAsync(match =>
+                match.Status == MatchStatus.Finished &&
+                match.HomeTeamId.HasValue &&
+                match.AwayTeamId.HasValue &&
+                match.PredictionSnapshot == null,
+                cancellationToken);
     }
 
     private async Task<IReadOnlyList<LiveScoreFixtureRow>> FetchRowsForModeAsync(
