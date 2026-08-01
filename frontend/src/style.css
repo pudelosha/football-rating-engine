@@ -2320,6 +2320,19 @@ p {
   min-width: 1020px;
 }
 
+.public-matches-table th,
+.public-matches-table td {
+  height: 56px;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1.2;
+}
+
+.public-matches-table thead tr,
+.public-matches-table tbody tr {
+  height: 56px;
+}
+
 .match-status-cell {
   display: inline-flex;
   align-items: center;
@@ -2327,25 +2340,31 @@ p {
 }
 
 .stored-prediction-button {
+  appearance: none;
+  -webkit-appearance: none;
   width: 30px;
   height: 30px;
+  min-width: 30px;
+  min-height: 30px;
   border: 0;
   border-radius: 999px;
-  background: var(--accent);
+  background: #b0d86b;
   color: #07110c;
-  display: inline-flex;
+  display: inline-grid;
   align-items: center;
   justify-content: center;
   padding: 0;
   cursor: pointer;
+  line-height: 1;
 }
 
 .public-matches-table .stored-prediction-button {
-  background: var(--accent);
-  color: #07110c;
+  display: inline-grid !important;
+  background: #b0d86b !important;
+  color: #07110c !important;
 }
 
-.stored-prediction-button:hover {
+.public-matches-table .stored-prediction-button:hover {
   background: #d3ff7b;
   box-shadow: 0 0 20px rgba(176, 216, 107, 0.22);
 }
@@ -2355,10 +2374,22 @@ p {
   height: 16px;
 }
 
+.stored-prediction-placeholder {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+}
+
 .public-matches-table th:last-child,
 .public-matches-table td:last-child {
   width: 54px;
   text-align: center;
+}
+
+.public-matches-table .stored-prediction-cell {
+  padding-inline: 12px;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .stored-prediction-modal {

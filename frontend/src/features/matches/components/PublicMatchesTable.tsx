@@ -59,8 +59,8 @@ export function PublicMatchesTable({
               <td>{match.awayTeam?.name || match.awayTeamNameSnapshot || '-'}</td>
               <td>{match.homeScore ?? '-'} : {match.awayScore ?? '-'}</td>
               <td>{matchStatusText(match.status, t)}</td>
-              <td>
-                {match.hasPredictionSnapshot && (
+              <td className="stored-prediction-cell">
+                {match.hasPredictionSnapshot ? (
                   <button
                     className="stored-prediction-button"
                     type="button"
@@ -70,6 +70,8 @@ export function PublicMatchesTable({
                   >
                     <MenuIcon name="predictions" />
                   </button>
+                ) : (
+                  <span className="stored-prediction-placeholder" aria-hidden="true" />
                 )}
               </td>
             </tr>
