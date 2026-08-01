@@ -15,11 +15,13 @@ function MiniHorizontalBarChart({
   emptyText,
   title,
   valueFormatter = (value) => String(value),
+  valuesInsideBars = false,
 }: {
   bars: DashboardBar[]
   emptyText: string
   title: string
   valueFormatter?: (value: number) => string
+  valuesInsideBars?: boolean
 }) {
   const max = Math.max(...bars.map((bar) => bar.value), 1)
 
@@ -29,15 +31,15 @@ function MiniHorizontalBarChart({
         <MenuIcon name="ratings" />
         <h2>{title}</h2>
       </div>
-      <div className="dashboard-mini-bars">
+      <div className={`dashboard-mini-bars${valuesInsideBars ? ' values-inside' : ''}`}>
         {bars.length === 0 && <p className="empty-panel-copy">{emptyText}</p>}
         {bars.map((bar) => (
           <div className="dashboard-mini-bar-row" key={bar.label}>
             <span>{bar.label.toUpperCase()}</span>
             <div>
-              {bar.value > 0 && <b style={{ width: `${(bar.value / max) * 100}%` }} />}
+              {bar.value > 0 && <b style={{ width: `${(bar.value / max) * 100}%` }}>{valuesInsideBars ? valueFormatter(bar.value) : null}</b>}
             </div>
-            <strong title={valueFormatter(bar.value)}>{valueFormatter(bar.value)}</strong>
+            {!valuesInsideBars && <strong title={valueFormatter(bar.value)}>{valueFormatter(bar.value)}</strong>}
           </div>
         ))}
       </div>
@@ -143,7 +145,7 @@ export function DashboardChartPlaceholders({
 }) {
   return (
     <div className="dashboard-chart-row">
-      <MiniHorizontalBarChart bars={goalsScoredBars} emptyText={emptyText} title="Goals scored" />
+      <MiniHorizontalBarChart bars={goalsScoredBars} emptyText={emptyText} title="Goals scored" valuesInsideBars />
       <MirroredGoalsChart emptyText={emptyText} rows={scoredConcededRows} />
       <MiniHorizontalBarChart bars={teamValueBars} emptyText={emptyText} title="Team value" valueFormatter={formatEuro} />
       <AverageAgeDotChart bars={teamAgeDots} emptyText={emptyText} />

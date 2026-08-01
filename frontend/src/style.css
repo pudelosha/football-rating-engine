@@ -7094,7 +7094,8 @@ p {
 .dashboard-mini-chart {
   display: grid;
   min-height: 360px;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
   gap: 16px;
   padding: 20px;
   border-radius: 8px;
@@ -7174,12 +7175,29 @@ p {
   gap: 9px;
 }
 
+.dashboard-mini-bars.values-inside,
+.dashboard-mirror-chart {
+  height: 100%;
+  min-height: 0;
+  align-content: stretch;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.dashboard-mini-bars.values-inside {
+  gap: 8px;
+}
+
 .dashboard-mini-bar-row {
   display: grid;
   grid-template-columns: minmax(74px, 0.34fr) 1fr minmax(82px, auto);
   gap: 8px;
   align-items: center;
   min-height: 18px;
+}
+
+.dashboard-mini-bars.values-inside .dashboard-mini-bar-row {
+  grid-template-columns: minmax(82px, 0.48fr) 1fr;
+  min-height: 0;
 }
 
 .dashboard-mini-bar-row > span {
@@ -7199,10 +7217,16 @@ p {
 }
 
 .dashboard-mini-bar-row b {
-  display: block;
+  display: grid;
   height: 100%;
+  min-width: 22px;
+  place-items: center;
   border-radius: inherit;
+  color: #101915;
   background: #b0d86b;
+  font-size: 0.7rem;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .dashboard-mini-bar-row strong {
