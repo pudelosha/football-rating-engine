@@ -7300,17 +7300,32 @@ p {
 
 .mirror-left b,
 .mirror-right b {
-  display: block;
+  display: grid;
   height: 100%;
+  min-width: 18px;
+  place-items: center;
   border-radius: inherit;
+  color: #101915;
+  font-size: 0.68rem;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .mirror-left b {
+  color: #fff9ea;
   background: rgba(165, 63, 49, 0.88);
 }
 
 .mirror-right b {
+  color: #101915;
   background: #b0d86b;
+}
+
+.mirror-left:hover b,
+.mirror-right:hover b,
+.dashboard-mirror-row:hover b {
+  box-shadow: 0 0 0 2px rgba(255, 249, 234, 0.12);
+  filter: brightness(1.16) saturate(1.08);
 }
 
 .dashboard-result-bar {

@@ -33,7 +33,7 @@ function MiniHorizontalBarChart({
         {bars.length === 0 && <p className="empty-panel-copy">{emptyText}</p>}
         {bars.map((bar) => (
           <div className="dashboard-mini-bar-row" key={bar.label}>
-            <span>{bar.label}</span>
+            <span>{bar.label.toUpperCase()}</span>
             <div>
               {bar.value > 0 && <b style={{ width: `${(bar.value / max) * 100}%` }} />}
             </div>
@@ -64,13 +64,13 @@ function MirroredGoalsChart({
         {rows.length === 0 && <p className="empty-panel-copy">{emptyText}</p>}
         {rows.map((row) => (
           <div className="dashboard-mirror-row" key={row.teamId}>
-            <span>{row.abbreviation || row.teamName}</span>
+            <span>{(row.abbreviation || row.teamName).toUpperCase()}</span>
             <div className="mirror-left">
-              {row.goalsAgainst > 0 && <b style={{ width: `${(row.goalsAgainst / max) * 100}%` }} />}
+              {row.goalsAgainst > 0 && <b style={{ width: `${(row.goalsAgainst / max) * 100}%` }}>{row.goalsAgainst}</b>}
             </div>
             <i />
             <div className="mirror-right">
-              {row.goalsFor > 0 && <b style={{ width: `${(row.goalsFor / max) * 100}%` }} />}
+              {row.goalsFor > 0 && <b style={{ width: `${(row.goalsFor / max) * 100}%` }}>{row.goalsFor}</b>}
             </div>
           </div>
         ))}
