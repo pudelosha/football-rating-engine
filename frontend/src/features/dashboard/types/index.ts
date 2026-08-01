@@ -101,7 +101,14 @@ export type TeamLastFiveRow = {
   teamName: string
   points: number
   played: number
-  results: Array<'W' | 'D' | 'L'>
+  results: Array<{
+    result: 'W' | 'D' | 'L'
+    kickoffUtc?: string | null
+    homeTeamName: string
+    awayTeamName: string
+    homeScore: number
+    awayScore: number
+  }>
 }
 
 export type ResultSplit = {

@@ -365,14 +365,17 @@ function buildLastFiveRows(matches: MatchSummary[], leagueRows: LeagueTableRow[]
       .reverse()
       .map((match) => {
         const score = getFinishedScore(match)
-        if (!score) {
-          return 'D'
-        }
-
         const isHome = match.homeTeam?.id === row.teamId
-        const own = isHome ? score.home : score.away
-        const opponent = isHome ? score.away : score.home
-        return own > opponent ? 'W' : own < opponent ? 'L' : 'D'
+        const own = score ? (isHome ? score.home : score.away) : 0
+        const opponent = score ? (isHome ? score.away : score.home) : 0
+        return {
+          result: own > opponent ? 'W' as const : own < opponent ? 'L' as const : 'D' as const,
+          kickoffUtc: match.kickoffUtc,
+          homeTeamName: match.homeTeam?.name || match.homeTeamNameSnapshot || '-',
+          awayTeamName: match.awayTeam?.name || match.awayTeamNameSnapshot || '-',
+          homeScore: score?.home ?? 0,
+          awayScore: score?.away ?? 0,
+        }
       })
 
     return {
