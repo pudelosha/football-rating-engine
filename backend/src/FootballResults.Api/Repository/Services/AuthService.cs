@@ -172,6 +172,7 @@ public sealed class AuthService(
         var key = configuration["Jwt:Key"] ?? throw new InvalidOperationException("Missing Jwt:Key.");
         var issuer = configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Missing Jwt:Issuer.");
         var audience = configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Missing Jwt:Audience.");
+        var lifetimeDays = GetJwtLifetimeDays();
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
@@ -181,10 +182,16 @@ public sealed class AuthService(
             issuer,
             audience,
             claims,
-            expires: DateTime.UtcNow.AddHours(12),
+            expires: DateTime.UtcNow.AddDays(lifetimeDays),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private double GetJwtLifetimeDays()
+    {
+        var configuredLifetimeDays = configuration.GetValue<double?>("Jwt:LifetimeDays");
+        return configuredLifetimeDays is > 0 ? configuredLifetimeDays.Value : 365;
     }
 
     private async Task TrySendConfirmationEmailAsync(ApplicationUser user, string? language)
