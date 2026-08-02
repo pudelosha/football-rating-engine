@@ -8,4 +8,5 @@ public static class SyncServiceKeys
     public const string Results = "results-safety-net";
     public const string SlipValidator = "slip-validator";
     public const string PredictionSnapshot = "prediction-snapshot";
+    public const string RatingAutomation = "rating-automation";
 }

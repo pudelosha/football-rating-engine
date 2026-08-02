@@ -3648,6 +3648,20 @@ p {
   overflow: visible;
 }
 
+.ratings-team-table th:nth-child(7),
+.ratings-team-table td:nth-child(7) {
+  text-align: center;
+}
+
+.ratings-team-table th:nth-child(7) .table-sort-button {
+  justify-content: center;
+}
+
+.ratings-team-table td:nth-child(7) .rating-value-tooltip,
+.ratings-team-table td:nth-child(7) .rating-value-display {
+  margin: 0 auto !important;
+}
+
 .rating-value-tooltip {
   position: relative;
   display: inline-flex;
@@ -5360,10 +5374,46 @@ p {
   box-shadow: 0 0 0 2px rgba(176, 216, 107, 0.25);
 }
 
+.rating-checkpoint-controls select:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .rating-checkpoint-controls select option {
   color: #fff9ea;
   background: #1f2a23;
   font-weight: 850;
+}
+
+.rating-change-value {
+  display: inline-flex;
+  width: 72px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 999px;
+  font-weight: 950;
+  line-height: 30px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rating-change-value.positive {
+  color: #101915;
+  background: #b0d86b;
+  box-shadow: 0 10px 24px rgba(176, 216, 107, 0.18);
+}
+
+.rating-change-value.negative {
+  color: #fff9ea;
+  background: rgba(151, 71, 51, 0.92);
+  box-shadow: 0 10px 24px rgba(151, 71, 51, 0.2);
+}
+
+.rating-change-value.neutral {
+  color: rgba(255, 249, 234, 0.82);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .team-directory-filters {

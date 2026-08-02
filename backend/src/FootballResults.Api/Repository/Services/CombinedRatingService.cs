@@ -28,7 +28,7 @@ public sealed class CombinedRatingService(
         {
             return new CombinedTeamRatingsDto(
                 tournamentId,
-                new CombinedRatingRunContextDto(null, null, null, null, DateTimeOffset.UtcNow),
+                new CombinedRatingRunContextDto(null, null, null, null, string.Empty, string.Empty, DateTimeOffset.UtcNow),
                 []);
         }
 
@@ -42,9 +42,15 @@ public sealed class CombinedRatingService(
         {
             return new CombinedTeamRatingsDto(
                 tournamentId,
-                new CombinedRatingRunContextDto(null, null, null, null, DateTimeOffset.UtcNow),
+                new CombinedRatingRunContextDto(null, null, null, null, string.Empty, string.Empty, DateTimeOffset.UtcNow),
                 []);
         }
+
+        var currentRoundInfo = await GetCurrentRoundInfoAsync(tournamentId, cancellationToken);
+        var previousRoundInfo = await GetPreviousRoundInfoAsync(tournamentId, currentRoundInfo, cancellationToken);
+        var latestRoundChanges = string.IsNullOrWhiteSpace(currentRoundInfo)
+            ? []
+            : await GetLatestRoundBaseEloChangesAsync(tournamentId, latestEloRun.Id, currentRoundInfo, cancellationToken);
 
         var latestFormRun = tournamentSetup.RatingIncludeForm
             ? await dbContext.FormRatingRuns
@@ -102,6 +108,11 @@ public sealed class CombinedRatingService(
                 var squadAdjustment = squadRating?.SquadQualityAdjustment ?? 0;
                 var totalAdjustment = formAdjustment + performanceAdjustment + squadAdjustment;
                 var finalRating = baseRating.Rating + totalAdjustment;
+                latestRoundChanges.TryGetValue(baseRating.TeamId, out var finalRatingChange);
+                var hasRoundChange = !string.IsNullOrWhiteSpace(currentRoundInfo);
+                var previousFinalRating = hasRoundChange
+                    ? RoundRating(finalRating - finalRatingChange)
+                    : (decimal?)null;
 
                 return new TeamCombinedRatingDto(
                     baseRating.TeamId,
@@ -113,6 +124,8 @@ public sealed class CombinedRatingService(
                     squadAdjustment,
                     RoundRating(totalAdjustment),
                     RoundRating(finalRating),
+                    previousFinalRating,
+                    hasRoundChange ? RoundRating(finalRatingChange) : null,
                     CalculateConfidence(formRating, performanceRating, squadRating),
                     formRating is not null,
                     performanceRating is not null,
@@ -137,8 +150,84 @@ public sealed class CombinedRatingService(
                 latestFormRun?.Id,
                 latestPerformanceRun?.Id,
                 latestEloRun.SnapshotStartSeasonOffset,
+                currentRoundInfo,
+                previousRoundInfo,
                 DateTimeOffset.UtcNow),
             teams);
+    }
+
+    private async Task<string> GetCurrentRoundInfoAsync(
+        int tournamentId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Matches
+            .Where(match =>
+                match.TournamentId == tournamentId &&
+                match.Status == MatchStatus.Finished &&
+                match.RoundInfo != string.Empty)
+            .OrderByDescending(match => match.KickoffUtc)
+            .ThenByDescending(match => match.Id)
+            .Select(match => match.RoundInfo)
+            .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+    }
+
+    private async Task<string> GetPreviousRoundInfoAsync(
+        int tournamentId,
+        string currentRoundInfo,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(currentRoundInfo))
+        {
+            return string.Empty;
+        }
+
+        return await dbContext.Matches
+            .Where(match =>
+                match.TournamentId == tournamentId &&
+                match.Status == MatchStatus.Finished &&
+                match.RoundInfo != string.Empty &&
+                match.RoundInfo != currentRoundInfo)
+            .OrderByDescending(match => match.KickoffUtc)
+            .ThenByDescending(match => match.Id)
+            .Select(match => match.RoundInfo)
+            .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+    }
+
+    private async Task<Dictionary<int, decimal>> GetLatestRoundBaseEloChangesAsync(
+        int tournamentId,
+        int eloRunId,
+        string currentRoundInfo,
+        CancellationToken cancellationToken)
+    {
+        var latestRoundEventIds = await dbContext.Matches
+            .Where(match =>
+                match.TournamentId == tournamentId &&
+                match.Status == MatchStatus.Finished &&
+                match.RoundInfo == currentRoundInfo)
+            .Select(match => match.LiveScoreEventId)
+            .ToListAsync(cancellationToken);
+
+        var snapshots = await dbContext.MatchEloSnapshots
+            .Where(snapshot =>
+                snapshot.EloRatingRunId == eloRunId &&
+                latestRoundEventIds.Contains(snapshot.LiveScoreEventId))
+            .Select(snapshot => new
+            {
+                snapshot.HomeTeamId,
+                snapshot.AwayTeamId,
+                snapshot.HomeEloChange,
+                snapshot.AwayEloChange
+            })
+            .ToListAsync(cancellationToken);
+
+        var changes = new Dictionary<int, decimal>();
+        foreach (var snapshot in snapshots)
+        {
+            changes[snapshot.HomeTeamId] = changes.GetValueOrDefault(snapshot.HomeTeamId) + snapshot.HomeEloChange;
+            changes[snapshot.AwayTeamId] = changes.GetValueOrDefault(snapshot.AwayTeamId) + snapshot.AwayEloChange;
+        }
+
+        return changes;
     }
 
     private static decimal CalculateConfidence(

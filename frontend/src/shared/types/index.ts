@@ -279,6 +279,8 @@ export type CombinedTeamRating = {
   squadQualityAdjustment: number
   totalAdjustment: number
   finalRating: number
+  previousFinalRating?: number | null
+  finalRatingChange?: number | null
   ratingConfidence: number
   hasFormRating: boolean
   hasPerformanceRating: boolean
@@ -300,6 +302,8 @@ export type CombinedRatingsResponse = {
     formRatingRunId?: number | null
     performanceRatingRunId?: number | null
     snapshotStartSeasonOffset?: number | null
+    currentRoundInfo: string
+    previousRoundInfo: string
     calculatedAtUtc: string
   }
   teams: CombinedTeamRating[]
@@ -604,7 +608,7 @@ export type PredictionMatchSortKey = 'kickoff' | 'round' | 'home' | 'away' | 'ho
 export type UserSortKey = 'email' | 'displayName' | 'role' | 'status' | 'memberSince'
 export type SquadTournamentSortKey = 'name' | 'season' | 'teams' | 'coverage' | 'snapshot'
 export type SquadTeamSortKey = 'team' | 'value' | 'mapping' | 'snapshot'
-export type RatingTeamSortKey = 'team' | 'baseElo' | 'form' | 'performance' | 'squad' | 'finalRating' | 'confidence'
+export type RatingTeamSortKey = 'team' | 'baseElo' | 'form' | 'performance' | 'squad' | 'finalRating' | 'change' | 'confidence'
 export type UserTeamSortKey = 'team' | 'country' | 'tournaments' | 'rating' | 'lastSync'
 export type SquadPlayerSortKey = 'name' | 'position' | 'age' | 'nationality' | 'value' | 'contract'
 export type BettingCandidateSortKey = 'kickoff' | 'tournament' | 'home' | 'away' | 'selection' | 'chance' | 'odds' | 'shape'

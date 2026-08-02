@@ -159,8 +159,6 @@ export function UserRatingDetailsPanel({
   const [isLoading, setIsLoading] = useState(true)
   const [sortKey, setSortKey] = useState<RatingTeamSortKey>('finalRating')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
-  const [checkpoint, setCheckpoint] = useState('latest')
-  const [comparison, setComparison] = useState('previous')
 
   useEffect(() => {
     let isMounted = true
@@ -233,6 +231,17 @@ export function UserRatingDetailsPanel({
     setSortKey(key)
   }
 
+  const formatRoundCheckpoint = (roundInfo?: string | null) => {
+    if (!roundInfo) {
+      return '-'
+    }
+
+    return /^\d+$/.test(roundInfo.trim()) ? `${t.ratingRoundLabel} ${roundInfo.trim()}` : roundInfo
+  }
+
+  const currentRoundLabel = formatRoundCheckpoint(combinedRatings?.runContext.currentRoundInfo)
+  const previousRoundLabel = formatRoundCheckpoint(combinedRatings?.runContext.previousRoundInfo)
+
   const ratingHeaders: Array<{ key: RatingTeamSortKey; label: string }> = [
     { key: 'team', label: t.ratingTeam },
     { key: 'baseElo', label: t.ratingBaseElo },
@@ -240,6 +249,7 @@ export function UserRatingDetailsPanel({
     { key: 'performance', label: t.ratingPerformance },
     { key: 'squad', label: t.ratingSquad },
     { key: 'finalRating', label: t.ratingFinal },
+    { key: 'change', label: t.ratingChange },
     { key: 'confidence', label: t.ratingConfidence },
   ]
 
@@ -343,6 +353,32 @@ export function UserRatingDetailsPanel({
     </>
   )
 
+  const renderChangeTooltip = (team: CombinedTeamRating) => (
+    <>
+      <strong className="rating-tooltip-title">{team.teamName} - {t.ratingChange}</strong>
+      <span className="rating-tooltip-grid">
+        <TooltipMetric label={t.ratingCurrentRound} value={combinedRatings?.runContext.currentRoundInfo || '-'} />
+        <TooltipMetric label={t.ratingPreviousRound} value={combinedRatings?.runContext.previousRoundInfo || '-'} />
+        <TooltipMetric label={t.ratingPreviousFinal} value={team.previousFinalRating != null ? team.previousFinalRating.toFixed(2) : '-'} />
+        <TooltipMetric label={t.ratingChange} value={team.finalRatingChange != null ? formatSigned(team.finalRatingChange) : '-'} />
+      </span>
+    </>
+  )
+
+  const renderChangeValue = (team: CombinedTeamRating) => {
+    if (team.finalRatingChange == null) {
+      return '-'
+    }
+
+    const tone = team.finalRatingChange > 0 ? 'positive' : team.finalRatingChange < 0 ? 'negative' : 'neutral'
+
+    return (
+      <strong className={`rating-change-value ${tone}`}>
+        {formatSigned(team.finalRatingChange)}
+      </strong>
+    )
+  }
+
   const renderConfidenceTooltip = (team: CombinedTeamRating) => (
     <>
       <strong className="rating-tooltip-title">{team.teamName} - {t.ratingConfidence}</strong>
@@ -387,17 +423,14 @@ export function UserRatingDetailsPanel({
             <div className="rating-checkpoint-controls" aria-label="Rating checkpoint controls">
               <label>
                 <span>{t.ratingCheckpoint}</span>
-                <select value={checkpoint} onChange={(event) => setCheckpoint(event.target.value)}>
-                  <option value="latest">{t.ratingCheckpointLatest}</option>
-                  <option value="round-1">{t.ratingCheckpointRoundOne}</option>
-                  <option value="round-2">{t.ratingCheckpointRoundTwo}</option>
+                <select value={currentRoundLabel} disabled aria-label={`${t.ratingCheckpoint}: ${currentRoundLabel}`}>
+                  <option value={currentRoundLabel}>{currentRoundLabel}</option>
                 </select>
               </label>
               <label>
                 <span>{t.ratingCompare}</span>
-                <select value={comparison} onChange={(event) => setComparison(event.target.value)}>
-                  <option value="previous">{t.ratingComparePrevious}</option>
-                  <option value="season-start">{t.ratingCompareSeasonStart}</option>
+                <select value={previousRoundLabel} disabled aria-label={`${t.ratingCompare}: ${previousRoundLabel}`}>
+                  <option value={previousRoundLabel}>{previousRoundLabel}</option>
                 </select>
               </label>
               <div className="rating-updated-control">
@@ -458,6 +491,11 @@ export function UserRatingDetailsPanel({
                       </RatingValue>
                     </td>
                     <td>
+                      <RatingValue value={renderChangeValue(team)}>
+                        {renderChangeTooltip(team)}
+                      </RatingValue>
+                    </td>
+                    <td>
                       <RatingValue value={`${Math.round(team.ratingConfidence * 100)}%`}>
                         {renderConfidenceTooltip(team)}
                       </RatingValue>
@@ -466,7 +504,7 @@ export function UserRatingDetailsPanel({
                 ))}
                 {!isLoading && displayedTeams.length === 0 && (
                   <tr>
-                    <td className="empty-table" colSpan={7}>-</td>
+                    <td className="empty-table" colSpan={8}>-</td>
                   </tr>
                 )}
               </tbody>

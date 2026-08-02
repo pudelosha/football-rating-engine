@@ -81,6 +81,8 @@ export function getSortedTeamRatings({
       comparison = left.squadQualityAdjustment - right.squadQualityAdjustment
     } else if (sortKey === 'finalRating') {
       comparison = left.finalRating - right.finalRating
+    } else if (sortKey === 'change') {
+      comparison = (left.finalRatingChange ?? Number.NEGATIVE_INFINITY) - (right.finalRatingChange ?? Number.NEGATIVE_INFINITY)
     } else if (sortKey === 'confidence') {
       comparison = left.ratingConfidence - right.ratingConfidence
     }

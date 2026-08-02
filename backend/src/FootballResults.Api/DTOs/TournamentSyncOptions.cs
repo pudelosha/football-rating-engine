@@ -8,12 +8,14 @@ public sealed class TournamentSyncOptions
     public bool EnableResultsSync { get; set; }
     public bool EnableSlipValidation { get; set; } = true;
     public bool EnablePredictionSnapshot { get; set; } = true;
+    public bool EnableRatingAutomation { get; set; } = true;
     public int ScheduleIntervalSeconds { get; set; } = 3600;
     public int LiveIntervalSeconds { get; set; } = 60;
     public int FinalizeIntervalSeconds { get; set; } = 60;
     public int ResultsIntervalSeconds { get; set; } = 86400;
     public int SlipValidationIntervalSeconds { get; set; } = 60;
     public int PredictionSnapshotIntervalSeconds { get; set; } = 60;
+    public int RatingAutomationIntervalSeconds { get; set; } = 60;
     public int LiveStartsBeforeMinutes { get; set; } = 5;
     public int StatisticsDelayAfterFinishedMinutes { get; set; } = 60;
 }

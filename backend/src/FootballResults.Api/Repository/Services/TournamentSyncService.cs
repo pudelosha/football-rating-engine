@@ -163,6 +163,7 @@ public sealed class TournamentSyncService(
         var resultsConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.Results, syncOptions.EnableResultsSync, syncOptions.ResultsIntervalSeconds);
         var slipValidatorConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.SlipValidator, syncOptions.EnableSlipValidation, syncOptions.SlipValidationIntervalSeconds);
         var predictionSnapshotConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.PredictionSnapshot, syncOptions.EnablePredictionSnapshot, syncOptions.PredictionSnapshotIntervalSeconds);
+        var ratingAutomationConfig = GetEffectiveConfiguration(configurations, SyncServiceKeys.RatingAutomation, syncOptions.EnableRatingAutomation, syncOptions.RatingAutomationIntervalSeconds);
 
         var syncRuns = await dbContext.TournamentSyncRuns
             .Where(syncRun => syncRun.StartedAtUtc >= since)
@@ -196,6 +197,12 @@ public sealed class TournamentSyncService(
         var finalizeEligibleCount = await CountFinalizeEligibleTournamentsAsync(syncOptions, cancellationToken);
         var slipEligibleCount = await CountSlipValidationEligibleAsync(cancellationToken);
         var predictionSnapshotEligibleCount = await CountPredictionSnapshotEligibleAsync(cancellationToken);
+        var ratingAutomationEligibleCount = await CountRatingAutomationEligibleAsync(cancellationToken);
+        var latestRatingRun = await GetLatestRatingRunAsync(null, cancellationToken);
+        var latestSuccessfulRatingRun = await GetLatestRatingRunAsync(EloRatingRunStatus.Succeeded, cancellationToken);
+        var latestFailedRatingRun = await GetLatestRatingRunAsync(EloRatingRunStatus.Failed, cancellationToken);
+        var ratingRunsLast24Hours = await CountRatingRunsSinceAsync(since, null, cancellationToken);
+        var ratingFailuresLast24Hours = await CountRatingRunsSinceAsync(since, EloRatingRunStatus.Failed, cancellationToken);
 
         return
         [
@@ -296,7 +303,23 @@ public sealed class TournamentSyncService(
                 predictionSnapshotEligibleCount,
                 0,
                 0,
-                "Stores immutable 1X2 prediction snapshots for finished matches before later rating rebuilds can change the model view.")
+                "Stores immutable 1X2 prediction snapshots for finished matches before later rating rebuilds can change the model view."),
+            new SyncServiceHealthDto(
+                SyncServiceKeys.RatingAutomation,
+                "Rating automation service",
+                null,
+                ratingAutomationConfig.IsEnabled,
+                GetBackgroundServiceStatus(ratingAutomationConfig.IsEnabled, latestRatingRun),
+                ratingAutomationConfig.IntervalMinutes,
+                latestRatingRun?.StartedAtUtc,
+                latestSuccessfulRatingRun?.FinishedAtUtc,
+                latestFailedRatingRun?.FinishedAtUtc,
+                latestFailedRatingRun?.ErrorMessage ?? string.Empty,
+                activeTournamentCount,
+                ratingAutomationEligibleCount,
+                ratingRunsLast24Hours,
+                ratingFailuresLast24Hours,
+                "Automatically rebuilds Base Elo, Form, and Performance layers when finished match results or statistics change. Squad snapshots stay manual.")
         ];
     }
 
@@ -442,6 +465,26 @@ public sealed class TournamentSyncService(
         return latest.Status == TournamentSyncRunStatus.Failed ? "Failing" : "Healthy";
     }
 
+    private static string GetBackgroundServiceStatus(bool isEnabled, RatingRunHealthSnapshot? latest)
+    {
+        if (!isEnabled)
+        {
+            return "Disabled";
+        }
+
+        if (latest?.Status == EloRatingRunStatus.Running)
+        {
+            return "Running";
+        }
+
+        if (latest is null)
+        {
+            return "Waiting";
+        }
+
+        return latest.Status == EloRatingRunStatus.Failed ? "Failing" : "Healthy";
+    }
+
     private static EffectiveSyncServiceConfiguration GetEffectiveConfiguration(
         IReadOnlyList<SyncServiceConfiguration> configurations,
         string serviceKey,
@@ -466,10 +509,17 @@ public sealed class TournamentSyncService(
             or SyncServiceKeys.Finalize
             or SyncServiceKeys.Results
             or SyncServiceKeys.SlipValidator
-            or SyncServiceKeys.PredictionSnapshot;
+            or SyncServiceKeys.PredictionSnapshot
+            or SyncServiceKeys.RatingAutomation;
     }
 
     private sealed record EffectiveSyncServiceConfiguration(bool IsEnabled, int IntervalMinutes);
+
+    private sealed record RatingRunHealthSnapshot(
+        EloRatingRunStatus Status,
+        DateTimeOffset StartedAtUtc,
+        DateTimeOffset? FinishedAtUtc,
+        string ErrorMessage);
 
     private Task<int> CountLiveEligibleTournamentsAsync(TournamentSyncOptions syncOptions, CancellationToken cancellationToken)
     {
@@ -527,6 +577,95 @@ public sealed class TournamentSyncService(
                 match.AwayTeamId.HasValue &&
                 match.PredictionSnapshot == null,
                 cancellationToken);
+    }
+
+    private async Task<int> CountRatingAutomationEligibleAsync(CancellationToken cancellationToken)
+    {
+        var latestFinishedMatches = await dbContext.Matches
+            .AsNoTracking()
+            .Where(match =>
+                match.Tournament.IsActive &&
+                match.Status == MatchStatus.Finished &&
+                match.HomeTeamId.HasValue &&
+                match.AwayTeamId.HasValue &&
+                match.HomeScore.HasValue &&
+                match.AwayScore.HasValue)
+            .GroupBy(match => match.TournamentId)
+            .Select(group => new
+            {
+                TournamentId = group.Key,
+                SourceUtc = group.Max(match => match.UpdatedAtUtc)
+            })
+            .ToListAsync(cancellationToken);
+
+        if (latestFinishedMatches.Count == 0)
+        {
+            return 0;
+        }
+
+        var tournamentIds = latestFinishedMatches.Select(match => match.TournamentId).ToList();
+        var latestRatingRuns = await dbContext.EloRatingRuns
+            .AsNoTracking()
+            .Where(run =>
+                tournamentIds.Contains(run.TournamentId) &&
+                run.Status == EloRatingRunStatus.Succeeded &&
+                run.FinishedAtUtc.HasValue)
+            .GroupBy(run => run.TournamentId)
+            .Select(group => new
+            {
+                TournamentId = group.Key,
+                FinishedAtUtc = group.Max(run => run.FinishedAtUtc!.Value)
+            })
+            .ToListAsync(cancellationToken);
+
+        var latestRunByTournament = latestRatingRuns.ToDictionary(run => run.TournamentId, run => run.FinishedAtUtc);
+        return latestFinishedMatches.Count(match =>
+            !latestRunByTournament.TryGetValue(match.TournamentId, out var latestRunUtc) ||
+            match.SourceUtc > latestRunUtc);
+    }
+
+    private Task<RatingRunHealthSnapshot?> GetLatestRatingRunAsync(
+        EloRatingRunStatus? status,
+        CancellationToken cancellationToken)
+    {
+        var baseRuns = dbContext.EloRatingRuns
+            .AsNoTracking()
+            .Where(run => !status.HasValue || run.Status == status.Value)
+            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage));
+
+        var formRuns = dbContext.FormRatingRuns
+            .AsNoTracking()
+            .Where(run => !status.HasValue || run.Status == status.Value)
+            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage));
+
+        var performanceRuns = dbContext.PerformanceRatingRuns
+            .AsNoTracking()
+            .Where(run => !status.HasValue || run.Status == status.Value)
+            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage));
+
+        return baseRuns
+            .Concat(formRuns)
+            .Concat(performanceRuns)
+            .OrderByDescending(run => run.StartedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<int> CountRatingRunsSinceAsync(
+        DateTimeOffset since,
+        EloRatingRunStatus? status,
+        CancellationToken cancellationToken)
+    {
+        var baseRunCount = await dbContext.EloRatingRuns.CountAsync(run =>
+                run.StartedAtUtc >= since && (!status.HasValue || run.Status == status.Value),
+                cancellationToken);
+        var formRunCount = await dbContext.FormRatingRuns.CountAsync(run =>
+                run.StartedAtUtc >= since && (!status.HasValue || run.Status == status.Value),
+                cancellationToken);
+        var performanceRunCount = await dbContext.PerformanceRatingRuns.CountAsync(run =>
+                run.StartedAtUtc >= since && (!status.HasValue || run.Status == status.Value),
+                cancellationToken);
+
+        return baseRunCount + formRunCount + performanceRunCount;
     }
 
     private async Task<IReadOnlyList<LiveScoreFixtureRow>> FetchRowsForModeAsync(

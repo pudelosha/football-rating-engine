@@ -5,6 +5,8 @@ public sealed record CombinedRatingRunContextDto(
     int? FormRatingRunId,
     int? PerformanceRatingRunId,
     int? SnapshotStartSeasonOffset,
+    string CurrentRoundInfo,
+    string PreviousRoundInfo,
     DateTimeOffset CalculatedAtUtc);
 
 public sealed record TeamCombinedRatingDto(
@@ -17,6 +19,8 @@ public sealed record TeamCombinedRatingDto(
     decimal SquadQualityAdjustment,
     decimal TotalAdjustment,
     decimal FinalRating,
+    decimal? PreviousFinalRating,
+    decimal? FinalRatingChange,
     decimal RatingConfidence,
     bool HasFormRating,
     bool HasPerformanceRating,

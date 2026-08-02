@@ -557,13 +557,19 @@ function AppMenu({
           <button type="button" onClick={() => onNavigate('dashboard')}>
             <span className="menu-label">
               <MenuIcon name="dashboard" />
-              <span>Analytics Board</span>
+              <span>Analytics</span>
             </span>
           </button>
           <button type="button" onClick={() => onNavigate('ratings')}>
             <span className="menu-label">
               <MenuIcon name="ratings" />
               <span>{t.menuRatings}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => onNavigate('predictions')}>
+            <span className="menu-label">
+              <MenuIcon name="predictions" />
+              <span>{t.menuPredictions}</span>
             </span>
           </button>
           <button type="button" onClick={() => onNavigate('teams')}>
@@ -576,12 +582,6 @@ function AppMenu({
             <span className="menu-label">
               <MenuIcon name="matches" />
               <span>{t.menuMatches}</span>
-            </span>
-          </button>
-          <button type="button" onClick={() => onNavigate('predictions')}>
-            <span className="menu-label">
-              <MenuIcon name="predictions" />
-              <span>{t.menuPredictions}</span>
             </span>
           </button>
           <button type="button" onClick={() => onNavigate('betting')}>
