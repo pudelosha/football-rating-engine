@@ -557,7 +557,7 @@ function AppMenu({
           <button type="button" onClick={() => onNavigate('dashboard')}>
             <span className="menu-label">
               <MenuIcon name="dashboard" />
-              <span>Analytics</span>
+              <span>{t.menuAnalytics}</span>
             </span>
           </button>
           <button type="button" onClick={() => onNavigate('ratings')}>

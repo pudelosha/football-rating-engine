@@ -8,6 +8,31 @@ export function DashboardLeagueTable({
   copy: DashboardCopy
   rows: LeagueTableRow[]
 }) {
+  const getMovementTone = (change?: number) => {
+    if (!change) {
+      return 'stable'
+    }
+
+    return change > 0 ? 'up' : 'down'
+  }
+
+  const getMovementIcon = (change?: number) => {
+    if (!change) {
+      return '-'
+    }
+
+    return change > 0 ? '▲' : '▼'
+  }
+
+  const getMovementLabel = (change?: number) => {
+    if (!change) {
+      return copy.positionNoChange
+    }
+
+    const places = Math.abs(change)
+    return `${change > 0 ? copy.positionUp : copy.positionDown} ${places} ${places === 1 ? copy.positionPlace : copy.positionPlaces} ${copy.positionLastTwo}`
+  }
+
   return (
     <section className="details-panel">
       <div className="details-panel-heading">
@@ -19,6 +44,7 @@ export function DashboardLeagueTable({
           <thead>
             <tr>
               <th>#</th>
+              <th aria-label="Position change"></th>
               <th>Team</th>
               <th>{copy.played}</th>
               <th>{copy.wins}</th>
@@ -38,6 +64,15 @@ export function DashboardLeagueTable({
               <tr key={row.teamId}>
                 <td>{index + 1}</td>
                 <td>
+                  <i
+                    className={`dashboard-position-change ${getMovementTone(row.positionChangeLastTwo)}`}
+                    title={getMovementLabel(row.positionChangeLastTwo)}
+                    aria-label={getMovementLabel(row.positionChangeLastTwo)}
+                  >
+                    {getMovementIcon(row.positionChangeLastTwo)}
+                  </i>
+                </td>
+                <td>
                   <strong>{row.teamName}</strong>
                   <span>{row.abbreviation}</span>
                 </td>
@@ -56,7 +91,7 @@ export function DashboardLeagueTable({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td className="empty-table" colSpan={13}>{copy.noRows}</td>
+                <td className="empty-table" colSpan={14}>{copy.noRows}</td>
               </tr>
             )}
           </tbody>

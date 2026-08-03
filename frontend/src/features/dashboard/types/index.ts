@@ -33,6 +33,12 @@ export type DashboardCopy = {
   avgFor: string
   avgAgainst: string
   finalRating: string
+  positionNoChange: string
+  positionUp: string
+  positionDown: string
+  positionPlace: string
+  positionPlaces: string
+  positionLastTwo: string
 }
 
 export type DashboardProps = {
@@ -67,6 +73,7 @@ export type DashboardBar = {
   label: string
   value: number
   detail: string
+  metrics?: Array<{ label: string; value: string }>
 }
 
 export type LeagueTableRow = {
@@ -84,6 +91,7 @@ export type LeagueTableRow = {
   averageGoalsFor: number
   averageGoalsAgainst: number
   finalRating?: number
+  positionChangeLastTwo?: number
 }
 
 export type PositionTrendRow = {

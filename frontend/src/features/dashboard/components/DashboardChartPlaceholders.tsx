@@ -10,6 +10,24 @@ function formatEuro(value: number) {
   }).format(value)
 }
 
+function ChartTooltip({ bar }: { bar: DashboardBar }) {
+  if (!bar.metrics?.length) {
+    return null
+  }
+
+  return (
+    <span className="dashboard-chart-tooltip" role="tooltip">
+      <strong>{bar.detail}</strong>
+      {bar.metrics.map((metric) => (
+        <span key={metric.label}>
+          <small>{metric.label}</small>
+          <em>{metric.value}</em>
+        </span>
+      ))}
+    </span>
+  )
+}
+
 function MiniHorizontalBarChart({
   bars,
   emptyText,
@@ -37,7 +55,12 @@ function MiniHorizontalBarChart({
           <div className="dashboard-mini-bar-row" key={bar.label}>
             <span>{bar.label.toUpperCase()}</span>
             <div>
-              {bar.value > 0 && <b style={{ width: `${(bar.value / max) * 100}%` }}>{valuesInsideBars ? valueFormatter(bar.value) : null}</b>}
+              {bar.value > 0 && (
+                <b style={{ width: `${(bar.value / max) * 100}%` }}>
+                  {valuesInsideBars ? valueFormatter(bar.value) : null}
+                  <ChartTooltip bar={bar} />
+                </b>
+              )}
             </div>
             {!valuesInsideBars && <strong title={valueFormatter(bar.value)}>{valueFormatter(bar.value)}</strong>}
           </div>
@@ -121,7 +144,9 @@ function AverageAgeDotChart({
             <span>{bar.label}</span>
             <div style={{ gridTemplateColumns: `repeat(${ticks.length}, 1fr)` }}>
               {ticks.map((tick) => <i key={tick} />)}
-              <b style={{ left: `${((bar.value - min) / span) * 100}%` }} title={`${bar.detail}: ${bar.value.toFixed(1)}`} />
+              <b style={{ left: `${((bar.value - min) / span) * 100}%` }} aria-label={`${bar.detail}: ${bar.value.toFixed(1)}`}>
+                <ChartTooltip bar={bar} />
+              </b>
             </div>
           </div>
         ))}

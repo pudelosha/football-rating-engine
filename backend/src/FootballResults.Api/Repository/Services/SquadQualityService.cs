@@ -303,6 +303,14 @@ public sealed partial class SquadQualityService(
                 snapshotByTeamId.TryGetValue(team.Id, out var snapshot);
                 var components = snapshot is null ? SquadQualityComponents.Empty : CalculateSquadQualityComponents(snapshot, baselines);
                 var adjustment = RoundRating(Clamp(components.TotalScore * 70m, -70m, 70m));
+                var playerMarketValues = snapshot?.Players
+                    .Where(player => player.MarketValueEur.HasValue)
+                    .Select(player => player.MarketValueEur!.Value)
+                    .ToList() ?? [];
+                var playerAges = snapshot?.Players
+                    .Where(player => player.Age.HasValue)
+                    .Select(player => player.Age!.Value)
+                    .ToList() ?? [];
 
                 return new TeamSquadQualityRatingDto(
                     team.Id,
@@ -313,7 +321,11 @@ public sealed partial class SquadQualityService(
                     snapshot?.TotalMarketValueEur,
                     snapshot?.TopElevenMarketValueEur,
                     snapshot?.TopFifteenMarketValueEur,
+                    snapshot?.AverageMarketValueEur,
+                    playerMarketValues.Count == 0 ? null : playerMarketValues.Max(),
                     snapshot?.AverageAge,
+                    playerAges.Count == 0 ? null : playerAges.Min(),
+                    playerAges.Count == 0 ? null : playerAges.Max(),
                     snapshot?.ValueWeightedAverageAge,
                     snapshot?.ValueWeightedContractYears,
                     snapshot?.NationalTeamPlayers,

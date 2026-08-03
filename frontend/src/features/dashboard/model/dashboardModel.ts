@@ -39,6 +39,12 @@ export function getDashboardCopy(language: Language): DashboardCopy {
       avgFor: 'Sr. strzelone',
       avgAgainst: 'Sr. stracone',
       finalRating: 'FTSR',
+      positionNoChange: 'Bez zmiany pozycji w ostatnich 2 meczach',
+      positionUp: 'Awans',
+      positionDown: 'Spadek',
+      positionPlace: 'miejsce',
+      positionPlaces: 'miejsca',
+      positionLastTwo: 'w ostatnich 2 meczach',
     }
   }
 
@@ -76,6 +82,12 @@ export function getDashboardCopy(language: Language): DashboardCopy {
     avgFor: 'Avg scored',
     avgAgainst: 'Avg conceded',
     finalRating: 'FTSR',
+    positionNoChange: 'No position change over last 2 games',
+    positionUp: 'Up',
+    positionDown: 'Down',
+    positionPlace: 'place',
+    positionPlaces: 'places',
+    positionLastTwo: 'over last 2 games',
   }
 }
 
@@ -93,6 +105,19 @@ function formatNumber(value: number) {
 
 function formatDecimal(value: number) {
   return Number.isFinite(value) ? value.toFixed(2) : '0.00'
+}
+
+function formatCompactEuro(value?: number | null) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '-'
+  }
+
+  return new Intl.NumberFormat(undefined, {
+    currency: 'EUR',
+    maximumFractionDigits: 1,
+    notation: 'compact',
+    style: 'currency',
+  }).format(value)
 }
 
 function getTeamIds(match: MatchSummary) {
@@ -154,7 +179,7 @@ function sortLeagueRows(rows: LeagueTableRow[]) {
   )
 }
 
-function buildLeagueTable(matches: MatchSummary[], ratings: DashboardRatingRow[], selectedTeamIds: number[]): LeagueTableRow[] {
+function buildLeagueRowsFromMatches(matches: MatchSummary[], ratings: DashboardRatingRow[]) {
   const rows: Record<number, LeagueTableRow> = {}
   const ratingsByTeamId = getRatingByTeamId(ratings)
 
@@ -190,7 +215,6 @@ function buildLeagueTable(matches: MatchSummary[], ratings: DashboardRatingRow[]
   })
 
   return sortLeagueRows(Object.values(rows)
-    .filter((row) => selectedTeamIds.length === 0 || selectedTeamIds.includes(row.teamId))
     .map((row) => ({
       ...row,
       finalRating: ratingsByTeamId[row.teamId]?.finalRating,
@@ -198,6 +222,53 @@ function buildLeagueTable(matches: MatchSummary[], ratings: DashboardRatingRow[]
       averageGoalsFor: row.played > 0 ? row.goalsFor / row.played : 0,
       averageGoalsAgainst: row.played > 0 ? row.goalsAgainst / row.played : 0,
     })))
+}
+
+function getPreSeasonPositionByTeamId(ratings: DashboardRatingRow[]) {
+  return Object.fromEntries(
+    ratings
+      .slice()
+      .sort((left, right) => right.finalRating - left.finalRating || left.teamName.localeCompare(right.teamName))
+      .map((team, index) => [team.teamId, index + 1]),
+  )
+}
+
+function withPositionChanges(rows: LeagueTableRow[], matches: MatchSummary[], ratings: DashboardRatingRow[]) {
+  const finishedMatches = matches
+    .filter((match) => isFinished(match) && getFinishedScore(match))
+    .slice()
+  const preSeasonPositions = getPreSeasonPositionByTeamId(ratings)
+
+  return rows.map((row, index) => {
+    const teamMatches = finishedMatches
+      .filter((match) => match.homeTeam?.id === row.teamId || match.awayTeam?.id === row.teamId)
+      .sort((left, right) => new Date(right.kickoffUtc || 0).getTime() - new Date(left.kickoffUtc || 0).getTime())
+    const lastTwoMatches = new Set(teamMatches.slice(0, 2))
+
+    if (lastTwoMatches.size === 0) {
+      return { ...row, positionChangeLastTwo: 0 }
+    }
+
+    const previousRows = buildLeagueRowsFromMatches(
+      finishedMatches.filter((match) => !lastTwoMatches.has(match)),
+      ratings,
+    )
+    const previousTablePosition = previousRows.findIndex((previousRow) => previousRow.teamId === row.teamId)
+    const previousPosition = previousTablePosition >= 0
+      ? previousTablePosition + 1
+      : preSeasonPositions[row.teamId]
+    const currentPosition = index + 1
+
+    return {
+      ...row,
+      positionChangeLastTwo: previousPosition ? previousPosition - currentPosition : 0,
+    }
+  })
+}
+
+function buildLeagueTable(matches: MatchSummary[], ratings: DashboardRatingRow[], selectedTeamIds: number[]): LeagueTableRow[] {
+  return withPositionChanges(buildLeagueRowsFromMatches(matches, ratings), matches, ratings)
+    .filter((row) => selectedTeamIds.length === 0 || selectedTeamIds.includes(row.teamId))
 }
 
 function buildResultSplit(matches: MatchSummary[]) {
@@ -322,7 +393,7 @@ function buildGoalsScoredBars(rows: LeagueTableRow[]) {
     .slice()
     .sort((left, right) => right.goalsFor - left.goalsFor || left.teamName.localeCompare(right.teamName))
     .map((row) => ({
-      label: row.abbreviation || row.teamName,
+      label: (row.abbreviation || row.teamName).toUpperCase(),
       value: row.goalsFor,
       detail: `${row.goalsFor} goals`,
     }))
@@ -334,9 +405,14 @@ function buildTeamValueBars(dataset: DashboardDataset, leagueRows: LeagueTableRo
   return dataset.squadDetails
     .filter((detail) => detail.totalMarketValueEur !== null && detail.totalMarketValueEur !== undefined)
     .map((detail) => ({
-      label: ratingsByTeamId[detail.teamId]?.teamAbbreviation || ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`,
+      label: (ratingsByTeamId[detail.teamId]?.teamAbbreviation || ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`).toUpperCase(),
       value: detail.totalMarketValueEur ?? 0,
       detail: ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`,
+      metrics: [
+        { label: 'Player count', value: String(detail.playerCount ?? '-') },
+        { label: 'Average player value', value: formatCompactEuro(detail.averageMarketValueEur ?? ((detail.totalMarketValueEur && detail.playerCount) ? detail.totalMarketValueEur / detail.playerCount : null)) },
+        { label: 'Max player value', value: formatCompactEuro(detail.maxMarketValueEur) },
+      ],
       sortOrder: order[detail.teamId] ?? 999,
     }))
     .sort((left, right) => left.sortOrder - right.sortOrder || right.value - left.value)
@@ -348,9 +424,15 @@ function buildTeamAgeDots(dataset: DashboardDataset, leagueRows: LeagueTableRow[
   return dataset.squadDetails
     .filter((detail) => detail.averageAge !== null && detail.averageAge !== undefined)
     .map((detail) => ({
-      label: ratingsByTeamId[detail.teamId]?.teamAbbreviation || ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`,
+      label: (ratingsByTeamId[detail.teamId]?.teamAbbreviation || ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`).toUpperCase(),
       value: detail.averageAge ?? 0,
       detail: ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`,
+      metrics: [
+        { label: 'Exact average age', value: detail.averageAge === null || detail.averageAge === undefined ? '-' : detail.averageAge.toFixed(2) },
+        { label: 'Player count', value: String(detail.playerCount ?? '-') },
+        { label: 'Youngest player', value: detail.youngestPlayerAge === null || detail.youngestPlayerAge === undefined ? '-' : String(detail.youngestPlayerAge) },
+        { label: 'Oldest player', value: detail.oldestPlayerAge === null || detail.oldestPlayerAge === undefined ? '-' : String(detail.oldestPlayerAge) },
+      ],
       sortOrder: order[detail.teamId] ?? 999,
     }))
     .sort((left, right) => left.sortOrder - right.sortOrder || left.value - right.value)

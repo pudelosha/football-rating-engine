@@ -381,7 +381,11 @@ export type TeamSquadQualityRatingDetail = {
   totalMarketValueEur?: number | null
   topElevenMarketValueEur?: number | null
   topFifteenMarketValueEur?: number | null
+  averageMarketValueEur?: number | null
+  maxMarketValueEur?: number | null
   averageAge?: number | null
+  youngestPlayerAge?: number | null
+  oldestPlayerAge?: number | null
   valueWeightedAverageAge?: number | null
   nationalTeamPlayers?: number | null
   playerCount: number
