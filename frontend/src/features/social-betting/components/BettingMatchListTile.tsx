@@ -7,6 +7,11 @@ function splitKickoff(kickoff: string) {
   return { date, time }
 }
 
+function splitPrediction(prediction?: string) {
+  const [home = '-', away = '-'] = (prediction ?? '-:-').split(':').map((part) => part.trim())
+  return { home, away }
+}
+
 export function BettingMatchListTile({
   actionLabel,
   compact = false,
@@ -23,20 +28,36 @@ export function BettingMatchListTile({
   variant?: 'default' | 'results'
 }) {
   return (
-    <section className={`details-panel social-betting-tile ${compact ? 'compact' : ''}`}>
+    <section className={`details-panel social-betting-tile ${compact ? 'compact' : ''} ${variant === 'results' ? 'results' : ''}`}>
       <div className="details-panel-heading">
         <MenuIcon name={icon} />
         <h2>{title}</h2>
       </div>
       <div className="social-betting-match-list">
-        {items.map((item) => (
-          <article key={item.id}>
-            {compact ? (
+        {items.map((item) => {
+          const predictedScore = splitPrediction(item.prediction)
+          const outcomeText = item.result === 'won' ? 'Matched' : 'Not matched / failed'
+
+          return (
+            <article key={item.id}>
+              {compact || item.prediction ? (
               <>
                 <div className="social-betting-compact-teams">
                   <strong>{item.homeTeam}</strong>
                   <strong>{item.awayTeam}</strong>
                 </div>
+                {item.prediction && (
+                  <div className={`social-betting-compact-score ${variant === 'results' ? item.result ?? 'pending' : ''}`}>
+                    <strong>{predictedScore.home}</strong>
+                    <strong>{predictedScore.away}</strong>
+                    {variant === 'results' && (
+                      <span className={`social-betting-score-tooltip ${item.result ?? 'pending'}`}>
+                        <b>Real result: {item.score ?? '-:-'}</b>
+                        <small>{outcomeText}</small>
+                      </span>
+                    )}
+                  </div>
+                )}
                 <time className="social-betting-compact-time">
                   <span>{splitKickoff(item.kickoff).date}</span>
                   <span>{splitKickoff(item.kickoff).time}</span>
@@ -52,19 +73,14 @@ export function BettingMatchListTile({
                 <small>{item.linkedTournament}</small>
               </div>
             )}
-            {variant === 'results' ? (
-              <div className="social-betting-result">
-                <span>{item.prediction} / {item.score}</span>
-                <b className={item.result === 'won' ? 'won' : 'lost'}>{item.points ?? 0} pts</b>
-              </div>
-            ) : (
+            {variant !== 'results' && (
               <div className="social-betting-pick">
-                {item.prediction && <span>{item.prediction}</span>}
                 {actionLabel && <button type="button">{actionLabel}</button>}
               </div>
             )}
           </article>
-        ))}
+          )
+        })}
       </div>
     </section>
   )

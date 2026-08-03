@@ -41,7 +41,10 @@ export function BettingTournamentToolbar({
         </div>
         <div>
           <span>Player</span>
-          <strong>{playerName}</strong>
+          <span className="social-betting-player-line">
+            <strong>{playerName}</strong>
+            <button type="button" aria-label="Change tournament nickname">Edit</button>
+          </span>
         </div>
       </div>
     </section>
