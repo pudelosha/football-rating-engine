@@ -2957,6 +2957,356 @@ p {
   overflow: visible;
 }
 
+.social-betting-layout {
+  gap: 18px;
+}
+
+.social-betting-toolbar {
+  display: grid;
+  gap: 14px;
+}
+
+.social-betting-toolbar-main {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(280px, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.social-betting-toolbar-main button {
+  min-height: 52px;
+  color: #101915;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.social-betting-toolbar-main label {
+  display: grid;
+  gap: 6px;
+}
+
+.social-betting-toolbar-main label span,
+.social-betting-context span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.social-betting-toolbar-main select {
+  min-height: 52px;
+  width: 100%;
+  padding: 0 52px 0 16px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: 0;
+  background:
+    linear-gradient(45deg, transparent 50%, #b0d86b 50%) calc(100% - 24px) 50% / 8px 8px no-repeat,
+    linear-gradient(135deg, #b0d86b 50%, transparent 50%) calc(100% - 18px) 50% / 8px 8px no-repeat,
+    rgba(255, 255, 255, 0.08);
+  font-size: 16px;
+  font-weight: 950;
+  appearance: none;
+}
+
+.social-betting-toolbar-main select:focus {
+  box-shadow: 0 0 0 2px rgba(176, 216, 107, 0.24);
+}
+
+.social-betting-toolbar-main select option {
+  color: #fff9ea;
+  background: #1f2a23;
+  font-weight: 850;
+}
+
+.social-betting-context {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.social-betting-context div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.social-betting-context strong {
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.social-betting-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.social-betting-tile {
+  min-width: 0;
+  align-content: start;
+}
+
+.social-betting-results-tile {
+  grid-column: span 4;
+}
+
+.social-betting-results-tile + .social-betting-tile {
+  grid-column: span 2;
+}
+
+.social-betting-grid > .social-betting-tile:nth-child(n + 3) {
+  grid-column: span 3;
+  min-height: 320px;
+}
+
+.tournament-table-shell:has(> .social-betting-table) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: visible;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.tournament-table.social-betting-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.tournament-table.social-betting-table th,
+.tournament-table.social-betting-table td {
+  padding: 13px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.social-betting-table th:nth-child(2),
+.social-betting-table td:nth-child(2) {
+  width: 54px;
+}
+
+.social-betting-table th:first-child,
+.social-betting-table td:first-child {
+  width: 46px;
+  text-align: center;
+}
+
+.social-betting-table th:nth-child(3),
+.social-betting-table td:nth-child(3) {
+  width: auto;
+  text-align: left;
+}
+
+.social-betting-table th:nth-child(4),
+.social-betting-table td:nth-child(4),
+.social-betting-table th:nth-child(5),
+.social-betting-table td:nth-child(5) {
+  width: 88px;
+  text-align: center;
+}
+
+.social-betting-table th:last-child,
+.social-betting-table td:last-child {
+  width: 110px;
+  text-align: center;
+}
+
+.social-betting-table thead,
+.social-betting-table tbody tr {
+  background: transparent;
+}
+
+.social-betting-table tbody tr:hover {
+  background: rgba(176, 216, 107, 0.055);
+}
+
+.social-betting-rank {
+  display: inline-grid;
+  min-width: 24px;
+  place-items: center;
+  color: rgba(255, 249, 234, 0.52);
+  font-weight: 950;
+}
+
+.social-betting-rank.up {
+  color: #b0d86b;
+}
+
+.social-betting-rank.down {
+  color: #d8966f;
+}
+
+.social-betting-score {
+  color: #b0d86b;
+}
+
+.social-betting-match-list {
+  display: grid;
+  gap: 10px;
+}
+
+.social-betting-match-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 78px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.social-betting-tile.compact .social-betting-match-list {
+  gap: 8px;
+}
+
+.social-betting-tile.compact .social-betting-match-list article {
+  min-height: 62px;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, auto) 34px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+}
+
+.social-betting-tile.compact .social-betting-match-list strong {
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.social-betting-compact-teams {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.social-betting-compact-teams strong {
+  overflow: hidden;
+  color: #fff9ea;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-betting-compact-time {
+  display: grid;
+  justify-items: end;
+  color: rgba(255, 249, 234, 0.7);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.social-betting-icon-button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: rgba(255, 249, 234, 0.78);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.social-betting-icon-button:hover {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.social-betting-icon-button .menu-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.social-betting-tile.compact .social-betting-pick {
+  display: grid;
+  align-items: center;
+  justify-items: end;
+  min-width: 0;
+}
+
+.social-betting-tile.compact .social-betting-pick button {
+  min-width: 86px;
+  min-height: 34px;
+  color: #101915;
+  background: #b0d86b;
+}
+
+.social-betting-match-list article:hover {
+  background: rgba(176, 216, 107, 0.1);
+}
+
+.social-betting-match-list article > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.social-betting-match-list span,
+.social-betting-match-list small {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.social-betting-match-list strong {
+  overflow-wrap: anywhere;
+  color: #fff9ea;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.social-betting-pick,
+.social-betting-result {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  min-width: 112px;
+}
+
+.social-betting-pick button {
+  min-width: 94px;
+  min-height: 34px;
+  color: #101915;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.social-betting-result b {
+  display: inline-grid;
+  min-width: 64px;
+  min-height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.social-betting-result b.won {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.social-betting-result b.lost {
+  color: #fff9ea;
+  background: rgba(165, 63, 49, 0.9);
+}
+
 .betting-panel-layout {
   gap: 18px;
 }
@@ -7826,12 +8176,19 @@ p {
 }
 
 @media (max-width: 1100px) {
+  .social-betting-toolbar-main,
+  .social-betting-toolbar,
+  .social-betting-grid,
   .dashboard-filter-panel,
   .football-filter-panel,
   .dashboard-grid.two-columns,
   .dashboard-chart-row,
   .dashboard-kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .social-betting-context {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-filter-panel button {

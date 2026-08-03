@@ -35,8 +35,8 @@ export function HomeHero({
           <MenuIcon name="predictions" />
           <span>{copy.actions[1]}</span>
         </button>
-        <button type="button" onClick={() => onNavigate('betting-create')}>
-          <MenuIcon name="betting" />
+        <button type="button" onClick={() => onNavigate('slips-create')}>
+          <MenuIcon name="slips" />
           <span>{copy.actions[2]}</span>
         </button>
       </div>

@@ -14,10 +14,10 @@ export function BettingLabPanel({
     <section className="details-panel home-betting-panel">
       <div className="details-panel-heading split">
         <div>
-          <MenuIcon name="betting" />
-          <h2>{copy.bettingLab}</h2>
-        </div>
-        <button type="button" onClick={() => onNavigate('betting')}>{copy.openBetting}</button>
+        <MenuIcon name="slips" />
+        <h2>{copy.bettingLab}</h2>
+      </div>
+        <button type="button" onClick={() => onNavigate('slips')}>{copy.openBetting}</button>
       </div>
       <p>{copy.bettingCopy}</p>
       <div className="home-betting-grid">

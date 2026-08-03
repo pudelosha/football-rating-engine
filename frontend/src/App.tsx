@@ -26,6 +26,7 @@ import { UserMatchDetailsPanel, UserMatchesPanel } from './features/matches/page
 import { PredictionDetailsPanel, PredictionsPanel, TournamentPredictionsPanel } from './features/predictions/pages/PredictionsPages'
 import { ProfilePage } from './features/profile/pages/ProfilePage'
 import { UserRatingDetailsPanel, UserRatingsPanel } from './features/ratings/pages/RatingsPages'
+import { SocialBettingPage } from './features/social-betting/pages/SocialBettingPage'
 import { UserTeamDetailsPanel, UserTeamsPanel } from './features/teams/pages/TeamsPages'
 import { HeroField } from './shared/components/HeroField/HeroField'
 import { FootballIcon, MenuIcon } from './shared/components/Icons'
@@ -70,7 +71,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'dashboard' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'betting' || view === 'betting-create' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'dashboard' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'betting' || view === 'slips' || view === 'slips-create' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -368,14 +369,21 @@ function App() {
         />
       )}
 
-      {(view === 'betting' || view === 'betting-create') && user && (
+      {view === 'betting' && user && (
+        <SocialBettingPage
+          t={t}
+          user={user}
+        />
+      )}
+
+      {(view === 'slips' || view === 'slips-create') && user && (
         <BettingPanel
           t={t}
           user={user}
           onToast={showToast}
-          isCreating={view === 'betting-create'}
-          onCreate={() => navigateTo(routes['betting-create'])}
-          onBack={() => navigateTo(routes.betting)}
+          isCreating={view === 'slips-create'}
+          onCreate={() => navigateTo(routes['slips-create'])}
+          onBack={() => navigateTo(routes.slips)}
         />
       )}
 
@@ -588,6 +596,12 @@ function AppMenu({
             <span className="menu-label">
               <MenuIcon name="betting" />
               <span>{t.menuBetting}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => onNavigate('slips')}>
+            <span className="menu-label">
+              <MenuIcon name="slips" />
+              <span>{t.menuSlips}</span>
             </span>
           </button>
           <button type="button" onClick={() => onNavigate('api')}>
