@@ -1,4 +1,4 @@
-import type { BettingMatchPick, BettingStandingRow, BettingTournamentOption } from '../types'
+import type { BettingMatchInsight, BettingMatchPick, BettingStandingRow, BettingTournamentOption } from '../types'
 
 export const bettingTournamentOptions: BettingTournamentOption[] = [
   {
@@ -42,4 +42,49 @@ export const myLatestResults: BettingMatchPick[] = [
   { id: 7, kickoff: '02.08.2026, 18:00', linkedTournament: 'Premier League', homeTeam: 'Aston Villa', awayTeam: 'Everton', prediction: '1:0', score: '1:0', result: 'won', points: 5 },
   { id: 8, kickoff: '01.08.2026, 15:00', linkedTournament: 'Premier League', homeTeam: 'Brighton', awayTeam: 'Fulham', prediction: '2:1', score: '1:1', result: 'lost', points: 0 },
   { id: 9, kickoff: '31.07.2026, 21:00', linkedTournament: 'Premier League', homeTeam: 'Newcastle United', awayTeam: 'West Ham United', prediction: '2:0', score: '3:1', result: 'won', points: 2 },
+]
+
+export const matchInsights: BettingMatchInsight[] = [
+  {
+    id: 101,
+    stage: 'Round 1',
+    kickoff: '07.08.2026, 20:30',
+    homeTeam: 'Liverpool',
+    awayTeam: 'Chelsea',
+    score: '2:0',
+    status: 'Completed',
+    summary: 'Liverpool won in regular time',
+    bets: [
+      { playerName: 'pudel1985', prediction: '2:0', homeWin: true, draw: false, awayWin: false, outcomeMatched: true, points: 6.71 },
+      { playerName: 'Marta', prediction: '2:1', homeWin: true, draw: false, awayWin: false, outcomeMatched: true, points: 1.71 },
+      { playerName: 'Kamil', prediction: '0:2', homeWin: false, draw: false, awayWin: true, outcomeMatched: false, points: 0 },
+      { playerName: 'Anna', prediction: '1:1', homeWin: false, draw: true, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 102,
+    stage: 'Round 1',
+    kickoff: '08.08.2026, 16:00',
+    homeTeam: 'Arsenal',
+    awayTeam: 'Leeds United',
+    status: 'Pending',
+    summary: 'Bets are open until kickoff',
+    bets: [
+      { playerName: 'pudel1985', prediction: '3:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Marta', prediction: '2:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 103,
+    stage: 'Round 2',
+    kickoff: '14.08.2026, 21:00',
+    homeTeam: 'Manchester City',
+    awayTeam: 'Tottenham Hotspur',
+    status: 'In progress',
+    summary: 'Live match, bets are locked',
+    bets: [
+      { playerName: 'pudel1985', prediction: '2:2', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Ola', prediction: '1:2', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
 ]

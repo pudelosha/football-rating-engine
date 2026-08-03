@@ -3088,6 +3088,198 @@ p {
   min-height: 320px;
 }
 
+.social-betting-grid > .social-betting-tile.social-betting-insights-tile {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 0;
+}
+
+.social-betting-insights-heading {
+  align-items: end;
+}
+
+.social-betting-insights-heading label {
+  display: grid;
+  min-width: 220px;
+  gap: 6px;
+}
+
+.social-betting-insights-heading label span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.social-betting-insights-heading select {
+  min-height: 42px;
+  padding: 0 42px 0 14px;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: 0;
+  background:
+    linear-gradient(45deg, transparent 50%, #b0d86b 50%) calc(100% - 22px) 50% / 7px 7px no-repeat,
+    linear-gradient(135deg, #b0d86b 50%, transparent 50%) calc(100% - 17px) 50% / 7px 7px no-repeat,
+    rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 950;
+  appearance: none;
+}
+
+.social-betting-insights-heading select option {
+  color: #fff9ea;
+  background: #1f2a23;
+  font-weight: 850;
+}
+
+.social-betting-accordion {
+  display: grid;
+  gap: 8px;
+}
+
+.social-betting-insight-row {
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.social-betting-insight-row > button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto 22px;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 14px;
+  color: #fff9ea;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.social-betting-insight-row > button:hover {
+  background: rgba(176, 216, 107, 0.08);
+}
+
+.social-betting-insight-row > button:disabled {
+  cursor: default;
+}
+
+.social-betting-insight-row > button:disabled:hover {
+  background: transparent;
+}
+
+.social-betting-insight-row > button > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.social-betting-insight-row > button strong {
+  overflow: hidden;
+  color: #fff9ea;
+  font-size: 15px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-betting-insight-row > button small {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.social-betting-insight-row > button i {
+  width: 11px;
+  height: 11px;
+  border-right: 2px solid rgba(255, 249, 234, 0.66);
+  border-bottom: 2px solid rgba(255, 249, 234, 0.66);
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.social-betting-insight-row.open > button i {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.social-betting-status {
+  display: inline-grid;
+  min-width: 92px;
+  min-height: 28px;
+  place-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.social-betting-status.pending {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.social-betting-status.in-progress {
+  color: #101915;
+  background: rgba(224, 201, 105, 0.9);
+}
+
+.social-betting-status.postponed {
+  color: #fff9ea;
+  background: rgba(151, 69, 53, 0.9);
+}
+
+.social-betting-insight-details {
+  display: grid;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.social-betting-insight-header,
+.social-betting-insight-bet {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 90px 52px 52px 52px 80px 76px;
+  gap: 8px;
+  align-items: center;
+  padding: 11px 14px;
+}
+
+.social-betting-insight-header {
+  color: rgba(255, 249, 234, 0.58);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.social-betting-insight-bet {
+  min-height: 46px;
+  color: rgba(255, 249, 234, 0.78);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.social-betting-insight-bet strong {
+  color: #fff9ea;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.social-betting-insight-bet b {
+  color: rgba(255, 249, 234, 0.24);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.social-betting-insight-bet b.ok {
+  color: #b0d86b;
+}
+
+.social-betting-insight-bet b.failed {
+  color: #d8966f;
+}
+
 .tournament-table-shell:has(> .social-betting-table) {
   width: 100%;
   max-width: 100%;

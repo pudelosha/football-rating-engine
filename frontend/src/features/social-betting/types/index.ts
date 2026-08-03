@@ -37,3 +37,25 @@ export type BettingMatchPick = {
   result?: 'won' | 'lost' | 'pending'
   points?: number
 }
+
+export type BettingMatchInsightBet = {
+  playerName: string
+  prediction: string
+  homeWin: boolean
+  draw: boolean
+  awayWin: boolean
+  outcomeMatched: boolean
+  points: number
+}
+
+export type BettingMatchInsight = {
+  id: number
+  stage: string
+  kickoff: string
+  homeTeam: string
+  awayTeam: string
+  score?: string
+  status: 'Pending' | 'In progress' | 'Completed' | 'Postponed'
+  summary: string
+  bets: BettingMatchInsightBet[]
+}
