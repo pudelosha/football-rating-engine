@@ -4,11 +4,15 @@ import { BettingMatchListTile } from '../components/BettingMatchListTile'
 import { BettingTournamentResultsTile } from '../components/BettingTournamentResultsTile'
 import { BettingTournamentToolbar } from '../components/BettingTournamentToolbar'
 import { MatchInsightsTile } from '../components/MatchInsightsTile'
+import { MyBetsTile } from '../components/MyBetsTile'
 import { PointsGrowthChartTile } from '../components/PointsGrowthChartTile'
 import {
   bettingStandings,
   bettingTournamentOptions,
   matchInsights,
+  myFinishedStageBets,
+  myOutstandingStageBets,
+  myPlacedStageBets,
   outstandingBets,
   pointsGrowthSeries,
 } from '../model/socialBettingModel'
@@ -95,10 +99,12 @@ export function SocialBettingPage({ user }: SocialBettingProps) {
           )}
 
           {activeSection === 'my-bets' && (
-            <section className="details-panel social-betting-tile social-betting-placeholder-tile">
-              <h2>My bets</h2>
-              <p>This section will collect your bet forms, editable upcoming picks, and settled personal history.</p>
-            </section>
+            <MyBetsTile
+              finished={myFinishedStageBets}
+              outstanding={myOutstandingStageBets}
+              placed={myPlacedStageBets}
+              stages={insightStages}
+            />
           )}
         </div>
       </div>

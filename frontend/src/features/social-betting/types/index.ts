@@ -32,6 +32,7 @@ export type BettingStandingRow = {
 
 export type BettingMatchPick = {
   id: number
+  stage?: string
   kickoff: string
   homeTeam: string
   awayTeam: string

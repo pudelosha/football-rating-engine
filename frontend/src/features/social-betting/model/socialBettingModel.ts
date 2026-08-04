@@ -50,6 +50,26 @@ export const myLatestResults: BettingMatchPick[] = [
   { id: 9, kickoff: '31.07.2026, 21:00', linkedTournament: 'Premier League', homeTeam: 'Newcastle United', awayTeam: 'West Ham United', prediction: '2:0', score: '3:1', result: 'won', points: 2 },
 ]
 
+export const myOutstandingStageBets: BettingMatchPick[] = [
+  { id: 301, stage: 'Round 1', kickoff: '10.08.2026, 15:00', linkedTournament: 'Premier League', homeTeam: 'Crystal Palace', awayTeam: 'Brentford' },
+  { id: 302, stage: 'Round 1', kickoff: '10.08.2026, 17:30', linkedTournament: 'Premier League', homeTeam: 'Nottingham Forest', awayTeam: 'Sunderland' },
+  { id: 303, stage: 'Round 1', kickoff: '11.08.2026, 21:00', linkedTournament: 'Premier League', homeTeam: 'Manchester United', awayTeam: 'AFC Bournemouth' },
+  { id: 304, stage: 'Round 2', kickoff: '14.08.2026, 20:30', linkedTournament: 'Premier League', homeTeam: 'Chelsea', awayTeam: 'Everton' },
+]
+
+export const myPlacedStageBets: BettingMatchPick[] = [
+  { id: 305, stage: 'Round 1', kickoff: '07.08.2026, 20:30', linkedTournament: 'Premier League', homeTeam: 'Liverpool', awayTeam: 'Chelsea', prediction: '2:0' },
+  { id: 306, stage: 'Round 1', kickoff: '08.08.2026, 16:00', linkedTournament: 'Premier League', homeTeam: 'Arsenal', awayTeam: 'Leeds United', prediction: '3:0' },
+  { id: 307, stage: 'Round 2', kickoff: '14.08.2026, 21:00', linkedTournament: 'Premier League', homeTeam: 'Manchester City', awayTeam: 'Tottenham Hotspur', prediction: '2:2' },
+]
+
+export const myFinishedStageBets: BettingMatchPick[] = [
+  { id: 308, stage: 'Round 1', kickoff: '07.08.2026, 20:30', linkedTournament: 'Premier League', homeTeam: 'Liverpool', awayTeam: 'Chelsea', prediction: '2:0', score: '2:0', result: 'won', points: 6.71 },
+  { id: 309, stage: 'Round 1', kickoff: '08.08.2026, 18:30', linkedTournament: 'Premier League', homeTeam: 'Manchester City', awayTeam: 'Tottenham Hotspur', prediction: '2:1', score: '1:1', result: 'lost', points: 0 },
+  { id: 310, stage: 'Round 1', kickoff: '09.08.2026, 14:00', linkedTournament: 'Premier League', homeTeam: 'Aston Villa', awayTeam: 'Everton', score: '0:1', result: 'lost', points: 0 },
+  { id: 311, stage: 'Round 2', kickoff: '15.08.2026, 15:00', linkedTournament: 'Premier League', homeTeam: 'Fulham', awayTeam: 'Brighton', prediction: '1:1', score: '2:0', result: 'lost', points: 0 },
+]
+
 export const matchInsights: BettingMatchInsight[] = [
   {
     id: 101,

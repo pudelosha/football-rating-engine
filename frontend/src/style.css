@@ -3304,6 +3304,101 @@ p {
   min-height: 0;
 }
 
+.social-betting-grid > .social-betting-tile.social-betting-my-bets-tile {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.social-betting-my-bets-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.social-betting-my-bets-subtile {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  align-content: start;
+}
+
+.social-betting-my-bets-subtile h3 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row {
+  min-height: 62px;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row.pending {
+  grid-template-columns: minmax(0, 1fr) minmax(58px, auto) 28px 28px;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row.pending .social-betting-empty-score {
+  display: none;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row.placed {
+  grid-template-columns: minmax(0, 1fr) 28px minmax(58px, auto) 28px 28px;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row.finished {
+  grid-template-columns: minmax(0, 1fr) 28px minmax(58px, auto) 28px;
+}
+
+.social-betting-my-bets-subtile .social-betting-pick button {
+  display: grid;
+  width: 28px;
+  min-width: 28px;
+  height: 32px;
+  min-height: 32px;
+  place-items: center;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.social-betting-my-bets-subtile .social-betting-pick .menu-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.social-betting-my-bets-subtile .social-betting-icon-button {
+  width: 28px;
+  min-width: 28px;
+  height: 32px;
+  justify-self: end;
+  padding: 0;
+}
+
+.social-betting-my-bets-subtile .social-betting-icon-button .menu-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.social-betting-my-bets-subtile .social-betting-compact-time {
+  font-size: 11px;
+}
+
+.social-betting-empty-score {
+  min-width: 34px;
+}
+
+.social-betting-empty-list {
+  margin: 0;
+  padding: 14px;
+  color: rgba(255, 249, 234, 0.62);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+  font-weight: 850;
+}
+
 .social-betting-placeholder-tile {
   grid-column: 1 / -1;
   min-height: 220px;
@@ -3826,6 +3921,96 @@ p {
   background: #b0d86b;
   font-size: 12px;
   font-weight: 950;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row .social-betting-pick {
+  min-width: 28px;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row .social-betting-pick button {
+  display: grid;
+  width: 28px;
+  min-width: 28px;
+  height: 32px;
+  min-height: 32px;
+  place-items: center;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row .social-betting-pick .menu-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row.finished .social-betting-icon-button {
+  justify-self: end;
+}
+
+.social-betting-my-bets-tile .social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row .social-betting-pick {
+  min-width: 28px;
+  width: 28px;
+}
+
+.social-betting-my-bets-tile .social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row .social-betting-pick button {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+}
+
+.social-betting-my-bets-tile .social-betting-my-bets-subtile .social-betting-match-list article.social-betting-my-bet-row.finished .social-betting-icon-button {
+  margin-left: auto;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 66px;
+  padding: 12px 14px !important;
+  padding-right: 14px !important;
+  padding-left: 14px !important;
+  column-gap: 10px;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row.pending {
+  grid-template-columns: minmax(0, 1fr) 64px 30px 30px;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row.placed {
+  grid-template-columns: minmax(0, 1fr) 30px 64px 30px 30px;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row.finished {
+  grid-template-columns: minmax(0, 1fr) 30px 64px 30px;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row .social-betting-compact-teams {
+  min-width: 0;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row .social-betting-compact-time {
+  width: 64px;
+  justify-items: end;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row .social-betting-icon-button,
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row .social-betting-pick button {
+  width: 30px;
+  min-width: 30px;
+  max-width: 30px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  justify-self: end;
+}
+
+.social-betting-my-bets-tile .social-betting-match-list article.social-betting-my-bet-row .social-betting-pick {
+  width: 30px;
+  min-width: 30px;
+  justify-items: end;
 }
 
 .social-betting-result b {

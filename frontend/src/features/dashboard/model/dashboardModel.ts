@@ -401,9 +401,18 @@ function buildGoalsScoredBars(rows: LeagueTableRow[]) {
 
 function buildTeamValueBars(dataset: DashboardDataset, leagueRows: LeagueTableRow[]) {
   const ratingsByTeamId = getRatingByTeamId(dataset.ratings)
+  const tournamentTeamIds = new Set(dataset.ratings.map((team) => team.teamId))
+  const matchTeamIds = new Set(dataset.matches.flatMap(getTeamIds))
+  const eligibleTeamIds = matchTeamIds.size > 0 ? matchTeamIds : tournamentTeamIds
+  const selectedTeamIds = dataset.teamIds.map(Number).filter(Number.isFinite)
   const order = Object.fromEntries(leagueRows.map((row, index) => [row.teamId, index]))
   return dataset.squadDetails
-    .filter((detail) => detail.totalMarketValueEur !== null && detail.totalMarketValueEur !== undefined)
+    .filter((detail) =>
+      tournamentTeamIds.has(detail.teamId) &&
+      eligibleTeamIds.has(detail.teamId) &&
+      (selectedTeamIds.length === 0 || selectedTeamIds.includes(detail.teamId)) &&
+      detail.totalMarketValueEur !== null &&
+      detail.totalMarketValueEur !== undefined)
     .map((detail) => ({
       label: (ratingsByTeamId[detail.teamId]?.teamAbbreviation || ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`).toUpperCase(),
       value: detail.totalMarketValueEur ?? 0,
@@ -420,9 +429,18 @@ function buildTeamValueBars(dataset: DashboardDataset, leagueRows: LeagueTableRo
 
 function buildTeamAgeDots(dataset: DashboardDataset, leagueRows: LeagueTableRow[]) {
   const ratingsByTeamId = getRatingByTeamId(dataset.ratings)
+  const tournamentTeamIds = new Set(dataset.ratings.map((team) => team.teamId))
+  const matchTeamIds = new Set(dataset.matches.flatMap(getTeamIds))
+  const eligibleTeamIds = matchTeamIds.size > 0 ? matchTeamIds : tournamentTeamIds
+  const selectedTeamIds = dataset.teamIds.map(Number).filter(Number.isFinite)
   const order = Object.fromEntries(leagueRows.map((row, index) => [row.teamId, index]))
   return dataset.squadDetails
-    .filter((detail) => detail.averageAge !== null && detail.averageAge !== undefined)
+    .filter((detail) =>
+      tournamentTeamIds.has(detail.teamId) &&
+      eligibleTeamIds.has(detail.teamId) &&
+      (selectedTeamIds.length === 0 || selectedTeamIds.includes(detail.teamId)) &&
+      detail.averageAge !== null &&
+      detail.averageAge !== undefined)
     .map((detail) => ({
       label: (ratingsByTeamId[detail.teamId]?.teamAbbreviation || ratingsByTeamId[detail.teamId]?.teamName || `Team ${detail.teamId}`).toUpperCase(),
       value: detail.averageAge ?? 0,

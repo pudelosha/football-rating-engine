@@ -17,6 +17,8 @@ const paths: Record<MenuIconName, string[]> = {
   'arrow-left': ['M19 12H5', 'M12 5l-7 7 7 7'],
   search: ['M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Z', 'M16 16l5 5'],
   trash: ['M4 7h16', 'M10 11v6', 'M14 11v6', 'M6 7l1 14h10l1-14', 'M9 7V4h6v3'],
+  edit: ['M5 19h4l10-10-4-4L5 15Z', 'M13.5 6.5l4 4'],
+  plus: ['M12 5v14', 'M5 12h14'],
 }
 
 export function MenuIcon({ name }: { name: MenuIconName }) {
