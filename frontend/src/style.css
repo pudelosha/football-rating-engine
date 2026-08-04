@@ -4541,6 +4541,195 @@ p {
   height: 17px;
 }
 
+.coupon-action-cell {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.coupon-result-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.coupon-details-link {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  margin-right: 10px;
+  padding: 0;
+  color: rgba(255, 249, 234, 0.78);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: translateY(2px);
+}
+
+.coupon-details-link:hover {
+  color: #b0d86b;
+  background: transparent;
+}
+
+.coupon-details-link .menu-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.slip-details-modal {
+  max-width: 1080px;
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: hidden;
+}
+
+.slip-details-scroll {
+  max-height: calc(100vh - 370px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding-right: 2px;
+}
+
+.slip-details-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.slip-details-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.slip-details-summary-grid > div,
+.slip-details-final {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.065);
+  padding: 14px;
+}
+
+.slip-details-summary-grid small,
+.slip-details-match-row small,
+.slip-details-final span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.slip-details-summary-grid strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--paper);
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.slip-details-match-list {
+  display: grid;
+  gap: 10px;
+}
+
+.slip-details-match-row {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.35fr) minmax(150px, 0.9fr) minmax(120px, 0.65fr) minmax(110px, 0.55fr);
+  gap: 12px;
+  align-items: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.065);
+  padding: 14px;
+}
+
+.slip-details-teams,
+.slip-details-prediction,
+.slip-details-result {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.slip-details-teams strong {
+  color: var(--paper);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.slip-details-prediction strong,
+.slip-details-result strong,
+.slip-details-match-status strong {
+  color: var(--paper);
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.slip-details-prediction.home strong {
+  color: rgba(176, 216, 107, 0.96);
+}
+
+.slip-details-prediction.away strong {
+  color: rgba(119, 164, 198, 0.98);
+}
+
+.slip-details-prediction.draw strong {
+  color: #e4ce6b;
+}
+
+.slip-details-prediction span,
+.slip-details-result span {
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.slip-details-match-status {
+  display: grid;
+  justify-items: end;
+}
+
+.slip-details-match-status strong {
+  display: inline-grid;
+  min-width: 84px;
+  min-height: 32px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 0.78rem;
+}
+
+.slip-details-match-status.lost strong,
+.slip-details-final.lost strong {
+  color: #fff9ea;
+  background: rgba(165, 63, 49, 0.9);
+}
+
+.slip-details-match-status.pending strong {
+  color: #fff9ea;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.slip-details-final {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.slip-details-final strong {
+  display: inline-grid;
+  min-width: 120px;
+  min-height: 36px;
+  place-items: center;
+  border-radius: 999px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
 .prediction-mini-bar {
   position: relative;
   display: grid;

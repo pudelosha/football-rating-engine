@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MenuIcon } from '../../../shared/components/Icons'
+import { ModalShell } from '../../../shared/components/Modal/ModalShell'
 import { FullPageProcessingOverlay } from '../../../shared/components/Spinner'
 import type {
   BettingCandidate,
   BettingCoupon,
+  BettingCouponBet,
   BettingDrawRiskFilter,
   BettingLeanFilter,
+  PredictionOutcomeKey,
 } from '../../../shared/types'
-import { getDefaultBettingRange } from '../../../shared/utils'
+import { formatDate, formatOdds, formatPercent, getDefaultBettingRange, matchStatusText } from '../../../shared/utils'
 import { BettingCandidateTable } from '../components/BettingCandidateTable'
 import { BettingCouponTable } from '../components/BettingCouponTable'
 import { BettingSearchPanel } from '../components/BettingSearchPanel'
@@ -17,6 +20,7 @@ import {
   buildCandidates,
   filterManualSearchCandidates,
   filterProposalCandidates,
+  formatCouponStatus,
   getBettingFilterOptions,
   getCouponGroups,
   hasCandidateStarted,
@@ -64,6 +68,7 @@ export function BettingPanel({
   const [isManualSearchOpen, setIsManualSearchOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [allCandidates, setAllCandidates] = useState<BettingCandidate[]>([])
+  const [detailsCoupon, setDetailsCoupon] = useState<BettingCoupon | null>(null)
 
   const { leanOptions, drawOptions } = useMemo(() => getBettingFilterOptions(t), [t])
 
@@ -247,6 +252,7 @@ export function BettingPanel({
             t={t}
             onCreate={onCreate}
             onDeleteCoupon={deleteCoupon}
+            onDetailsCoupon={setDetailsCoupon}
           />
         ) : (
           <BettingCreateView
@@ -288,6 +294,14 @@ export function BettingPanel({
             onRemove={removeFromCoupon}
           />
         )}
+
+        {detailsCoupon && (
+          <SlipDetailsModal
+            coupon={detailsCoupon}
+            t={t}
+            onClose={() => setDetailsCoupon(null)}
+          />
+        )}
       </div>
     </section>
   )
@@ -299,12 +313,14 @@ function BettingListView({
   t,
   onCreate,
   onDeleteCoupon,
+  onDetailsCoupon,
 }: {
   closedCoupons: BettingCoupon[]
   pendingCoupons: BettingCoupon[]
   t: BettingTranslation
   onCreate: BettingNavigationHandler
   onDeleteCoupon: (couponId: number) => void
+  onDetailsCoupon: (coupon: BettingCoupon) => void
 }) {
   return (
     <>
@@ -326,9 +342,130 @@ function BettingListView({
         title={t.bettingClosedCoupons}
         coupons={closedCoupons}
         emptyText={t.bettingNoClosedCoupons}
+        onDetails={onDetailsCoupon}
       />
     </>
   )
+}
+
+function SlipDetailsModal({
+  coupon,
+  t,
+  onClose,
+}: {
+  coupon: BettingCoupon
+  t: BettingTranslation
+  onClose: () => void
+}) {
+  const status = normalizeSlipStatus(coupon.status)
+  const isWon = status === 'won'
+  const summaryLabel = isWon ? t.bettingWon : status === 'lost' ? t.bettingLost : formatCouponStatus(coupon.status, t)
+
+  return (
+    <ModalShell className="delete-modal slip-details-modal" onCancel={onClose}>
+      <button className="modal-close-button" type="button" aria-label="Close" onClick={onClose}>x</button>
+      <div className="delete-modal-icon">
+        <MenuIcon name="slips" />
+      </div>
+      <div className="delete-modal-copy">
+        <p className="eyebrow">{t.bettingSlipDetails}</p>
+        <h2>#{coupon.id}</h2>
+      </div>
+      <div className="slip-details-scroll">
+        <div className="slip-details-summary-grid">
+          <div>
+            <small>{t.bettingStake}</small>
+            <strong>{coupon.stake.toFixed(2)}</strong>
+          </div>
+          <div>
+            <small>{t.bettingTotalOdds}</small>
+            <strong>{formatOdds(coupon.totalOdds)}</strong>
+          </div>
+          <div>
+            <small>{t.bettingPotentialPayout}</small>
+            <strong>{coupon.potentialPayout.toFixed(2)}</strong>
+          </div>
+        </div>
+        <div className="slip-details-match-list">
+          {coupon.bets.map((bet) => (
+            <SlipDetailsMatchRow key={bet.id} bet={bet} t={t} />
+          ))}
+        </div>
+      </div>
+      <div className={`slip-details-final ${isWon ? 'won' : 'lost'}`}>
+        <span>{t.bettingSlipSummary}</span>
+        <strong>{summaryLabel}</strong>
+      </div>
+      <div className="delete-modal-actions single">
+        <button type="button" onClick={onClose}>{t.cancel}</button>
+      </div>
+    </ModalShell>
+  )
+}
+
+function SlipDetailsMatchRow({ bet, t }: { bet: BettingCouponBet; t: BettingTranslation }) {
+  const selectionKey = normalizeSelection(bet.selection)
+  const betStatus = normalizeBetStatus(bet.status)
+  const realResult = bet.homeScore === null || bet.homeScore === undefined || bet.awayScore === null || bet.awayScore === undefined
+    ? '-:-'
+    : `${bet.homeScore}:${bet.awayScore}`
+  const selectionLabel = getSelectionLabel(selectionKey, t)
+  const resultLabel = betStatus === 'won' ? t.bettingWon : betStatus === 'lost' ? t.bettingLost : betStatus === 'void' ? t.bettingVoid : t.bettingPending
+  const tone = betStatus === 'won' ? 'won' : betStatus === 'lost' ? 'lost' : 'pending'
+
+  return (
+    <article className="slip-details-match-row">
+      <div className="slip-details-teams">
+        <strong>{bet.homeTeamName}</strong>
+        <strong>{bet.awayTeamName}</strong>
+        <small>{formatDate(bet.kickoffUtc, '-')} · {bet.tournamentName}</small>
+      </div>
+      <div className={`slip-details-prediction ${selectionKey}`}>
+        <small>{t.bettingSelection}</small>
+        <strong>{selectionLabel}</strong>
+        <span>{formatPercent(bet.predictedChance)} · {t.bettingFairOdds.toLowerCase()} {formatOdds(bet.fairOdds)}</span>
+      </div>
+      <div className="slip-details-result">
+        <small>{t.bettingResult}</small>
+        <strong>{realResult}</strong>
+        <span>{matchStatusText(bet.matchStatus, t)}</span>
+      </div>
+      <div className={`slip-details-match-status ${tone}`}>
+        <strong>{resultLabel}</strong>
+      </div>
+    </article>
+  )
+}
+
+function normalizeSlipStatus(status: BettingCoupon['status']) {
+  return String(status).toLowerCase() === '1' || String(status).toLowerCase() === 'won'
+    ? 'won'
+    : String(status).toLowerCase() === '2' || String(status).toLowerCase() === 'lost'
+      ? 'lost'
+      : String(status).toLowerCase() === '3' || String(status).toLowerCase() === 'locked'
+        ? 'locked'
+        : 'pending'
+}
+
+function normalizeBetStatus(status: BettingCouponBet['status']) {
+  const value = String(status).toLowerCase()
+  if (value === '1' || value === 'won') return 'won'
+  if (value === '2' || value === 'lost') return 'lost'
+  if (value === '3' || value === 'void') return 'void'
+  return 'pending'
+}
+
+function normalizeSelection(selection: BettingCouponBet['selection']): PredictionOutcomeKey {
+  const value = String(selection).toLowerCase()
+  if (value === '1' || value === 'draw') return 'draw'
+  if (value === '2' || value === 'awaywin') return 'away'
+  return 'home'
+}
+
+function getSelectionLabel(selection: PredictionOutcomeKey, t: BettingTranslation) {
+  if (selection === 'away') return t.awayWin
+  if (selection === 'draw') return t.draw
+  return t.homeWin
 }
 
 function BettingCreateView({

@@ -12,6 +12,7 @@ export function BettingCouponTable({
   emptyText,
   filterable = false,
   onDelete,
+  onDetails,
 }: {
   t: BettingTranslation
   title: string
@@ -19,6 +20,7 @@ export function BettingCouponTable({
   emptyText: string
   filterable?: boolean
   onDelete?: (couponId: number) => void
+  onDetails?: (coupon: BettingCoupon) => void
 }) {
   const [search, setSearch] = useState('')
   const filteredCoupons = useMemo(() => {
@@ -93,9 +95,26 @@ export function BettingCouponTable({
                   <td>{coupon.stake.toFixed(2)}</td>
                   <td>{coupon.potentialPayout.toFixed(2)}</td>
                   <td>{formatDate(coupon.createdAtUtc, '-')}</td>
-                  <td><span className={`coupon-status ${normalizeCouponStatus(coupon.status)}`}>{formatCouponStatus(coupon.status, t)}</span></td>
+                  <td>
+                    <span className="coupon-result-cell">
+                      {onDetails && (
+                        <button
+                          type="button"
+                          className="coupon-details-link"
+                          aria-label={`${t.details} #${coupon.id}`}
+                          title={`${t.details} #${coupon.id}`}
+                          onClick={() => onDetails(coupon)}
+                        >
+                          <MenuIcon name="search" />
+                        </button>
+                      )}
+                      <span className={`coupon-status ${normalizeCouponStatus(coupon.status)}`}>
+                        {formatCouponStatus(coupon.status, t)}
+                      </span>
+                    </span>
+                  </td>
                   {onDelete && (
-                    <td>
+                    <td className="coupon-action-cell">
                       <button
                         type="button"
                         className="coupon-delete-button"
