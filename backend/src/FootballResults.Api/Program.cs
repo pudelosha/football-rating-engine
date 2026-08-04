@@ -35,6 +35,7 @@ builder.Services.AddCors(options =>
 builder.Services
     .AddDatabase(connectionString, builder.Environment, builder.Configuration)
     .AddFootballResultsAuth(builder.Configuration)
+    .AddApiKeyRateLimiting(builder.Configuration)
     .AddApplicationServices(builder.Configuration);
 
 var app = builder.Build();
@@ -46,6 +47,7 @@ app.UseHttpsRedirection();
 
 app.UseCors("FrontendClient");
 
+app.UseApiKeyRateLimiting();
 app.UseAuthentication();
 app.UseAuthorization();
 

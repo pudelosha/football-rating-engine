@@ -42,6 +42,33 @@ public sealed class AuthorizationEndpointTests
     }
 
     [Fact]
+    public async Task ApiKeyRequests_AreRateLimitedByApiKey()
+    {
+        await using var factory = new FootballResultsApiFactory(new Dictionary<string, string?>
+        {
+            ["ApiKeyRateLimit:PermitLimit"] = "2",
+            ["ApiKeyRateLimit:WindowSeconds"] = "60"
+        });
+        await factory.SeedTournamentAsync();
+
+        var key = await factory.RegisterAndGetApiKeyAsync($"limited-{Guid.NewGuid():N}@example.com");
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", key);
+
+        var first = await client.GetAsync("/api/tournaments");
+        var second = await client.GetAsync("/api/tournaments");
+        var third = await client.GetAsync("/api/tournaments");
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+        Assert.True(first.Headers.Contains("X-RateLimit-Limit"));
+        Assert.True(second.Headers.Contains("X-RateLimit-Remaining"));
+        Assert.True(third.Headers.Contains("Retry-After"));
+        Assert.True(third.Headers.Contains("X-RateLimit-Reset"));
+    }
+
+    [Fact]
     public async Task AdminEndpoint_RejectsAnonymousApiKeyAndUserJwt_ButAcceptsAdminJwt()
     {
         await using var factory = new FootballResultsApiFactory();

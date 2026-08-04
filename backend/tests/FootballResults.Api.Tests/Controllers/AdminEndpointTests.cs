@@ -79,6 +79,28 @@ public sealed class AdminEndpointTests
     }
 
     [Fact]
+    public async Task Admin_CanDisableTeamVisibility_WithoutRemovingTournamentAssignment()
+    {
+        await using var factory = new FootballResultsApiFactory();
+        var tournamentId = await factory.SeedTournamentAsync();
+        var client = await factory.CreateAdminClientAsync();
+        var teams = await client.GetFromJsonAsync<IReadOnlyList<TeamDto>>($"/api/tournaments/{tournamentId}/teams");
+        var team = teams!.First();
+
+        var response = await client.PutAsJsonAsync($"/api/teams/{team.Id}", new UpdateTeamRequest(team.Name, team.Abbreviation, false));
+        var updated = await response.Content.ReadFromJsonAsync<TeamDto>();
+        var publicTeams = await client.GetFromJsonAsync<IReadOnlyList<TeamDto>>("/api/teams");
+        var adminTeams = await client.GetFromJsonAsync<IReadOnlyList<AdminTeamDto>>("/api/admin/teams");
+        var adminTeam = adminTeams!.Single(adminTeam => adminTeam.Id == team.Id);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(updated!.IsEnabled);
+        Assert.DoesNotContain(publicTeams!, publicTeam => publicTeam.Id == team.Id);
+        Assert.False(adminTeam.IsEnabled);
+        Assert.Contains(adminTeam.TournamentAssignments, assignment => assignment.TournamentId == tournamentId);
+    }
+
+    [Fact]
     public async Task Admin_CanUpdateMatch()
     {
         await using var factory = new FootballResultsApiFactory();
@@ -113,6 +135,27 @@ public sealed class AdminEndpointTests
     }
 
     [Fact]
+    public async Task Admin_CanUpdateTournamentRatingSetup()
+    {
+        await using var factory = new FootballResultsApiFactory();
+        var tournamentId = await factory.SeedTournamentAsync();
+        var client = await factory.CreateAdminClientAsync();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/tournaments/{tournamentId}/rating-setup",
+            new UpdateTournamentRatingSetupRequest(false, true, false, -4));
+        var updated = await response.Content.ReadFromJsonAsync<TournamentRatingSetupDto>();
+        var fetched = await client.GetFromJsonAsync<TournamentRatingSetupDto>($"/api/tournaments/{tournamentId}/rating-setup");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(updated!.IncludeForm);
+        Assert.True(updated.IncludePerformance);
+        Assert.False(updated.IncludeSquad);
+        Assert.Equal(-4, updated.SnapshotStartSeasonOffset);
+        Assert.Equal(updated, fetched);
+    }
+
+    [Fact]
     public async Task Admin_CanManageUsers()
     {
         await using var factory = new FootballResultsApiFactory();
@@ -132,6 +175,30 @@ public sealed class AdminEndpointTests
         Assert.Equal(HttpStatusCode.NoContent, suspend.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, unsuspend.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_CanAcceptDataQualityIssue_AndHideItFromIssueList()
+    {
+        await using var factory = new FootballResultsApiFactory();
+        await factory.SeedTournamentAsync();
+        var client = await factory.CreateAdminClientAsync();
+
+        var issues = await client.GetFromJsonAsync<IReadOnlyList<DataQualityIssueDto>>("/api/admin/data-quality/tournament-checks/match-statistics/issues");
+        var issue = Assert.Single(issues!);
+
+        var accept = await client.PostAsJsonAsync(
+            "/api/admin/data-quality/tournament-checks/match-statistics/accepted-issues",
+            new AcceptDataQualityIssuesRequest(
+                [new AcceptDataQualityIssueRequest(issue.Key, issue.EntityType, issue.EntityId, issue.Issue)],
+                "Accepted missing provider data in test."));
+
+        Assert.Equal(HttpStatusCode.NoContent, accept.StatusCode);
+
+        var remainingIssues = await client.GetFromJsonAsync<IReadOnlyList<DataQualityIssueDto>>("/api/admin/data-quality/tournament-checks/match-statistics/issues");
+        Assert.DoesNotContain(
+            remainingIssues!,
+            remaining => remaining.EntityId == issue.EntityId && remaining.Issue == issue.Issue);
     }
 
     private static CreateTournamentRequest Request()

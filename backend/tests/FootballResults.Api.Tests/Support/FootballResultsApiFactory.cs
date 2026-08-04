@@ -23,9 +23,11 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
     public const string UserPassword = "UserPassword123!";
 
     private readonly string databaseName = $"FootballResultsTests_{Guid.NewGuid():N}";
+    private readonly IReadOnlyDictionary<string, string?> extraConfiguration;
 
-    public FootballResultsApiFactory()
+    public FootballResultsApiFactory(IReadOnlyDictionary<string, string?>? extraConfiguration = null)
     {
+        this.extraConfiguration = extraConfiguration ?? new Dictionary<string, string?>();
         Environment.SetEnvironmentVariable("Testing__UseInMemoryDatabase", "true");
         Environment.SetEnvironmentVariable("Testing__InMemoryDatabaseName", databaseName);
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", string.Empty);
@@ -47,7 +49,7 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
+            var values = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = string.Empty,
                 ["Jwt:Key"] = "football-results-tests-jwt-signing-key-with-more-than-32-chars",
@@ -62,7 +64,14 @@ public sealed class FootballResultsApiFactory : WebApplicationFactory<Program>
                 ["TournamentSync:EnableLiveSync"] = "false",
                 ["TournamentSync:EnableFinalizeSync"] = "false",
                 ["TournamentSync:EnableResultsSync"] = "false"
-            });
+            };
+
+            foreach (var (key, value) in extraConfiguration)
+            {
+                values[key] = value;
+            }
+
+            config.AddInMemoryCollection(values);
         });
 
         builder.ConfigureTestServices(services =>
