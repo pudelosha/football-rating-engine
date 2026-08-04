@@ -23,6 +23,11 @@ export type BettingStandingRow = {
   successfulBets: number
   result: number
   direction: 'up' | 'down' | 'stable'
+  pointsSplit: {
+    win: number
+    draw: number
+    failed: number
+  }
 }
 
 export type BettingMatchPick = {
@@ -58,4 +63,9 @@ export type BettingMatchInsight = {
   status: 'Pending' | 'In progress' | 'Completed' | 'Postponed'
   summary: string
   bets: BettingMatchInsightBet[]
+}
+
+export type BettingPointsGrowthSeries = {
+  playerName: string
+  points: number[]
 }

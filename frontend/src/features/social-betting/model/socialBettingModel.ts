@@ -1,4 +1,10 @@
-import type { BettingMatchInsight, BettingMatchPick, BettingStandingRow, BettingTournamentOption } from '../types'
+import type {
+  BettingMatchInsight,
+  BettingMatchPick,
+  BettingPointsGrowthSeries,
+  BettingStandingRow,
+  BettingTournamentOption,
+} from '../types'
 
 export const bettingTournamentOptions: BettingTournamentOption[] = [
   {
@@ -18,12 +24,12 @@ export const bettingTournamentOptions: BettingTournamentOption[] = [
 ]
 
 export const bettingStandings: BettingStandingRow[] = [
-  { position: 1, userName: 'pudel1985', accuracy: 61, successfulBets: 11, result: 42, direction: 'stable' },
-  { position: 2, userName: 'Marta', accuracy: 56, successfulBets: 10, result: 38, direction: 'up' },
-  { position: 3, userName: 'Kamil', accuracy: 47, successfulBets: 8, result: 33, direction: 'down' },
-  { position: 4, userName: 'Anna', accuracy: 53, successfulBets: 9, result: 29, direction: 'stable' },
-  { position: 5, userName: 'Pawel', accuracy: 41, successfulBets: 7, result: 26, direction: 'up' },
-  { position: 6, userName: 'Ola', accuracy: 38, successfulBets: 6, result: 21, direction: 'down' },
+  { position: 1, userName: 'pudel1985', accuracy: 61, successfulBets: 11, result: 42, direction: 'stable', pointsSplit: { win: 54, draw: 18, failed: 28 } },
+  { position: 2, userName: 'Marta', accuracy: 56, successfulBets: 10, result: 38, direction: 'up', pointsSplit: { win: 48, draw: 22, failed: 30 } },
+  { position: 3, userName: 'Kamil', accuracy: 47, successfulBets: 8, result: 33, direction: 'down', pointsSplit: { win: 39, draw: 21, failed: 40 } },
+  { position: 4, userName: 'Anna', accuracy: 53, successfulBets: 9, result: 29, direction: 'stable', pointsSplit: { win: 44, draw: 19, failed: 37 } },
+  { position: 5, userName: 'Pawel', accuracy: 41, successfulBets: 7, result: 26, direction: 'up', pointsSplit: { win: 31, draw: 18, failed: 51 } },
+  { position: 6, userName: 'Ola', accuracy: 38, successfulBets: 6, result: 21, direction: 'down', pointsSplit: { win: 28, draw: 17, failed: 55 } },
 ]
 
 export const outstandingBets: BettingMatchPick[] = [
@@ -67,15 +73,131 @@ export const matchInsights: BettingMatchInsight[] = [
     kickoff: '08.08.2026, 16:00',
     homeTeam: 'Arsenal',
     awayTeam: 'Leeds United',
-    status: 'Pending',
-    summary: 'Bets are open until kickoff',
+    score: '3:1',
+    status: 'Completed',
+    summary: 'Arsenal won in regular time',
     bets: [
-      { playerName: 'pudel1985', prediction: '3:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
-      { playerName: 'Marta', prediction: '2:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'pudel1985', prediction: '3:0', homeWin: true, draw: false, awayWin: false, outcomeMatched: true, points: 1.86 },
+      { playerName: 'Marta', prediction: '2:0', homeWin: true, draw: false, awayWin: false, outcomeMatched: true, points: 1.86 },
+      { playerName: 'Kamil', prediction: '1:1', homeWin: false, draw: true, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Ola', prediction: '2:1', homeWin: true, draw: false, awayWin: false, outcomeMatched: true, points: 1.86 },
     ],
   },
   {
     id: 103,
+    stage: 'Round 1',
+    kickoff: '08.08.2026, 18:30',
+    homeTeam: 'Manchester City',
+    awayTeam: 'Tottenham Hotspur',
+    score: '1:1',
+    status: 'Completed',
+    summary: 'Match finished as a draw',
+    bets: [
+      { playerName: 'pudel1985', prediction: '2:2', homeWin: false, draw: true, awayWin: false, outcomeMatched: true, points: 3.28 },
+      { playerName: 'Marta', prediction: '2:1', homeWin: true, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Kamil', prediction: '1:1', homeWin: false, draw: true, awayWin: false, outcomeMatched: true, points: 5.28 },
+      { playerName: 'Anna', prediction: '1:2', homeWin: false, draw: false, awayWin: true, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 104,
+    stage: 'Round 1',
+    kickoff: '09.08.2026, 14:00',
+    homeTeam: 'Aston Villa',
+    awayTeam: 'Everton',
+    score: '0:1',
+    status: 'Completed',
+    summary: 'Everton won away from home',
+    bets: [
+      { playerName: 'pudel1985', prediction: '1:0', homeWin: true, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Marta', prediction: '0:1', homeWin: false, draw: false, awayWin: true, outcomeMatched: true, points: 6.4 },
+      { playerName: 'Pawel', prediction: '1:1', homeWin: false, draw: true, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 105,
+    stage: 'Round 1',
+    kickoff: '09.08.2026, 16:00',
+    homeTeam: 'Brighton',
+    awayTeam: 'Fulham',
+    score: '2:1',
+    status: 'Completed',
+    summary: 'Brighton won in regular time',
+    bets: [
+      { playerName: 'pudel1985', prediction: '2:1', homeWin: true, draw: false, awayWin: false, outcomeMatched: true, points: 5.71 },
+      { playerName: 'Kamil', prediction: '1:0', homeWin: true, draw: false, awayWin: false, outcomeMatched: true, points: 1.71 },
+      { playerName: 'Ola', prediction: '0:2', homeWin: false, draw: false, awayWin: true, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 106,
+    stage: 'Round 1',
+    kickoff: '09.08.2026, 18:30',
+    homeTeam: 'Newcastle United',
+    awayTeam: 'West Ham United',
+    score: '2:2',
+    status: 'In progress',
+    summary: 'Live match, bets are locked',
+    bets: [
+      { playerName: 'pudel1985', prediction: '2:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Anna', prediction: '2:2', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Pawel', prediction: '1:2', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 107,
+    stage: 'Round 1',
+    kickoff: '10.08.2026, 15:00',
+    homeTeam: 'Crystal Palace',
+    awayTeam: 'Brentford',
+    status: 'Pending',
+    summary: 'Bets are open until kickoff',
+    bets: [
+      { playerName: 'pudel1985', prediction: '1:1', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Marta', prediction: '2:1', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 108,
+    stage: 'Round 1',
+    kickoff: '10.08.2026, 17:30',
+    homeTeam: 'Nottingham Forest',
+    awayTeam: 'Sunderland',
+    status: 'Pending',
+    summary: 'Bets are open until kickoff',
+    bets: [
+      { playerName: 'Kamil', prediction: '1:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Ola', prediction: '0:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 109,
+    stage: 'Round 1',
+    kickoff: '10.08.2026, 20:00',
+    homeTeam: 'AFC Bournemouth',
+    awayTeam: 'Wolves',
+    status: 'Postponed',
+    summary: 'Kickoff moved by tournament organizer',
+    bets: [
+      { playerName: 'pudel1985', prediction: '1:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Anna', prediction: '1:1', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 110,
+    stage: 'Round 1',
+    kickoff: '11.08.2026, 21:00',
+    homeTeam: 'Manchester United',
+    awayTeam: 'AFC Bournemouth',
+    status: 'Pending',
+    summary: 'Bets are open until kickoff',
+    bets: [
+      { playerName: 'Marta', prediction: '2:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+      { playerName: 'Pawel', prediction: '1:0', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
+    ],
+  },
+  {
+    id: 201,
     stage: 'Round 2',
     kickoff: '14.08.2026, 21:00',
     homeTeam: 'Manchester City',
@@ -87,4 +209,13 @@ export const matchInsights: BettingMatchInsight[] = [
       { playerName: 'Ola', prediction: '1:2', homeWin: false, draw: false, awayWin: false, outcomeMatched: false, points: 0 },
     ],
   },
+]
+
+export const pointsGrowthSeries: BettingPointsGrowthSeries[] = [
+  { playerName: 'pudel1985', points: [18, 20, 23, 29, 33, 35, 38, 40, 41, 42] },
+  { playerName: 'Marta', points: [14, 18, 22, 26, 29, 31, 34, 36, 37, 38] },
+  { playerName: 'Kamil', points: [16, 17, 19, 22, 27, 29, 30, 31, 32, 33] },
+  { playerName: 'Anna', points: [12, 16, 18, 19, 24, 25, 27, 28, 29, 29] },
+  { playerName: 'Pawel', points: [9, 11, 12, 14, 17, 20, 22, 24, 25, 26] },
+  { playerName: 'Ola', points: [7, 8, 10, 11, 14, 16, 17, 18, 20, 21] },
 ]

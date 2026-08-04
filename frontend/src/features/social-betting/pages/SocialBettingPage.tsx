@@ -1,26 +1,30 @@
 import { useMemo, useState } from 'react'
+import { BettingChartsTile } from '../components/BettingChartsTile'
 import { BettingMatchListTile } from '../components/BettingMatchListTile'
 import { BettingTournamentResultsTile } from '../components/BettingTournamentResultsTile'
 import { BettingTournamentToolbar } from '../components/BettingTournamentToolbar'
 import { MatchInsightsTile } from '../components/MatchInsightsTile'
+import { PointsGrowthChartTile } from '../components/PointsGrowthChartTile'
 import {
   bettingStandings,
   bettingTournamentOptions,
   matchInsights,
-  myLatestResults,
-  myUpcomingBets,
   outstandingBets,
+  pointsGrowthSeries,
 } from '../model/socialBettingModel'
 import type { SocialBettingProps } from '../types'
 
+type SocialBettingSection = 'results' | 'insights' | 'my-bets'
+
 export function SocialBettingPage({ user }: SocialBettingProps) {
   const [selectedTournamentId, setSelectedTournamentId] = useState(bettingTournamentOptions[0]?.id ?? 0)
+  const [activeSection, setActiveSection] = useState<SocialBettingSection>('results')
   const selectedTournament = useMemo(
     () => bettingTournamentOptions.find((tournament) => tournament.id === selectedTournamentId) ?? bettingTournamentOptions[0],
     [selectedTournamentId],
   )
   const insightStages = useMemo(
-    () => ['All stages', ...Array.from(new Set(matchInsights.map((match) => match.stage)))],
+    () => Array.from(new Set(matchInsights.map((match) => match.stage))),
     [],
   )
 
@@ -45,28 +49,57 @@ export function SocialBettingPage({ user }: SocialBettingProps) {
           onCreate={() => undefined}
         />
 
+        <div className="social-betting-section-tabs" aria-label="Social betting section">
+          <button
+            className={activeSection === 'results' ? 'active' : ''}
+            type="button"
+            onClick={() => setActiveSection('results')}
+          >
+            Results
+          </button>
+          <button
+            className={activeSection === 'insights' ? 'active' : ''}
+            type="button"
+            onClick={() => setActiveSection('insights')}
+          >
+            Match Insights
+          </button>
+          <button
+            className={activeSection === 'my-bets' ? 'active' : ''}
+            type="button"
+            onClick={() => setActiveSection('my-bets')}
+          >
+            My bets
+          </button>
+        </div>
+
         <div className="social-betting-grid">
-          <BettingTournamentResultsTile rows={bettingStandings} />
-          <BettingMatchListTile
-            title="Outstanding bets"
-            icon="matches"
-            items={outstandingBets}
-            actionLabel="Place bet"
-            compact
-          />
-          <BettingMatchListTile
-            title="My bets"
-            icon="betting"
-            items={myUpcomingBets}
-            actionLabel="Edit"
-          />
-          <BettingMatchListTile
-            title="My results"
-            icon="predictions"
-            items={myLatestResults}
-            variant="results"
-          />
-          <MatchInsightsTile matches={matchInsights} stages={insightStages} />
+          {activeSection === 'results' && (
+            <>
+              <BettingTournamentResultsTile rows={bettingStandings} />
+              <BettingMatchListTile
+                title="Outstanding bets"
+                icon="matches"
+                items={outstandingBets}
+                actionLabel="Place bet"
+                compact
+              />
+              <BettingChartsTile rows={bettingStandings} type="points" />
+              <BettingChartsTile rows={bettingStandings} type="accuracy" />
+              <PointsGrowthChartTile series={pointsGrowthSeries} />
+            </>
+          )}
+
+          {activeSection === 'insights' && (
+            <MatchInsightsTile matches={matchInsights} stages={insightStages} />
+          )}
+
+          {activeSection === 'my-bets' && (
+            <section className="details-panel social-betting-tile social-betting-placeholder-tile">
+              <h2>My bets</h2>
+              <p>This section will collect your bet forms, editable upcoming picks, and settled personal history.</p>
+            </section>
+          )}
         </div>
       </div>
     </section>

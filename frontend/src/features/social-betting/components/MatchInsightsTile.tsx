@@ -11,16 +11,29 @@ function canRevealDetails(status: BettingMatchInsight['status']) {
 }
 
 export function MatchInsightsTile({ matches, stages }: { matches: BettingMatchInsight[]; stages: string[] }) {
-  const [selectedStage, setSelectedStage] = useState(stages[0] ?? 'All stages')
+  const [selectedStage, setSelectedStage] = useState(stages[0] ?? 'Round 1')
   const [openMatchId, setOpenMatchId] = useState<number | null>(null)
+  const selectedStageIndex = stages.findIndex((stage) => stage === selectedStage)
   const filteredMatches = useMemo(
-    () => matches.filter((match) => selectedStage === 'All stages' || match.stage === selectedStage),
+    () => matches.filter((match) => match.stage === selectedStage),
     [matches, selectedStage],
   )
 
   function handleStageChange(stage: string) {
     setSelectedStage(stage)
     setOpenMatchId(null)
+  }
+
+  function goToPreviousStage() {
+    if (selectedStageIndex > 0) {
+      handleStageChange(stages[selectedStageIndex - 1])
+    }
+  }
+
+  function goToNextStage() {
+    if (selectedStageIndex >= 0 && selectedStageIndex < stages.length - 1) {
+      handleStageChange(stages[selectedStageIndex + 1])
+    }
   }
 
   return (
@@ -30,13 +43,33 @@ export function MatchInsightsTile({ matches, stages }: { matches: BettingMatchIn
           <MenuIcon name="matches" />
           <h2>Match Insights</h2>
         </div>
-        <label aria-label="Stage">
-          <select value={selectedStage} onChange={(event) => handleStageChange(event.target.value)}>
-            {stages.map((stage) => (
-              <option key={stage} value={stage}>{stage}</option>
-            ))}
-          </select>
-        </label>
+        <div className="round-filter-stepper social-betting-stage-stepper">
+          <label aria-label="Stage">
+            <select value={selectedStage} onChange={(event) => handleStageChange(event.target.value)}>
+              {stages.map((stage) => (
+                <option key={stage} value={stage}>{stage}</option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="round-step-button"
+            aria-label="Previous stage"
+            disabled={selectedStageIndex <= 0}
+            onClick={goToPreviousStage}
+          >
+            <span>-</span>
+          </button>
+          <button
+            type="button"
+            className="round-step-button"
+            aria-label="Next stage"
+            disabled={selectedStageIndex < 0 || selectedStageIndex >= stages.length - 1}
+            onClick={goToNextStage}
+          >
+            <span>+</span>
+          </button>
+        </div>
       </div>
 
       <div className="social-betting-accordion">

@@ -3063,6 +3063,34 @@ p {
   font-weight: 950;
 }
 
+.social-betting-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.social-betting-section-tabs button {
+  min-height: 58px;
+  color: #101915;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  box-shadow: 0 16px 36px rgba(176, 216, 107, 0.12);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.social-betting-section-tabs button:not(.active) {
+  color: rgba(255, 249, 234, 0.82);
+  background: rgba(176, 216, 107, 0.24);
+  box-shadow: none;
+}
+
+.social-betting-section-tabs button:hover {
+  color: #101915;
+  background: #b0d86b;
+}
+
 .social-betting-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -3088,10 +3116,215 @@ p {
   min-height: 320px;
 }
 
+.social-betting-chart-tile {
+  min-height: 320px;
+}
+
+.social-betting-grid > .social-betting-tile.social-betting-growth-tile {
+  grid-column: 1 / -1;
+  min-height: 470px;
+}
+
+.social-betting-growth-heading {
+  align-items: center;
+}
+
+.social-betting-growth-heading > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.social-betting-growth-heading span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.social-betting-growth-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
+  gap: 12px;
+}
+
+.social-betting-growth-controls label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.social-betting-growth-controls label span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.social-betting-growth-controls select {
+  min-height: 42px;
+  width: 100%;
+  padding: 0 42px 0 14px;
+  overflow: hidden;
+  color: #fff9ea;
+  border: 0;
+  border-radius: 8px;
+  outline: 0;
+  background:
+    linear-gradient(45deg, transparent 50%, #b0d86b 50%) calc(100% - 22px) 50% / 7px 7px no-repeat,
+    linear-gradient(135deg, #b0d86b 50%, transparent 50%) calc(100% - 17px) 50% / 7px 7px no-repeat,
+    rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  appearance: none;
+}
+
+.social-betting-growth-controls select option {
+  color: #fff9ea;
+  background: #1f2a23;
+  font-weight: 850;
+}
+
+.social-betting-growth-plot {
+  min-height: 330px;
+  padding: 14px;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(176, 216, 107, 0.14), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+}
+
+.social-betting-growth-plot svg {
+  display: block;
+  width: 100%;
+  min-height: 320px;
+}
+
+.social-betting-growth-plot line {
+  stroke: rgba(255, 249, 234, 0.13);
+  stroke-dasharray: 4 7;
+  stroke-width: 1;
+}
+
+.social-betting-growth-plot path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.social-betting-growth-plot circle {
+  stroke: #1b251f;
+  stroke-width: 3;
+}
+
+.social-betting-growth-plot text {
+  fill: rgba(255, 249, 234, 0.6);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.social-betting-growth-plot .round-label {
+  text-anchor: middle;
+}
+
+.social-betting-chart-list {
+  display: grid;
+  gap: 10px;
+}
+
+.social-betting-chart-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(0, 2fr) 70px;
+  gap: 12px;
+  align-items: center;
+}
+
+.social-betting-chart-row strong {
+  overflow: hidden;
+  color: rgba(255, 249, 234, 0.8);
+  font-size: 12px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-betting-chart-row b {
+  color: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.social-betting-stacked-bar,
+.social-betting-accuracy-track {
+  display: flex;
+  min-height: 22px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.social-betting-stacked-bar span {
+  display: grid;
+  min-width: 22px;
+  place-items: center;
+  color: #fff9ea;
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.social-betting-stacked-bar .win {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.social-betting-stacked-bar .draw {
+  color: rgba(255, 249, 234, 0.92);
+  background: rgba(255, 249, 234, 0.28);
+}
+
+.social-betting-stacked-bar .failed {
+  color: #fff9ea;
+  background: rgba(151, 69, 53, 0.92);
+}
+
+.social-betting-accuracy-track span {
+  border-radius: inherit;
+  background: #b0d86b;
+}
+
 .social-betting-grid > .social-betting-tile.social-betting-insights-tile {
   grid-column: 1 / -1;
   width: 100%;
   min-height: 0;
+}
+
+.social-betting-placeholder-tile {
+  grid-column: 1 / -1;
+  min-height: 220px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.social-betting-placeholder-tile h2 {
+  margin: 0;
+  color: #fff9ea;
+  font-size: 28px;
+  font-weight: 950;
+}
+
+.social-betting-placeholder-tile p {
+  max-width: 620px;
+  margin: 0;
+  color: rgba(255, 249, 234, 0.66);
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .social-betting-insights-heading {
@@ -3102,6 +3335,18 @@ p {
   display: grid;
   min-width: 220px;
   gap: 6px;
+}
+
+.details-panel-heading.spread > .social-betting-stage-stepper {
+  flex: 0 0 50%;
+  width: 50%;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.details-panel-heading.spread > .social-betting-stage-stepper label {
+  flex: 1;
+  min-width: 0;
 }
 
 .social-betting-insights-heading label span {
