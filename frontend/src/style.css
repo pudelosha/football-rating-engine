@@ -2968,7 +2968,7 @@ p {
 
 .social-betting-toolbar-main {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(130px, 1fr);
   gap: 12px;
   align-items: end;
 }
@@ -2981,6 +2981,24 @@ p {
   background: #b0d86b;
   font-size: 14px;
   font-weight: 950;
+}
+
+.social-betting-toolbar-main button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  filter: grayscale(0.45);
+}
+
+.social-betting-edit-tournament {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.social-betting-edit-tournament .menu-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .social-betting-toolbar-main label {
@@ -3086,9 +3104,35 @@ p {
   box-shadow: none;
 }
 
+.social-betting-section-tabs button:disabled {
+  cursor: not-allowed;
+  color: rgba(255, 249, 234, 0.42);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  filter: grayscale(0.35);
+}
+
 .social-betting-section-tabs button:hover {
   color: #101915;
   background: #b0d86b;
+}
+
+.social-betting-section-tabs button:disabled:hover {
+  color: rgba(255, 249, 234, 0.42);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.social-betting-empty-tournament {
+  min-height: 210px;
+  align-content: start;
+}
+
+.social-betting-empty-tournament p {
+  max-width: 720px;
+  margin: 0;
+  color: rgba(255, 249, 234, 0.68);
+  font-size: 17px;
+  line-height: 1.65;
 }
 
 .social-betting-grid {
@@ -4542,9 +4586,9 @@ p {
 }
 
 .coupon-action-cell {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .coupon-result-cell {
@@ -4673,6 +4717,18 @@ p {
 
 .slip-details-prediction.draw strong {
   color: #e4ce6b;
+}
+
+.slip-details-result.won strong {
+  color: #b0d86b;
+}
+
+.slip-details-result.lost strong {
+  color: #df876f;
+}
+
+.slip-details-result.pending strong {
+  color: var(--paper);
 }
 
 .slip-details-prediction span,

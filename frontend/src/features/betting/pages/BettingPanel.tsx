@@ -425,7 +425,7 @@ function SlipDetailsMatchRow({ bet, t }: { bet: BettingCouponBet; t: BettingTran
         <strong>{selectionLabel}</strong>
         <span>{formatPercent(bet.predictedChance)} · {t.bettingFairOdds.toLowerCase()} {formatOdds(bet.fairOdds)}</span>
       </div>
-      <div className="slip-details-result">
+      <div className={`slip-details-result ${tone}`}>
         <small>{t.bettingResult}</small>
         <strong>{realResult}</strong>
         <span>{matchStatusText(bet.matchStatus, t)}</span>
