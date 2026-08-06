@@ -624,30 +624,35 @@ public sealed class TournamentSyncService(
             match.SourceUtc > latestRunUtc);
     }
 
-    private Task<RatingRunHealthSnapshot?> GetLatestRatingRunAsync(
+    private async Task<RatingRunHealthSnapshot?> GetLatestRatingRunAsync(
         EloRatingRunStatus? status,
         CancellationToken cancellationToken)
     {
-        var baseRuns = dbContext.EloRatingRuns
+        var latestBaseRun = await dbContext.EloRatingRuns
             .AsNoTracking()
             .Where(run => !status.HasValue || run.Status == status.Value)
-            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage));
-
-        var formRuns = dbContext.FormRatingRuns
-            .AsNoTracking()
-            .Where(run => !status.HasValue || run.Status == status.Value)
-            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage));
-
-        var performanceRuns = dbContext.PerformanceRatingRuns
-            .AsNoTracking()
-            .Where(run => !status.HasValue || run.Status == status.Value)
-            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage));
-
-        return baseRuns
-            .Concat(formRuns)
-            .Concat(performanceRuns)
             .OrderByDescending(run => run.StartedAtUtc)
+            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage))
             .FirstOrDefaultAsync(cancellationToken);
+
+        var latestFormRun = await dbContext.FormRatingRuns
+            .AsNoTracking()
+            .Where(run => !status.HasValue || run.Status == status.Value)
+            .OrderByDescending(run => run.StartedAtUtc)
+            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var latestPerformanceRun = await dbContext.PerformanceRatingRuns
+            .AsNoTracking()
+            .Where(run => !status.HasValue || run.Status == status.Value)
+            .OrderByDescending(run => run.StartedAtUtc)
+            .Select(run => new RatingRunHealthSnapshot(run.Status, run.StartedAtUtc, run.FinishedAtUtc, run.ErrorMessage))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return new[] { latestBaseRun, latestFormRun, latestPerformanceRun }
+            .Where(run => run is not null)
+            .OrderByDescending(run => run!.StartedAtUtc)
+            .FirstOrDefault();
     }
 
     private async Task<int> CountRatingRunsSinceAsync(

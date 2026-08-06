@@ -14,7 +14,9 @@ export function getDashboardCopy(language: Language): DashboardCopy {
       allRounds: 'Wszystkie rundy',
       teamScope: 'Druzyny',
       allTeams: 'Wszystkie druzyny',
-      refresh: 'Odswiez',
+      selectTournament: 'Wybierz turniej',
+      selectTournamentTitle: 'Wybierz turniej',
+      selectTournamentCopy: 'Wybierz turniej z listy, aby zobaczyc rozegrane mecze, tabele ligowa, podzial wynikow, forme i wykresy druzyn.',
       loading: 'Budowanie Analytics Board.',
       kpis: [
         ['Rozegrane', 'Zakonczone mecze w aktualnym filtrze.', 'matches'],
@@ -57,7 +59,9 @@ export function getDashboardCopy(language: Language): DashboardCopy {
     allRounds: 'All rounds',
     teamScope: 'Teams',
     allTeams: 'All teams',
-    refresh: 'Refresh',
+    selectTournament: 'Select tournament',
+    selectTournamentTitle: 'Select tournament',
+    selectTournamentCopy: 'Choose a tournament from the list to open played matches, league table, result split, team form, and charts.',
     loading: 'Building Analytics Board.',
     kpis: [
       ['Played', 'Finished matches in the current filter.', 'matches'],

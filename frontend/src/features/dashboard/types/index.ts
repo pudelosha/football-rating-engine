@@ -13,7 +13,9 @@ export type DashboardCopy = {
   allRounds: string
   teamScope: string
   allTeams: string
-  refresh: string
+  selectTournament: string
+  selectTournamentTitle: string
+  selectTournamentCopy: string
   loading: string
   kpis: Array<[string, string, MenuIconName]>
   leagueTable: string

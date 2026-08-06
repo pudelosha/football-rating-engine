@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { MenuIcon } from '../../../shared/components/Icons'
 import { FullPageProcessingOverlay } from '../../../shared/components/Spinner'
 import type { CombinedTeamRating, MatchSummary, TeamSquadQualityRatingDetail, TournamentSummary } from '../../../shared/types'
 import { DashboardFilters } from '../components/DashboardFilters'
@@ -83,38 +84,6 @@ export function DashboardPage({ language, t, user, onToast }: DashboardProps) {
     setSquadDetails(data.squadDetails)
   }
 
-  async function loadDashboard(preferredTournamentId?: string) {
-    const requestId = ++loadRequestId.current
-    setIsLoading(true)
-    try {
-      const tournamentsResult = await fetchDashboardTournaments(user.token)
-      if (requestId !== loadRequestId.current) {
-        return
-      }
-
-      if (!tournamentsResult.ok || !tournamentsResult.data) {
-        onToast(tournamentsResult.message || String(t.genericError), 'error')
-        return
-      }
-
-      const nextTournaments = tournamentsResult.data
-      const nextTournamentId = preferredTournamentId || selectedTournamentId || String(nextTournaments[0]?.id ?? '')
-      setTournaments(nextTournaments)
-      setSelectedTournamentId(nextTournamentId)
-      clearTournamentData()
-      const data = await fetchTournamentData(nextTournamentId)
-      if (requestId === loadRequestId.current) {
-        applyTournamentData(data)
-      }
-    } catch {
-      onToast(String(t.genericError), 'error')
-    } finally {
-      if (requestId === loadRequestId.current) {
-        setIsLoading(false)
-      }
-    }
-  }
-
   useEffect(() => {
     let isMounted = true
 
@@ -133,17 +102,9 @@ export function DashboardPage({ language, t, user, onToast }: DashboardProps) {
         }
 
         const nextTournaments = tournamentsResult.data
-        const nextTournamentId = String(nextTournaments[0]?.id ?? '')
         setTournaments(nextTournaments)
-        setSelectedTournamentId(nextTournamentId)
-
-        if (nextTournamentId) {
-          clearTournamentData()
-          const data = await fetchTournamentData(nextTournamentId)
-          if (isMounted && requestId === loadRequestId.current) {
-            applyTournamentData(data)
-          }
-        }
+        setSelectedTournamentId('')
+        clearTournamentData()
       } catch {
         if (isMounted) {
           onToast(String(t.genericError), 'error')
@@ -200,30 +161,41 @@ export function DashboardPage({ language, t, user, onToast }: DashboardProps) {
           selectedTeamIds={selectedTeamIds}
           selectedTournamentId={selectedTournamentId}
           tournaments={tournaments}
-          onRefresh={() => loadDashboard(selectedTournamentId)}
           onRoundChange={setSelectedRound}
           onTeamChange={setSelectedTeamIds}
           onTournamentChange={handleTournamentChange}
         />
 
-        <DashboardKpiGrid items={model.kpis} />
+        {!selectedTournament ? (
+          <section className="details-panel dashboard-empty-tournament">
+            <div className="details-panel-heading">
+              <MenuIcon name="dashboard" />
+              <h2>{copy.selectTournamentTitle}</h2>
+            </div>
+            <p>{copy.selectTournamentCopy}</p>
+          </section>
+        ) : (
+          <>
+            <DashboardKpiGrid items={model.kpis} />
 
-        <DashboardResultSplit copy={copy} split={model.resultSplit} />
+            <DashboardResultSplit copy={copy} split={model.resultSplit} />
 
-        <DashboardLeagueTable copy={copy} rows={model.leagueRows} />
+            <DashboardLeagueTable copy={copy} rows={model.leagueRows} />
 
-        <div className="dashboard-form-position-row">
-          <DashboardPositionTrend copy={copy} rows={model.positionTrend} />
-          <DashboardLastFiveForm emptyText={copy.noRows} rows={model.lastFiveRows} />
-        </div>
+            <div className="dashboard-form-position-row">
+              <DashboardPositionTrend copy={copy} rows={model.positionTrend} />
+              <DashboardLastFiveForm emptyText={copy.noRows} rows={model.lastFiveRows} />
+            </div>
 
-        <DashboardChartPlaceholders
-          emptyText={copy.noRows}
-          goalsScoredBars={model.goalsScoredBars}
-          scoredConcededRows={model.scoredConcededRows}
-          teamAgeDots={model.teamAgeDots}
-          teamValueBars={model.teamValueBars}
-        />
+            <DashboardChartPlaceholders
+              emptyText={copy.noRows}
+              goalsScoredBars={model.goalsScoredBars}
+              scoredConcededRows={model.scoredConcededRows}
+              teamAgeDots={model.teamAgeDots}
+              teamValueBars={model.teamValueBars}
+            />
+          </>
+        )}
       </div>
     </section>
   )

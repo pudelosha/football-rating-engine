@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { DashboardCopy, DashboardModel } from '../types'
 import type { TournamentSummary } from '../../../shared/types'
 
@@ -9,7 +9,6 @@ export function DashboardFilters({
   selectedTeamIds,
   selectedTournamentId,
   tournaments,
-  onRefresh,
   onRoundChange,
   onTeamChange,
   onTournamentChange,
@@ -20,7 +19,6 @@ export function DashboardFilters({
   selectedTeamIds: string[]
   selectedTournamentId: string
   tournaments: TournamentSummary[]
-  onRefresh: () => void
   onRoundChange: (round: string) => void
   onTeamChange: (teamIds: string[]) => void
   onTournamentChange: (tournamentId: string) => void
@@ -33,6 +31,7 @@ export function DashboardFilters({
       .filter((team) => selectedTeamIds.includes(String(team.id)))
       .map((team) => team.name)
       .join(', ')
+  const hasSelectedTournament = Boolean(selectedTournamentId)
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -53,11 +52,18 @@ export function DashboardFilters({
     )
   }
 
+  function handleTournamentChange(event: ChangeEvent<HTMLSelectElement>) {
+    setIsTeamMenuOpen(false)
+    onTournamentChange(event.target.value)
+    event.currentTarget.blur()
+  }
+
   return (
     <section className="dashboard-filter-panel football-filter-panel">
       <label>
         <span>{copy.tournament}</span>
-        <select value={selectedTournamentId} onChange={(event) => onTournamentChange(event.target.value)}>
+        <select value={selectedTournamentId} onChange={handleTournamentChange}>
+          <option value="">{copy.selectTournament}</option>
           {tournaments.map((tournament) => (
             <option key={tournament.id} value={tournament.id}>
               {tournament.name} {tournament.season}
@@ -67,7 +73,7 @@ export function DashboardFilters({
       </label>
       <label>
         <span>{copy.round}</span>
-        <select value={selectedRound} onChange={(event) => onRoundChange(event.target.value)}>
+        <select value={selectedRound} disabled={!hasSelectedTournament} onChange={(event) => onRoundChange(event.target.value)}>
           <option value="all">{copy.allRounds}</option>
           {model.roundOptions.map((round) => (
             <option key={round} value={round}>{round}</option>
@@ -80,6 +86,7 @@ export function DashboardFilters({
           className="dashboard-multiselect-trigger"
           type="button"
           aria-expanded={isTeamMenuOpen}
+          disabled={!hasSelectedTournament}
           onClick={() => setIsTeamMenuOpen((current) => !current)}
         >
           <span>{selectedTeamNames}</span>
@@ -104,9 +111,6 @@ export function DashboardFilters({
           </div>
         )}
       </label>
-      <button type="button" onClick={onRefresh}>
-        {copy.refresh}
-      </button>
     </section>
   )
 }
