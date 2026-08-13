@@ -32,6 +32,12 @@ export function updateSocialBettingTournament(token: string, id: number, payload
   })
 }
 
+export function confirmSocialBettingParticipation(token: string, tournamentId: number) {
+  return authorizedRequest<BettingTournamentOption>(token, `/api/social-betting/tournaments/${tournamentId}/confirm-participation`, {
+    method: 'POST',
+  })
+}
+
 export function resendSocialBettingInvite(token: string, tournamentId: number, participantId: number, language = 'en') {
   return authorizedRequest(token, `/api/social-betting/tournaments/${tournamentId}/participants/${participantId}/resend-invite`, {
     method: 'POST',

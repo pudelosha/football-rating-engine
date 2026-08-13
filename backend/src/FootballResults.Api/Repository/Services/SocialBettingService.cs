@@ -41,6 +41,7 @@ public sealed class SocialBettingService(
                 tournament.SourceTournament.Name,
                 tournament.SourceTournament.Season,
                 participant.Role.ToString(),
+                participant.Status.ToString(),
                 tournament.Participants.Count(participant => participant.Status != SocialBettingParticipantStatus.Removed),
                 tournament.IsActive);
         }).ToList();
@@ -233,6 +234,41 @@ public sealed class SocialBettingService(
         return ToDto(participant);
     }
 
+    public async Task<SocialBettingTournamentSummaryDto?> ConfirmParticipationAsync(
+        int tournamentId,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var tournament = await LoadTournamentAsync(tournamentId, cancellationToken);
+        if (tournament is null)
+        {
+            return null;
+        }
+
+        var participant = tournament.Participants.FirstOrDefault(participant =>
+            participant.UserId == userId && participant.Status == SocialBettingParticipantStatus.Pending);
+        if (participant is null)
+        {
+            return null;
+        }
+
+        participant.Status = SocialBettingParticipantStatus.Accepted;
+        participant.AcceptedAtUtc = DateTimeOffset.UtcNow;
+        participant.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new SocialBettingTournamentSummaryDto(
+            tournament.Id,
+            tournament.SourceTournamentId,
+            tournament.Name,
+            tournament.SourceTournament.Name,
+            tournament.SourceTournament.Season,
+            participant.Role.ToString(),
+            participant.Status.ToString(),
+            tournament.Participants.Count(participant => participant.Status != SocialBettingParticipantStatus.Removed),
+            tournament.IsActive);
+    }
+
     public async Task<bool> AcceptInvitationAsync(
         AcceptSocialBettingInvitationRequest request,
         CancellationToken cancellationToken)
@@ -277,9 +313,8 @@ public sealed class SocialBettingService(
             }
         }
 
-        participant.Status = SocialBettingParticipantStatus.Accepted;
-        participant.AcceptedAtUtc = DateTimeOffset.UtcNow;
         participant.InvitationTokenHash = null;
+        participant.InvitationExpiresAtUtc = null;
         participant.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 

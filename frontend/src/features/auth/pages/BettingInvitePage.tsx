@@ -76,12 +76,12 @@ export function BettingInvitePage({
     <AuthLayout isProcessing={isSubmitting} loadingLabel={t.loading}>
       <div className="auth-card">
         <p className="eyebrow">Invitation</p>
-        <h1>{isAccepted ? 'You are in.' : 'Join the tournament.'}</h1>
+        <h1>{isAccepted ? 'Account confirmed.' : 'Join the tournament.'}</h1>
         <p className="auth-copy">
           {isAccepted
-            ? 'Your account is confirmed and the invitation has been accepted. Sign in to open your social betting tournament.'
+            ? 'Your account is ready. Sign in and confirm tournament participation from the Social Betting screen.'
             : isLinkValid
-              ? 'Set your password to confirm your account and join the private prediction tournament.'
+              ? 'Set your password to confirm your account. Tournament participation is confirmed later from the Social Betting screen.'
               : 'This invitation link is invalid or incomplete. Ask the tournament admin to send a new invitation.'}
         </p>
 

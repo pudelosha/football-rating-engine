@@ -9,6 +9,7 @@ public sealed record SocialBettingTournamentSummaryDto(
     string LinkedTournament,
     string Season,
     string Role,
+    string ParticipantStatus,
     int Participants,
     bool IsActive);
 

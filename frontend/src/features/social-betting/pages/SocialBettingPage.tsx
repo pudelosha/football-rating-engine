@@ -18,7 +18,7 @@ import {
   outstandingBets,
   pointsGrowthSeries,
 } from '../model/socialBettingModel'
-import { fetchSocialBettingTournaments } from '../services/socialBettingService'
+import { confirmSocialBettingParticipation, fetchSocialBettingTournaments } from '../services/socialBettingService'
 import type { SocialBettingProps } from '../types'
 
 type SocialBettingSection = 'results' | 'insights' | 'my-bets'
@@ -28,15 +28,23 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
   const [activeSection, setActiveSection] = useState<SocialBettingSection>('results')
   const [tournaments, setTournaments] = useState(bettingTournamentOptions)
   const [isLoading, setIsLoading] = useState(true)
+  const selectableTournaments = useMemo(
+    () => tournaments.filter((tournament) => tournament.participantStatus !== 'Pending'),
+    [tournaments],
+  )
   const selectedTournament = useMemo(
-    () => tournaments.find((tournament) => tournament.id === selectedTournamentId),
-    [selectedTournamentId, tournaments],
+    () => selectableTournaments.find((tournament) => tournament.id === selectedTournamentId),
+    [selectedTournamentId, selectableTournaments],
   )
   const insightStages = useMemo(
     () => Array.from(new Set(matchInsights.map((match) => match.stage))),
     [],
   )
   const hasSelectedTournament = Boolean(selectedTournament)
+  const pendingTournaments = useMemo(
+    () => tournaments.filter((tournament) => tournament.participantStatus === 'Pending'),
+    [tournaments],
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -63,6 +71,23 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
     }
   }, [onToast, user.token])
 
+  async function confirmParticipation(tournamentId: number) {
+    setIsLoading(true)
+    const result = await confirmSocialBettingParticipation(user.token, tournamentId)
+
+    if (!result.ok || !result.data) {
+      onToast(result.message || 'Could not confirm participation.', 'error')
+      setIsLoading(false)
+      return
+    }
+
+    setTournaments((current) => current.map((tournament) =>
+      tournament.id === tournamentId ? result.data! : tournament))
+    setSelectedTournamentId(result.data.id)
+    onToast('Tournament participation confirmed.', 'success')
+    setIsLoading(false)
+  }
+
   return (
     <section className="admin-dashboard social-betting-page">
       {isLoading && <FullPageProcessingOverlay label="Loading betting tournaments." />}
@@ -82,8 +107,30 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
           </button>
         </div>
 
+        {pendingTournaments.length > 0 && (
+          <section className="details-panel social-betting-confirmation-panel">
+            <div className="details-panel-heading">
+              <MenuIcon name="betting" />
+              <h2>Confirm participation</h2>
+            </div>
+            <div className="social-betting-confirmation-list">
+              {pendingTournaments.map((tournament) => (
+                <div className="social-betting-confirmation-row" key={tournament.id}>
+                  <span>
+                    <strong>{tournament.name}</strong>
+                    <small>{tournament.linkedTournament} {tournament.season}</small>
+                  </span>
+                  <button type="button" onClick={() => confirmParticipation(tournament.id)}>
+                    Confirm
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <BettingTournamentToolbar
-          tournaments={tournaments}
+          tournaments={selectableTournaments}
           selectedTournamentId={selectedTournamentId}
           selectedTournament={selectedTournament}
           playerName={user.displayName || user.email}

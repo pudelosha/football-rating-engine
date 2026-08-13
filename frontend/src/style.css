@@ -3135,6 +3135,54 @@ p {
   line-height: 1.65;
 }
 
+.social-betting-confirmation-panel {
+  align-content: start;
+}
+
+.social-betting-confirmation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.social-betting-confirmation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 70px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.social-betting-confirmation-row span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.social-betting-confirmation-row strong {
+  color: #fff9ea;
+  font-size: 18px;
+}
+
+.social-betting-confirmation-row small {
+  color: rgba(255, 249, 234, 0.62);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.social-betting-confirmation-row button {
+  min-height: 44px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 8px;
+  background: #b0d86b;
+  color: #101915;
+  font-weight: 950;
+  cursor: pointer;
+}
+
 .social-betting-empty-participants {
   min-height: 88px;
   display: grid;

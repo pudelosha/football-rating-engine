@@ -153,6 +153,22 @@ public sealed class SocialBettingController(
         return participant is null ? NotFound() : Ok(participant);
     }
 
+    [HttpPost("{id:int}/confirm-participation")]
+    [ProducesResponseType(typeof(SocialBettingTournamentSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SocialBettingTournamentSummaryDto>> ConfirmParticipation(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var tournament = await socialBettingService.ConfirmParticipationAsync(id, userId, cancellationToken);
+        return tournament is null ? NotFound() : Ok(tournament);
+    }
 }
 
 [ApiController]

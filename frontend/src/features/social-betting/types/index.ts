@@ -28,6 +28,7 @@ export type BettingTournamentOption = {
   linkedTournament: string
   season?: string
   role: 'Admin' | 'Player'
+  participantStatus?: 'Accepted' | 'Pending' | 'Removed'
   participants: number
   isActive?: boolean
 }

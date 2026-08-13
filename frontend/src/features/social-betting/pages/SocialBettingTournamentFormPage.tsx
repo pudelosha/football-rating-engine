@@ -448,7 +448,7 @@ export function SocialBettingTournamentFormPage({
                       </td>
                       <td>
                         <div className="social-betting-participant-actions">
-                          {isEditMode && (
+                          {isEditMode && participant.status !== 'Accepted' && (
                             <button type="button" onClick={() => resendInvite(participant.id)}>
                               Resend invite
                             </button>
