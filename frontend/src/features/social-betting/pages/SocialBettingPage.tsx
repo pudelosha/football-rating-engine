@@ -21,7 +21,7 @@ import type { SocialBettingProps } from '../types'
 
 type SocialBettingSection = 'results' | 'insights' | 'my-bets'
 
-export function SocialBettingPage({ user }: SocialBettingProps) {
+export function SocialBettingPage({ user, onCreateTournament, onEditTournament }: SocialBettingProps) {
   const [selectedTournamentId, setSelectedTournamentId] = useState(0)
   const [activeSection, setActiveSection] = useState<SocialBettingSection>('results')
   const selectedTournament = useMemo(
@@ -47,7 +47,7 @@ export function SocialBettingPage({ user }: SocialBettingProps) {
         </div>
 
         <div className="details-top-actions rating-top-actions">
-          <button type="button" className="positive-action-button" onClick={() => undefined}>
+          <button type="button" className="positive-action-button" onClick={onCreateTournament}>
             Create new tournament
           </button>
         </div>
@@ -58,7 +58,7 @@ export function SocialBettingPage({ user }: SocialBettingProps) {
           selectedTournament={selectedTournament}
           playerName={user.displayName || user.email}
           onTournamentChange={setSelectedTournamentId}
-          onEdit={() => undefined}
+          onEdit={() => selectedTournament && onEditTournament(selectedTournament.id)}
         />
 
         <div className="social-betting-section-tabs" aria-label="Social betting section">

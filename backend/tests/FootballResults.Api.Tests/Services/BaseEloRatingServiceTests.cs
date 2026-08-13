@@ -141,6 +141,94 @@ public sealed class BaseEloRatingServiceTests
         Assert.Equal(1400, ratings["Wisla Plock"].Rating);
     }
 
+    [Fact]
+    public async Task RebuildAsync_IncludesCurrentTournamentMatches_WhenHistoricalImportLags()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase($"base-elo-current-match-{Guid.NewGuid()}")
+            .Options;
+
+        await using var dbContext = new AppDbContext(options);
+        var tournament = new Tournament
+        {
+            LiveScoreCompetitionId = "92",
+            Name = "Ekstraklasa 2026/2027",
+            Season = "2026/2027",
+            CompetitionName = "Ekstraklasa",
+            CompetitionCountry = "Poland",
+            CompetitionUrlName = "ekstraklasa",
+            BaseUrl = "https://www.livescore.com/en/football/poland/ekstraklasa/",
+            FixturesUrl = "https://www.livescore.com/en/football/poland/ekstraklasa/fixtures/",
+            ResultsUrl = "https://www.livescore.com/en/football/poland/ekstraklasa/results/",
+            ApiBaseUrl = "https://prod-cdn-public-api.livescore.com",
+            Locale = "en",
+            TimezoneOffset = "0",
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            UpdatedAtUtc = DateTimeOffset.UtcNow
+        };
+        var lech = Team("4888", "Lech Poznan", "LEC");
+        var piast = Team("9408", "Piast Gliwice", "PIA");
+        var match = new Match
+        {
+            Tournament = tournament,
+            LiveScoreEventId = "current-only-1",
+            HomeTeam = lech,
+            AwayTeam = piast,
+            HomeTeamNameSnapshot = lech.Name,
+            AwayTeamNameSnapshot = piast.Name,
+            HomeTeamAbbrSnapshot = lech.Abbreviation,
+            AwayTeamAbbrSnapshot = piast.Abbreviation,
+            KickoffUtc = new DateTimeOffset(2026, 8, 9, 15, 30, 0, TimeSpan.Zero),
+            HomeScore = 3,
+            AwayScore = 0,
+            RegularTimeHomeScore = 3,
+            RegularTimeAwayScore = 0,
+            Status = MatchStatus.Finished,
+            RawStatus = "FT",
+            SyncState = MatchSyncState.Finalized,
+            RoundInfo = "3",
+            LastSourceEndpoint = "fixtures",
+            LastSeenInListType = LiveScoreListType.Results,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            UpdatedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        dbContext.Tournaments.Add(tournament);
+        dbContext.Teams.AddRange(lech, piast);
+        dbContext.TournamentTeams.AddRange(
+            new TournamentTeam { Tournament = tournament, Team = lech },
+            new TournamentTeam { Tournament = tournament, Team = piast });
+        dbContext.Matches.Add(match);
+        await dbContext.SaveChangesAsync();
+
+        var service = new BaseEloRatingService(dbContext, new EmptyLiveScoreClient());
+
+        var result = await service.RebuildAsync(
+            tournament.Id,
+            new RebuildBaseEloRequest(
+                BaseRating: 1500,
+                PromotedBaselineRating: 1400,
+                KFactor: 20,
+                HomeAdvantage: 0,
+                BootstrapSeasonCount: 3,
+                Scope: "Ekstraklasa",
+                SnapshotStartSeasonOffset: 0),
+            CancellationToken.None);
+
+        Assert.True(result.Status == EloRatingRunStatus.Succeeded, result.ErrorMessage);
+        Assert.Equal(1, result.ImportedHistoricalMatches);
+        Assert.Equal(1, result.ProcessedMatches);
+
+        var snapshot = await dbContext.MatchEloSnapshots
+            .Include(item => item.HistoricalMatch)
+            .SingleAsync(item => item.EloRatingRunId == result.RunId);
+
+        Assert.Equal("current-only-1", snapshot.LiveScoreEventId);
+        Assert.Equal("3", snapshot.HistoricalMatch.RoundInfo);
+        Assert.Equal(3, snapshot.HistoricalMatch.RegularTimeHomeScore);
+        Assert.Equal(0, snapshot.HistoricalMatch.RegularTimeAwayScore);
+    }
+
     private static Team Team(string liveScoreTeamId, string name, string abbreviation)
     {
         return new Team
@@ -225,6 +313,35 @@ public sealed class BaseEloRatingServiceTests
                 "FT",
                 string.Empty,
                 "test");
+        }
+    }
+
+    private sealed class EmptyLiveScoreClient : ILiveScoreClient
+    {
+        public Task<IReadOnlyList<LiveScoreFixtureRow>> GetCompetitionRowsAsync(
+            Tournament tournament,
+            LiveScoreListType listType,
+            bool enrichScoreBreakdowns,
+            IReadOnlySet<string> skipDetailEventIds,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<LiveScoreFixtureRow>>([]);
+        }
+
+        public Task<LiveScoreMatchStatisticsRow?> GetMatchStatisticsAsync(
+            Tournament tournament,
+            string eventId,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<LiveScoreMatchStatisticsRow?>(null);
+        }
+
+        public Task<IReadOnlyList<LiveScoreHistoricalMatchRow>> GetTeamDetailsRowsAsync(
+            Tournament tournament,
+            Team team,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<LiveScoreHistoricalMatchRow>>([]);
         }
     }
 }

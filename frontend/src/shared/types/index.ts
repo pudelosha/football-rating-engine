@@ -21,6 +21,7 @@ export type View =
   | 'predictions-tournament'
   | 'prediction-details'
   | 'betting'
+  | 'betting-tournament-form'
   | 'slips'
   | 'slips-create'
   | 'api'
@@ -290,6 +291,12 @@ export type CombinedTeamRating = {
   formMatchesPlayed: number
   performanceMatchesPlayed: number
   squadPlayerCount: number
+  formWeightedActual: number
+  formWeightedExpected: number
+  formWeightedDelta: number
+  formAverageDelta: number
+  performanceDataCoverage: number
+  performanceRawScore: number
   lastBaseEloMatchUtc?: string | null
   lastFormMatchUtc?: string | null
   lastPerformanceMatchUtc?: string | null
@@ -304,7 +311,13 @@ export type CombinedRatingsResponse = {
     performanceRatingRunId?: number | null
     snapshotStartSeasonOffset?: number | null
     currentRoundInfo: string
+    selectedCurrentRoundInfo: string
     previousRoundInfo: string
+    compareRoundInfo: string
+    availableRoundInfos: string[]
+    selectedCurrentRoundCutoffUtc?: string | null
+    isSelectedCurrentRoundCoveredByRatings: boolean
+    isCompareRoundCoveredByRatings: boolean
     calculatedAtUtc: string
   }
   teams: CombinedTeamRating[]

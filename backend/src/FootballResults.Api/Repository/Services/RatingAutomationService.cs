@@ -46,8 +46,8 @@ public sealed class RatingAutomationService(
             return false;
         }
 
-        var matchSourceUtc = await GetLatestFinishedMatchSourceUtcAsync(tournamentId, cancellationToken);
-        if (!matchSourceUtc.HasValue)
+        var latestFinishedMatch = await GetLatestFinishedMatchSignalAsync(tournamentId, cancellationToken);
+        if (latestFinishedMatch is null)
         {
             return false;
         }
@@ -66,7 +66,12 @@ public sealed class RatingAutomationService(
 
         var anyRebuilt = false;
         var baseRebuilt = false;
-        var baseEloIsStale = ShouldRebuildBaseElo(tournament, configuration, baseRun, matchSourceUtc.Value);
+        var baseEloIsStale = ShouldRebuildBaseElo(
+            tournament,
+            configuration,
+            baseRun,
+            latestFinishedMatch.SourceUtc) ||
+            !await IsLatestFinishedMatchCoveredByBaseRunAsync(baseRun, latestFinishedMatch, cancellationToken);
         if (baseEloIsStale)
         {
             var response = await baseEloRatingService.RebuildAsync(
@@ -88,7 +93,7 @@ public sealed class RatingAutomationService(
         }
 
         if (tournament.RatingIncludeForm &&
-            (baseRebuilt || ShouldRebuildForm(configuration, formRun, matchSourceUtc.Value)))
+            (baseRebuilt || ShouldRebuildForm(configuration, formRun, latestFinishedMatch.SourceUtc)))
         {
             var response = await formRatingService.RebuildAsync(
                 tournamentId,
@@ -103,7 +108,7 @@ public sealed class RatingAutomationService(
         }
 
         if (tournament.RatingIncludePerformance &&
-            (baseRebuilt || ShouldRebuildPerformance(configuration, performanceRun, statisticsSourceUtc ?? matchSourceUtc.Value)))
+            (baseRebuilt || ShouldRebuildPerformance(configuration, performanceRun, statisticsSourceUtc ?? latestFinishedMatch.SourceUtc)))
         {
             var response = await performanceRatingService.RebuildAsync(
                 tournamentId,
@@ -120,7 +125,7 @@ public sealed class RatingAutomationService(
         return anyRebuilt;
     }
 
-    private Task<DateTimeOffset?> GetLatestFinishedMatchSourceUtcAsync(
+    private Task<LatestFinishedMatchSignal?> GetLatestFinishedMatchSignalAsync(
         int tournamentId,
         CancellationToken cancellationToken)
     {
@@ -133,8 +138,30 @@ public sealed class RatingAutomationService(
                 match.AwayTeamId.HasValue &&
                 match.HomeScore.HasValue &&
                 match.AwayScore.HasValue)
-            .Select(match => (DateTimeOffset?)match.UpdatedAtUtc)
-            .MaxAsync(cancellationToken);
+            .OrderByDescending(match => match.KickoffUtc)
+            .ThenByDescending(match => match.UpdatedAtUtc)
+            .Select(match => new LatestFinishedMatchSignal(
+                match.LiveScoreEventId,
+                match.UpdatedAtUtc))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<bool> IsLatestFinishedMatchCoveredByBaseRunAsync(
+        EloRatingRun? run,
+        LatestFinishedMatchSignal latestFinishedMatch,
+        CancellationToken cancellationToken)
+    {
+        if (run?.FinishedAtUtc is null)
+        {
+            return false;
+        }
+
+        return await dbContext.MatchEloSnapshots
+            .AsNoTracking()
+            .AnyAsync(snapshot =>
+                snapshot.EloRatingRunId == run.Id &&
+                snapshot.LiveScoreEventId == latestFinishedMatch.LiveScoreEventId,
+                cancellationToken);
     }
 
     private Task<DateTimeOffset?> GetLatestStatisticsSourceUtcAsync(
@@ -301,4 +328,8 @@ public sealed class RatingAutomationService(
     {
         return tournament.ApplyHomeAdvantage ? configuration.HomeAdvantage : 0;
     }
+
+    private sealed record LatestFinishedMatchSignal(
+        string LiveScoreEventId,
+        DateTimeOffset SourceUtc);
 }

@@ -27,6 +27,7 @@ import { PredictionDetailsPanel, PredictionsPanel, TournamentPredictionsPanel } 
 import { ProfilePage } from './features/profile/pages/ProfilePage'
 import { UserRatingDetailsPanel, UserRatingsPanel } from './features/ratings/pages/RatingsPages'
 import { SocialBettingPage } from './features/social-betting/pages/SocialBettingPage'
+import { SocialBettingTournamentFormPage } from './features/social-betting/pages/SocialBettingTournamentFormPage'
 import { UserTeamDetailsPanel, UserTeamsPanel } from './features/teams/pages/TeamsPages'
 import { HeroField } from './shared/components/HeroField/HeroField'
 import { FootballIcon, MenuIcon } from './shared/components/Icons'
@@ -71,7 +72,7 @@ function App() {
   }, [location.search])
 
   useEffect(() => {
-    if ((view === 'home' || view === 'dashboard' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'betting' || view === 'slips' || view === 'slips-create' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
+    if ((view === 'home' || view === 'dashboard' || view === 'ratings' || view === 'rating-details' || view === 'teams' || view === 'team-details' || view === 'matches' || view === 'matches-details' || view === 'predictions' || view === 'predictions-tournament' || view === 'prediction-details' || view === 'betting' || view === 'betting-tournament-form' || view === 'slips' || view === 'slips-create' || view === 'api' || view === 'admin' || view === 'admin-teams' || view === 'admin-ratings' || view === 'admin-rating-details' || view === 'admin-squads' || view === 'admin-squad-details' || view === 'admin-users' || view === 'admin-system-jobs' || view === 'admin-data-quality' || view === 'admin-tournaments' || view === 'admin-tournament-form' || view === 'admin-tournament-details' || view === 'profile') && !user) {
       navigateTo(routes.login, { replace: true })
     }
   }, [navigateTo, user, view])
@@ -373,6 +374,20 @@ function App() {
         <SocialBettingPage
           t={t}
           user={user}
+          onToast={showToast}
+          onCreateTournament={() => navigateTo('/betting/new')}
+          onEditTournament={(id) => navigateTo(`/betting/${id}/edit`)}
+        />
+      )}
+
+      {view === 'betting-tournament-form' && user && (
+        <SocialBettingTournamentFormPage
+          t={t}
+          user={user}
+          tournamentId={Number(location.pathname.match(/^\/betting\/(\d+)\/edit$/)?.[1] ?? 0) || undefined}
+          onBack={() => navigateTo('/betting')}
+          onSaved={() => navigateTo('/betting')}
+          onToast={showToast}
         />
       )}
 

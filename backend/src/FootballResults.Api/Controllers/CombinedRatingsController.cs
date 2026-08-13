@@ -14,8 +14,10 @@ public sealed class CombinedRatingsController(ICombinedRatingService combinedRat
     [ProducesResponseType(typeof(CombinedTeamRatingsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<CombinedTeamRatingsDto>> GetTournamentTeamRatings(
         int tournamentId,
+        [FromQuery] string? currentRoundInfo,
+        [FromQuery] string? compareRoundInfo,
         CancellationToken cancellationToken)
     {
-        return Ok(await combinedRatingService.GetTournamentTeamRatingsAsync(tournamentId, cancellationToken));
+        return Ok(await combinedRatingService.GetTournamentTeamRatingsAsync(tournamentId, currentRoundInfo, compareRoundInfo, cancellationToken));
     }
 }

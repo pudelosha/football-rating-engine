@@ -197,7 +197,50 @@ public sealed partial class BaseEloRatingService(
             }
         }
 
+        imported += await UpsertCurrentTournamentMatchesAsync(tournament, existingMatches, cancellationToken);
+
         await dbContext.SaveChangesAsync(cancellationToken);
+        return imported;
+    }
+
+    private async Task<int> UpsertCurrentTournamentMatchesAsync(
+        Tournament tournament,
+        Dictionary<string, HistoricalMatch> existingMatches,
+        CancellationToken cancellationToken)
+    {
+        var imported = 0;
+        var matches = await dbContext.Matches
+            .Include(match => match.Stage)
+            .Include(match => match.HomeTeam)
+            .Include(match => match.AwayTeam)
+            .Where(match =>
+                match.TournamentId == tournament.Id &&
+                match.Status == MatchStatus.Finished &&
+                match.KickoffUtc.HasValue &&
+                match.HomeTeamId.HasValue &&
+                match.AwayTeamId.HasValue &&
+                match.RegularTimeHomeScore.HasValue &&
+                match.RegularTimeAwayScore.HasValue &&
+                match.LiveScoreEventId != string.Empty)
+            .ToListAsync(cancellationToken);
+
+        foreach (var match in matches)
+        {
+            if (!existingMatches.TryGetValue(match.LiveScoreEventId, out var historicalMatch))
+            {
+                historicalMatch = new HistoricalMatch
+                {
+                    LiveScoreEventId = match.LiveScoreEventId,
+                    CreatedAtUtc = DateTimeOffset.UtcNow
+                };
+                dbContext.HistoricalMatches.Add(historicalMatch);
+                existingMatches[match.LiveScoreEventId] = historicalMatch;
+                imported++;
+            }
+
+            UpdateHistoricalMatch(historicalMatch, match, tournament);
+        }
+
         return imported;
     }
 
@@ -506,6 +549,37 @@ public sealed partial class BaseEloRatingService(
         match.RoundInfo = row.RoundInfo;
         match.SourceEndpoint = row.SourceEndpoint;
         match.UpdatedAtUtc = DateTimeOffset.UtcNow;
+    }
+
+    private static void UpdateHistoricalMatch(
+        HistoricalMatch historicalMatch,
+        Model.Entities.Match match,
+        Tournament tournament)
+    {
+        historicalMatch.LiveScoreCompetitionId = tournament.LiveScoreCompetitionId;
+        historicalMatch.CompetitionName = tournament.CompetitionName;
+        historicalMatch.CompetitionCountry = tournament.CompetitionCountry;
+        historicalMatch.SeasonName = tournament.Season;
+        historicalMatch.StageName = match.Stage?.Name ?? tournament.CompetitionName;
+        historicalMatch.StageCode = match.Stage?.Code ?? tournament.CompetitionUrlName;
+        historicalMatch.KickoffUtc = match.KickoffUtc;
+        historicalMatch.HomeTeam = match.HomeTeam;
+        historicalMatch.AwayTeam = match.AwayTeam;
+        historicalMatch.HomeTeamLiveScoreId = match.HomeTeam?.LiveScoreTeamId ?? string.Empty;
+        historicalMatch.AwayTeamLiveScoreId = match.AwayTeam?.LiveScoreTeamId ?? string.Empty;
+        historicalMatch.HomeTeamNameSnapshot = match.HomeTeamNameSnapshot;
+        historicalMatch.AwayTeamNameSnapshot = match.AwayTeamNameSnapshot;
+        historicalMatch.HomeTeamAbbrSnapshot = match.HomeTeamAbbrSnapshot;
+        historicalMatch.AwayTeamAbbrSnapshot = match.AwayTeamAbbrSnapshot;
+        historicalMatch.HomeScore = match.HomeScore;
+        historicalMatch.AwayScore = match.AwayScore;
+        historicalMatch.RegularTimeHomeScore = match.RegularTimeHomeScore;
+        historicalMatch.RegularTimeAwayScore = match.RegularTimeAwayScore;
+        historicalMatch.Status = match.Status;
+        historicalMatch.RawStatus = match.RawStatus;
+        historicalMatch.RoundInfo = match.RoundInfo;
+        historicalMatch.SourceEndpoint = match.LastSourceEndpoint;
+        historicalMatch.UpdatedAtUtc = DateTimeOffset.UtcNow;
     }
 
     private static bool IsTournamentCompetitionRow(LiveScoreHistoricalMatchRow row, Tournament tournament)

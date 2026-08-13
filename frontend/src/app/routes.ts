@@ -21,6 +21,7 @@ export const routes: Record<View, string> = {
   'predictions-tournament': '/predictions/0',
   'prediction-details': '/predictions/0/matches/0',
   betting: '/betting',
+  'betting-tournament-form': '/betting/new',
   slips: '/slips',
   'slips-create': '/slips/create',
   api: '/api',
@@ -70,6 +71,10 @@ export function getViewFromPath(pathname: string): View {
 
   if (pathname === routes['slips-create'] || pathname === '/betting/create') {
     return 'slips-create'
+  }
+
+  if (pathname === '/betting/new' || /^\/betting\/\d+\/edit$/.test(pathname)) {
+    return 'betting-tournament-form'
   }
 
   if (/^\/admin\/squads\/\d+$/.test(pathname)) {

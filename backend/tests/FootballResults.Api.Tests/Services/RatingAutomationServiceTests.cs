@@ -139,6 +139,69 @@ public sealed class RatingAutomationServiceTests
         Assert.Equal(0, baseService.RebuildCalls);
     }
 
+    [Fact]
+    public async Task RebuildTournamentRatingsIfStaleAsync_RebuildsWhenLatestFinishedMatchIsMissingFromBaseRunSnapshots()
+    {
+        await using var dbContext = ServiceTestData.CreateDbContext("rating-automation-missing-snapshot");
+        var tournament = ServiceTestData.Tournament();
+        var home = ServiceTestData.Team("Arsenal", "ARS");
+        var away = ServiceTestData.Team("Chelsea", "CHE");
+        var olderMatch = ServiceTestData.Match(
+            tournament,
+            home,
+            away,
+            MatchStatus.Finished,
+            DateTimeOffset.UtcNow.AddDays(-8),
+            1,
+            0);
+        var latestMatch = ServiceTestData.Match(
+            tournament,
+            away,
+            home,
+            MatchStatus.Finished,
+            DateTimeOffset.UtcNow.AddDays(-1),
+            2,
+            2);
+        olderMatch.UpdatedAtUtc = DateTimeOffset.UtcNow.AddHours(-6);
+        latestMatch.UpdatedAtUtc = DateTimeOffset.UtcNow.AddHours(-5);
+        var latestRun = ServiceTestData.SucceededEloRun(tournament, DateTimeOffset.UtcNow.AddHours(-1));
+        var historicalOlderMatch = ServiceTestData.HistoricalMatch(
+            home,
+            away,
+            olderMatch.KickoffUtc!.Value,
+            olderMatch.HomeScore!.Value,
+            olderMatch.AwayScore!.Value);
+        historicalOlderMatch.LiveScoreEventId = olderMatch.LiveScoreEventId;
+        var coveredSnapshot = ServiceTestData.MatchEloSnapshot(
+            latestRun,
+            historicalOlderMatch,
+            home,
+            away,
+            1,
+            0,
+            0.5m,
+            0.5m);
+        dbContext.AddRange(tournament, home, away, olderMatch, latestMatch, latestRun, historicalOlderMatch, coveredSnapshot);
+        await dbContext.SaveChangesAsync();
+
+        var baseService = new FakeBaseEloRatingService();
+        var formService = new FakeFormRatingService();
+        var performanceService = new FakePerformanceRatingService();
+        var service = new RatingAutomationService(
+            dbContext,
+            baseService,
+            formService,
+            performanceService,
+            NullLogger<RatingAutomationService>.Instance);
+
+        var rebuilt = await service.RebuildTournamentRatingsIfStaleAsync(tournament.Id, CancellationToken.None);
+
+        Assert.True(rebuilt);
+        Assert.Equal(1, baseService.RebuildCalls);
+        Assert.Equal(1, formService.RebuildCalls);
+        Assert.Equal(1, performanceService.RebuildCalls);
+    }
+
     private sealed class FakeBaseEloRatingService : IBaseEloRatingService
     {
         public int RebuildCalls { get; private set; }

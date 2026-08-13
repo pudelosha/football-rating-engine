@@ -3135,6 +3135,184 @@ p {
   line-height: 1.65;
 }
 
+.social-betting-form-card {
+  align-content: start;
+}
+
+.social-betting-form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.social-betting-form-grid.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.social-betting-form-grid.three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.social-betting-form-grid label,
+.social-betting-number-field {
+  display: grid;
+  gap: 7px;
+}
+
+.social-betting-form-grid label span,
+.social-betting-number-field span {
+  color: rgba(255, 249, 234, 0.58);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.social-betting-form-grid input,
+.social-betting-form-grid select,
+.social-betting-number-field input {
+  min-height: 52px;
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  color: #fff9ea;
+  background: #333c33;
+  padding: 0 16px;
+  font: inherit;
+  font-weight: 850;
+}
+
+.social-betting-form-grid select {
+  padding-right: 52px;
+  background:
+    linear-gradient(45deg, transparent 50%, #b0d86b 50%) calc(100% - 24px) 50% / 7px 7px no-repeat,
+    linear-gradient(135deg, #b0d86b 50%, transparent 50%) calc(100% - 19px) 50% / 7px 7px no-repeat,
+    #333c33;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.social-betting-form-grid input:disabled,
+.social-betting-form-grid select:disabled,
+.social-betting-number-field input:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  filter: grayscale(0.35);
+}
+
+.social-betting-lock-note {
+  margin: 2px 0 0;
+  color: rgba(255, 249, 234, 0.62);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.social-betting-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.social-betting-setting-toggle {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 86px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.social-betting-setting-toggle input {
+  width: 42px;
+  height: 24px;
+  accent-color: #b0d86b;
+}
+
+.social-betting-setting-toggle span {
+  display: grid;
+  gap: 5px;
+}
+
+.social-betting-setting-toggle strong {
+  color: #fff9ea;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.social-betting-setting-toggle small {
+  color: rgba(255, 249, 234, 0.62);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.social-betting-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.social-betting-mode-switch button {
+  min-height: 52px;
+  border: 0;
+  border-radius: 8px;
+  color: rgba(255, 249, 234, 0.82);
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.social-betting-mode-switch button.active,
+.social-betting-mode-switch button:hover {
+  color: #101915;
+  background: #b0d86b;
+}
+
+.social-betting-status-pill {
+  display: inline-grid;
+  min-width: 92px;
+  min-height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  color: #101915;
+  background: #b0d86b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.social-betting-status-pill.pending {
+  color: #fff9ea;
+  background: rgba(255, 249, 234, 0.18);
+}
+
+.social-betting-participant-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.social-betting-participant-actions button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  color: #101915;
+  background: #b0d86b;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.social-betting-participant-actions button.danger {
+  color: #fff9ea;
+  background: rgba(165, 63, 49, 0.9);
+}
+
+.social-betting-save-actions {
+  margin-top: 0;
+}
+
 .social-betting-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));

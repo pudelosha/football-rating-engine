@@ -2,9 +2,7 @@ import { authorizedRequest } from '../../../shared/api/httpClient'
 import type {
   CombinedRatingsResponse,
   TeamFormMatchSnapshot,
-  TeamFormRatingDetail,
   TeamPerformanceMatchSnapshot,
-  TeamPerformanceRatingDetail,
   TeamSquadQualityRatingDetail,
   TournamentDetails,
   TournamentSummary,
@@ -18,16 +16,21 @@ export function fetchTournamentDetails(token: string, tournamentId: number) {
   return authorizedRequest<TournamentDetails>(token, `/api/tournaments/${tournamentId}`)
 }
 
-export function fetchCombinedRatings(token: string, tournamentId: number) {
-  return authorizedRequest<CombinedRatingsResponse>(token, `/api/tournaments/${tournamentId}/ratings/combined/teams`)
-}
-
-export function fetchFormRatings(token: string, tournamentId: number) {
-  return authorizedRequest<TeamFormRatingDetail[]>(token, `/api/tournaments/${tournamentId}/ratings/form/teams`)
-}
-
-export function fetchPerformanceRatings(token: string, tournamentId: number) {
-  return authorizedRequest<TeamPerformanceRatingDetail[]>(token, `/api/tournaments/${tournamentId}/ratings/performance/teams`)
+export function fetchCombinedRatings(
+  token: string,
+  tournamentId: number,
+  currentRoundInfo?: string,
+  compareRoundInfo?: string,
+) {
+  const params = new URLSearchParams()
+  if (currentRoundInfo) {
+    params.set('currentRoundInfo', currentRoundInfo)
+  }
+  if (compareRoundInfo) {
+    params.set('compareRoundInfo', compareRoundInfo)
+  }
+  const query = params.toString() ? `?${params}` : ''
+  return authorizedRequest<CombinedRatingsResponse>(token, `/api/tournaments/${tournamentId}/ratings/combined/teams${query}`)
 }
 
 export function fetchSquadRatings(token: string, tournamentId: number) {

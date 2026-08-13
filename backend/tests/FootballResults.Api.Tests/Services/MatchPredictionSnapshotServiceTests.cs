@@ -169,7 +169,7 @@ public sealed class MatchPredictionSnapshotServiceTests
     {
         return new CombinedTeamRatingsDto(
             tournamentId,
-            new CombinedRatingRunContextDto(1, 2, 3, 0, "2", "1", DateTimeOffset.UtcNow),
+            new CombinedRatingRunContextDto(1, 2, 3, 0, "2", "2", "1", "1", ["1", "2"], DateTimeOffset.UtcNow, true, true, DateTimeOffset.UtcNow),
             teams);
     }
 
@@ -195,6 +195,12 @@ public sealed class MatchPredictionSnapshotServiceTests
             5,
             5,
             25,
+            3,
+            2,
+            1,
+            0.2m,
+            0.8m,
+            0.1m,
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow.AddDays(-1),
@@ -205,6 +211,8 @@ public sealed class MatchPredictionSnapshotServiceTests
     {
         public Task<CombinedTeamRatingsDto> GetTournamentTeamRatingsAsync(
             int tournamentId,
+            string? currentRoundInfo,
+            string? compareRoundInfo,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(ratings);

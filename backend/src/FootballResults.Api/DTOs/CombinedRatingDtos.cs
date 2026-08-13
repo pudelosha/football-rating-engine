@@ -6,7 +6,13 @@ public sealed record CombinedRatingRunContextDto(
     int? PerformanceRatingRunId,
     int? SnapshotStartSeasonOffset,
     string CurrentRoundInfo,
+    string SelectedCurrentRoundInfo,
     string PreviousRoundInfo,
+    string CompareRoundInfo,
+    IReadOnlyList<string> AvailableRoundInfos,
+    DateTimeOffset? SelectedCurrentRoundCutoffUtc,
+    bool IsSelectedCurrentRoundCoveredByRatings,
+    bool IsCompareRoundCoveredByRatings,
     DateTimeOffset CalculatedAtUtc);
 
 public sealed record TeamCombinedRatingDto(
@@ -29,6 +35,12 @@ public sealed record TeamCombinedRatingDto(
     int FormMatchesPlayed,
     int PerformanceMatchesPlayed,
     int SquadPlayerCount,
+    decimal FormWeightedActual,
+    decimal FormWeightedExpected,
+    decimal FormWeightedDelta,
+    decimal FormAverageDelta,
+    decimal PerformanceDataCoverage,
+    decimal PerformanceRawScore,
     DateTimeOffset? LastBaseEloMatchUtc,
     DateTimeOffset? LastFormMatchUtc,
     DateTimeOffset? LastPerformanceMatchUtc,

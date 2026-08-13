@@ -1,4 +1,5 @@
 import type {
+  BettingTournamentParticipant,
   BettingMatchInsight,
   BettingMatchPick,
   BettingPointsGrowthSeries,
@@ -21,6 +22,14 @@ export const bettingTournamentOptions: BettingTournamentOption[] = [
     role: 'Player',
     participants: 8,
   },
+]
+
+export const bettingTournamentParticipants: BettingTournamentParticipant[] = [
+  { id: 1, name: 'pudel1985', email: 'pudel1985@gmail.com', status: 'Accepted' },
+  { id: 2, name: 'Marta', email: 'marta@example.com', status: 'Accepted' },
+  { id: 3, name: 'Kamil', email: 'kamil@example.com', status: 'Pending' },
+  { id: 4, name: 'Anna', email: 'anna@example.com', status: 'Accepted' },
+  { id: 5, name: 'Pawel', email: 'pawel@example.com', status: 'Pending' },
 ]
 
 export const bettingStandings: BettingStandingRow[] = [

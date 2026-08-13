@@ -65,7 +65,7 @@ public sealed class MatchPredictionSnapshotService(
         var createdCount = 0;
         foreach (var group in matches.GroupBy(match => match.TournamentId))
         {
-            var ratings = await combinedRatingService.GetTournamentTeamRatingsAsync(group.Key, cancellationToken);
+            var ratings = await combinedRatingService.GetTournamentTeamRatingsAsync(group.Key, null, null, cancellationToken);
             var ratingsByTeamId = ratings.Teams.ToDictionary(rating => rating.TeamId);
 
             foreach (var match in group)

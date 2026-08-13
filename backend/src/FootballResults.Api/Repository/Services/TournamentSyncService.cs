@@ -594,6 +594,11 @@ public sealed class TournamentSyncService(
             .Select(group => new
             {
                 TournamentId = group.Key,
+                EventId = group
+                    .OrderByDescending(match => match.KickoffUtc)
+                    .ThenByDescending(match => match.UpdatedAtUtc)
+                    .Select(match => match.LiveScoreEventId)
+                    .First(),
                 SourceUtc = group.Max(match => match.UpdatedAtUtc)
             })
             .ToListAsync(cancellationToken);
@@ -610,18 +615,35 @@ public sealed class TournamentSyncService(
                 tournamentIds.Contains(run.TournamentId) &&
                 run.Status == EloRatingRunStatus.Succeeded &&
                 run.FinishedAtUtc.HasValue)
-            .GroupBy(run => run.TournamentId)
             .Select(group => new
             {
-                TournamentId = group.Key,
-                FinishedAtUtc = group.Max(run => run.FinishedAtUtc!.Value)
+                group.TournamentId,
+                RunId = group.Id,
+                FinishedAtUtc = group.FinishedAtUtc!.Value
             })
+            .GroupBy(run => run.TournamentId)
+            .Select(group => group.OrderByDescending(run => run.FinishedAtUtc).First())
             .ToListAsync(cancellationToken);
 
         var latestRunByTournament = latestRatingRuns.ToDictionary(run => run.TournamentId, run => run.FinishedAtUtc);
+        var latestRunIds = latestRatingRuns.Select(run => run.RunId).ToList();
+        var latestFinishedMatchEventIds = latestFinishedMatches
+            .Select(match => match.EventId)
+            .ToList();
+        var coveredLatestMatchEventIds = await dbContext.MatchEloSnapshots
+            .AsNoTracking()
+            .Where(snapshot =>
+                latestRunIds.Contains(snapshot.EloRatingRunId) &&
+                latestFinishedMatchEventIds.Contains(snapshot.LiveScoreEventId))
+            .Select(snapshot => snapshot.LiveScoreEventId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var coveredLatestMatchEventIdSet = coveredLatestMatchEventIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         return latestFinishedMatches.Count(match =>
             !latestRunByTournament.TryGetValue(match.TournamentId, out var latestRunUtc) ||
-            match.SourceUtc > latestRunUtc);
+            match.SourceUtc > latestRunUtc ||
+            !coveredLatestMatchEventIdSet.Contains(match.EventId));
     }
 
     private async Task<RatingRunHealthSnapshot?> GetLatestRatingRunAsync(

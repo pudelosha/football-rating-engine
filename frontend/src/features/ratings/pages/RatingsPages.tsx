@@ -9,9 +9,7 @@ import type {
   RatingTeamSortKey,
   SortDirection,
   TeamFormMatchSnapshot,
-  TeamFormRatingDetail,
   TeamPerformanceMatchSnapshot,
-  TeamPerformanceRatingDetail,
   TeamSquadQualityRatingDetail,
   TournamentDetails,
   TournamentSortKey,
@@ -29,15 +27,32 @@ import { RatingsTournamentTable } from '../components/RatingsTournamentTable'
 import { getNextSortDirection, getSortedRatingTournaments, getSortedTeamRatings } from '../model/ratingsModel'
 import {
   fetchCombinedRatings,
-  fetchFormRatings,
   fetchFormSnapshots,
-  fetchPerformanceRatings,
   fetchPerformanceSnapshots,
   fetchRatingTournaments,
   fetchSquadRatings,
   fetchTournamentDetails,
 } from '../services/ratingsService'
 import type { BackToRatingsHandler, OpenRatingTournamentHandler, RatingsToastHandler, RatingsTranslation, RatingsUser } from '../types'
+
+function filterSnapshotsByCutoff<T extends { kickoffUtc: string }>(snapshots: T[], cutoffUtc?: string | null) {
+  if (!cutoffUtc) {
+    return snapshots
+  }
+
+  const cutoffTime = new Date(cutoffUtc).getTime()
+  return snapshots.filter((snapshot) => new Date(snapshot.kickoffUtc).getTime() <= cutoffTime)
+}
+
+function ratingSampleWeight(index: number) {
+  return Math.max(0, 1 - index * 0.15)
+}
+
+function latestRatingSnapshots<T extends { kickoffUtc: string; teamId: number }>(snapshots: T[], matchCount: number) {
+  return [...snapshots]
+    .sort((left, right) => new Date(right.kickoffUtc).getTime() - new Date(left.kickoffUtc).getTime())
+    .slice(0, matchCount)
+}
 export function UserRatingsPanel({
   t,
   user,
@@ -151,14 +166,14 @@ export function UserRatingDetailsPanel({
 }) {
   const [tournament, setTournament] = useState<TournamentDetails | null>(null)
   const [combinedRatings, setCombinedRatings] = useState<CombinedRatingsResponse | null>(null)
-  const [formDetailsByTeamId, setFormDetailsByTeamId] = useState<Record<number, TeamFormRatingDetail>>({})
   const [formSnapshotsByTeamId, setFormSnapshotsByTeamId] = useState<Record<number, TeamFormMatchSnapshot[]>>({})
-  const [performanceDetailsByTeamId, setPerformanceDetailsByTeamId] = useState<Record<number, TeamPerformanceRatingDetail>>({})
   const [performanceSnapshotsByTeamId, setPerformanceSnapshotsByTeamId] = useState<Record<number, TeamPerformanceMatchSnapshot[]>>({})
   const [squadDetailsByTeamId, setSquadDetailsByTeamId] = useState<Record<number, TeamSquadQualityRatingDetail>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [sortKey, setSortKey] = useState<RatingTeamSortKey>('finalRating')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [currentRoundInfo, setCurrentRoundInfo] = useState('')
+  const [compareRoundInfo, setCompareRoundInfo] = useState('')
 
   useEffect(() => {
     let isMounted = true
@@ -168,7 +183,7 @@ export function UserRatingDetailsPanel({
       try {
         const [tournamentResult, ratingsResult] = await Promise.all([
           fetchTournamentDetails(user.token, tournamentId),
-          fetchCombinedRatings(user.token, tournamentId),
+          fetchCombinedRatings(user.token, tournamentId, currentRoundInfo || undefined, compareRoundInfo || undefined),
         ])
 
         if (!isMounted) {
@@ -185,9 +200,7 @@ export function UserRatingDetailsPanel({
           return
         }
 
-        const [formResult, performanceResult, squadResult, formSnapshotsResult, performanceSnapshotsResult] = await Promise.all([
-          fetchFormRatings(user.token, tournamentId),
-          fetchPerformanceRatings(user.token, tournamentId),
+        const [squadResult, formSnapshotsResult, performanceSnapshotsResult] = await Promise.all([
           fetchSquadRatings(user.token, tournamentId),
           fetchFormSnapshots(user.token, ratingsResult.data.runContext.formRatingRunId),
           fetchPerformanceSnapshots(user.token, ratingsResult.data.runContext.performanceRatingRunId),
@@ -195,11 +208,15 @@ export function UserRatingDetailsPanel({
 
         setTournament(tournamentResult.data)
         setCombinedRatings(ratingsResult.data)
-        setFormDetailsByTeamId(toRecordByTeamId(formResult.ok && formResult.data ? formResult.data : []))
-        setPerformanceDetailsByTeamId(toRecordByTeamId(performanceResult.ok && performanceResult.data ? performanceResult.data : []))
         setSquadDetailsByTeamId(toRecordByTeamId(squadResult.ok && squadResult.data ? squadResult.data : []))
-        setFormSnapshotsByTeamId(groupByTeamId(formSnapshotsResult.ok && formSnapshotsResult.data ? formSnapshotsResult.data : []))
-        setPerformanceSnapshotsByTeamId(groupByTeamId(performanceSnapshotsResult.ok && performanceSnapshotsResult.data ? performanceSnapshotsResult.data : []))
+        setFormSnapshotsByTeamId(groupByTeamId(filterSnapshotsByCutoff(
+          formSnapshotsResult.ok && formSnapshotsResult.data ? formSnapshotsResult.data : [],
+          ratingsResult.data.runContext.selectedCurrentRoundCutoffUtc,
+        )))
+        setPerformanceSnapshotsByTeamId(groupByTeamId(filterSnapshotsByCutoff(
+          performanceSnapshotsResult.ok && performanceSnapshotsResult.data ? performanceSnapshotsResult.data : [],
+          ratingsResult.data.runContext.selectedCurrentRoundCutoffUtc,
+        )))
       } catch {
         if (isMounted) {
           onToast(t.genericError, 'error')
@@ -216,7 +233,7 @@ export function UserRatingDetailsPanel({
     return () => {
       isMounted = false
     }
-  }, [onToast, t.genericError, tournamentId, user.token])
+  }, [compareRoundInfo, currentRoundInfo, onToast, t.genericError, tournamentId, user.token])
 
   const displayedTeams = useMemo(() => {
     return getSortedTeamRatings({
@@ -239,8 +256,11 @@ export function UserRatingDetailsPanel({
     return /^\d+$/.test(roundInfo.trim()) ? `${t.ratingRoundLabel} ${roundInfo.trim()}` : roundInfo
   }
 
-  const currentRoundLabel = formatRoundCheckpoint(combinedRatings?.runContext.currentRoundInfo)
-  const previousRoundLabel = formatRoundCheckpoint(combinedRatings?.runContext.previousRoundInfo)
+  const selectedCurrentRoundInfo = combinedRatings?.runContext.selectedCurrentRoundInfo || combinedRatings?.runContext.currentRoundInfo || ''
+  const currentRoundLabel = formatRoundCheckpoint(selectedCurrentRoundInfo)
+  const comparisonRoundInfo = combinedRatings?.runContext.compareRoundInfo || combinedRatings?.runContext.previousRoundInfo || ''
+  const previousRoundLabel = formatRoundCheckpoint(comparisonRoundInfo)
+  const availableRoundInfos = combinedRatings?.runContext.availableRoundInfos ?? []
 
   const ratingHeaders: Array<{ key: RatingTeamSortKey; label: string }> = [
     { key: 'team', label: t.ratingTeam },
@@ -264,27 +284,30 @@ export function UserRatingDetailsPanel({
   )
 
   const renderFormTooltip = (team: CombinedTeamRating) => {
-    const detail = formDetailsByTeamId[team.teamId]
-    const snapshots = formSnapshotsByTeamId[team.teamId] ?? []
+    const snapshots = latestRatingSnapshots(formSnapshotsByTeamId[team.teamId] ?? [], team.formMatchesPlayed)
 
     return (
       <>
         <strong className="rating-tooltip-title">{team.teamName} - {t.ratingForm}</strong>
         <span className="rating-tooltip-grid">
           <TooltipMetric label="Adjustment" value={formatSigned(team.formAdjustment)} />
-          <TooltipMetric label="Matches" value={detail?.matchCount ?? team.formMatchesPlayed} />
-          <TooltipMetric label="Weighted actual" value={detail ? detail.weightedActual.toFixed(4) : '-'} />
-          <TooltipMetric label="Weighted expected" value={detail ? detail.weightedExpected.toFixed(4) : '-'} />
-          <TooltipMetric label="Weighted delta" value={detail ? formatSigned(detail.weightedDelta) : '-'} />
-          <TooltipMetric label="Average delta" value={detail ? formatSigned(detail.averageDelta) : '-'} />
+          <TooltipMetric label="Matches" value={team.formMatchesPlayed} />
+          <TooltipMetric label="Weighted actual" value={team.formWeightedActual.toFixed(4)} />
+          <TooltipMetric label="Weighted expected" value={team.formWeightedExpected.toFixed(4)} />
+          <TooltipMetric label="Weighted delta" value={formatSigned(team.formWeightedDelta)} />
+          <TooltipMetric label="Average delta" value={formatSigned(team.formAverageDelta)} />
         </span>
         {snapshots.length > 0 && (
           <span className="rating-tooltip-list">
-            {snapshots.map((snapshot) => (
-              <span key={`${snapshot.kickoffUtc}-${snapshot.opponentTeamName}`}>
-                vs <strong>{snapshot.opponentTeamName}</strong>: actual {snapshot.actual.toFixed(2)}, expected {snapshot.expected.toFixed(2)}, weighted {formatSigned(snapshot.weightedDelta)}
-              </span>
-            ))}
+            {snapshots.map((snapshot, index) => {
+              const weightedDelta = (snapshot.actual - snapshot.expected) * ratingSampleWeight(index)
+
+              return (
+                <span key={`${snapshot.kickoffUtc}-${snapshot.opponentTeamName}`}>
+                  vs <strong>{snapshot.opponentTeamName}</strong>: actual {snapshot.actual.toFixed(2)}, expected {snapshot.expected.toFixed(2)}, weighted {formatSigned(weightedDelta)}
+                </span>
+              )
+            })}
           </span>
         )}
       </>
@@ -292,25 +315,28 @@ export function UserRatingDetailsPanel({
   }
 
   const renderPerformanceTooltip = (team: CombinedTeamRating) => {
-    const detail = performanceDetailsByTeamId[team.teamId]
-    const snapshots = performanceSnapshotsByTeamId[team.teamId] ?? []
+    const snapshots = latestRatingSnapshots(performanceSnapshotsByTeamId[team.teamId] ?? [], team.performanceMatchesPlayed)
 
     return (
       <>
         <strong className="rating-tooltip-title">{team.teamName} - {t.ratingPerformance}</strong>
         <span className="rating-tooltip-grid">
           <TooltipMetric label="Adjustment" value={formatSigned(team.performanceAdjustment)} />
-          <TooltipMetric label="Matches" value={detail?.matchCount ?? team.performanceMatchesPlayed} />
-          <TooltipMetric label="Data coverage" value={detail ? `${Math.round(detail.dataCoverage * 100)}%` : '-'} />
-          <TooltipMetric label="Raw score" value={detail ? detail.rawPerformanceScore.toFixed(4) : '-'} />
+          <TooltipMetric label="Matches" value={team.performanceMatchesPlayed} />
+          <TooltipMetric label="Data coverage" value={`${Math.round(team.performanceDataCoverage * 100)}%`} />
+          <TooltipMetric label="Raw score" value={team.performanceRawScore.toFixed(4)} />
         </span>
         {snapshots.length > 0 && (
           <span className="rating-tooltip-list">
-            {snapshots.map((snapshot) => (
-              <span key={`${snapshot.kickoffUtc}-${snapshot.opponentTeamName}`}>
-                vs <strong>{snapshot.opponentTeamName}</strong>: xG {formatNullableScore(snapshot.xgScore)}, shots {formatNullableScore(snapshot.shotScore)}, possession {formatNullableScore(snapshot.possessionScore)}, weighted {formatSigned(snapshot.weightedPerformanceScore)}
-              </span>
-            ))}
+            {snapshots.map((snapshot, index) => {
+              const weightedPerformance = snapshot.rawPerformanceScore * ratingSampleWeight(index)
+
+              return (
+                <span key={`${snapshot.kickoffUtc}-${snapshot.opponentTeamName}`}>
+                  vs <strong>{snapshot.opponentTeamName}</strong>: xG {formatNullableScore(snapshot.xgScore)}, shots {formatNullableScore(snapshot.shotScore)}, possession {formatNullableScore(snapshot.possessionScore)}, weighted {formatSigned(weightedPerformance)}
+                </span>
+              )
+            })}
           </span>
         )}
       </>
@@ -357,8 +383,10 @@ export function UserRatingDetailsPanel({
     <>
       <strong className="rating-tooltip-title">{team.teamName} - {t.ratingChange}</strong>
       <span className="rating-tooltip-grid">
-        <TooltipMetric label={t.ratingCurrentRound} value={combinedRatings?.runContext.currentRoundInfo || '-'} />
-        <TooltipMetric label={t.ratingPreviousRound} value={combinedRatings?.runContext.previousRoundInfo || '-'} />
+        <TooltipMetric label={t.ratingCurrentRound} value={combinedRatings?.runContext.selectedCurrentRoundInfo || '-'} />
+        <TooltipMetric label={t.ratingPreviousRound} value={combinedRatings?.runContext.compareRoundInfo || '-'} />
+        <TooltipMetric label="Current covered" value={combinedRatings?.runContext.isSelectedCurrentRoundCoveredByRatings ? 'Yes' : 'No'} />
+        <TooltipMetric label="Base covered" value={combinedRatings?.runContext.isCompareRoundCoveredByRatings ? 'Yes' : 'No'} />
         <TooltipMetric label={t.ratingPreviousFinal} value={team.previousFinalRating != null ? team.previousFinalRating.toFixed(2) : '-'} />
         <TooltipMetric label={t.ratingChange} value={team.finalRatingChange != null ? formatSigned(team.finalRatingChange) : '-'} />
       </span>
@@ -422,15 +450,41 @@ export function UserRatingDetailsPanel({
             </div>
             <div className="rating-checkpoint-controls" aria-label="Rating checkpoint controls">
               <label>
-                <span>{t.ratingCheckpoint}</span>
-                <select value={currentRoundLabel} disabled aria-label={`${t.ratingCheckpoint}: ${currentRoundLabel}`}>
-                  <option value={currentRoundLabel}>{currentRoundLabel}</option>
+                <span>{t.ratingCurrentRound}</span>
+                <select
+                  value={selectedCurrentRoundInfo}
+                  disabled={availableRoundInfos.length === 0}
+                  aria-label={`${t.ratingCurrentRound}: ${currentRoundLabel}`}
+                  onChange={(event) => setCurrentRoundInfo(event.target.value)}
+                >
+                  {availableRoundInfos.length === 0 ? (
+                    <option value="">{currentRoundLabel}</option>
+                  ) : (
+                    availableRoundInfos.map((roundInfo) => (
+                      <option key={roundInfo} value={roundInfo}>
+                        {formatRoundCheckpoint(roundInfo)}
+                      </option>
+                    ))
+                  )}
                 </select>
               </label>
               <label>
-                <span>{t.ratingCompare}</span>
-                <select value={previousRoundLabel} disabled aria-label={`${t.ratingCompare}: ${previousRoundLabel}`}>
-                  <option value={previousRoundLabel}>{previousRoundLabel}</option>
+                <span>{t.ratingBase}</span>
+                <select
+                  value={comparisonRoundInfo}
+                  disabled={availableRoundInfos.length === 0}
+                  aria-label={`${t.ratingBase}: ${previousRoundLabel}`}
+                  onChange={(event) => setCompareRoundInfo(event.target.value)}
+                >
+                  {availableRoundInfos.length === 0 ? (
+                    <option value="">{previousRoundLabel}</option>
+                  ) : (
+                    availableRoundInfos.map((roundInfo) => (
+                      <option key={roundInfo} value={roundInfo}>
+                        {formatRoundCheckpoint(roundInfo)}
+                      </option>
+                    ))
+                  )}
                 </select>
               </label>
               <div className="rating-updated-control">

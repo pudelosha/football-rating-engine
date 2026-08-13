@@ -1,11 +1,24 @@
-import type { AuthUser } from '../../../shared/types'
+import type { AuthUser, ToastTone } from '../../../shared/types'
 import type { Translation } from '../../../i18n'
 
 export type SocialBettingUser = AuthUser
+export type SocialBettingToastHandler = (message: string, tone: ToastTone) => void
 
 export type SocialBettingProps = {
   t: Translation
   user: SocialBettingUser
+  onToast: SocialBettingToastHandler
+  onCreateTournament: () => void
+  onEditTournament: (id: number) => void
+}
+
+export type SocialBettingTournamentFormProps = {
+  t: Translation
+  user: SocialBettingUser
+  tournamentId?: number
+  onBack: () => void
+  onSaved: () => void
+  onToast: SocialBettingToastHandler
 }
 
 export type BettingTournamentOption = {
@@ -14,6 +27,13 @@ export type BettingTournamentOption = {
   linkedTournament: string
   role: 'Admin' | 'Player'
   participants: number
+}
+
+export type BettingTournamentParticipant = {
+  id: number
+  name: string
+  email: string
+  status: 'Accepted' | 'Pending'
 }
 
 export type BettingStandingRow = {
