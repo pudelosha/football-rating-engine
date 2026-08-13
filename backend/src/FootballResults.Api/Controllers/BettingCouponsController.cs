@@ -225,6 +225,24 @@ public sealed class BettingCouponsController(
         return NoContent();
     }
 
+    [HttpDelete]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteAllCoupons(CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        await dbContext.BettingCoupons
+            .Where(coupon => coupon.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return NoContent();
+    }
+
     private static BettingCouponDto ToDto(BettingCoupon coupon)
     {
         return new BettingCouponDto(

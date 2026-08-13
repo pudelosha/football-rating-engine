@@ -28,6 +28,7 @@ import {
 } from '../model/bettingModel'
 import {
   createCoupon as createCouponRequest,
+  deleteAllCoupons,
   deleteCoupon as deleteCouponRequest,
   fetchCoupons,
   fetchTournamentCandidatePayload,
@@ -69,6 +70,7 @@ export function BettingPanel({
   const [isLoading, setIsLoading] = useState(false)
   const [allCandidates, setAllCandidates] = useState<BettingCandidate[]>([])
   const [detailsCoupon, setDetailsCoupon] = useState<BettingCoupon | null>(null)
+  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false)
 
   const { leanOptions, drawOptions } = useMemo(() => getBettingFilterOptions(t), [t])
 
@@ -210,6 +212,26 @@ export function BettingPanel({
     }
   }
 
+  const clearAllCoupons = async () => {
+    setIsLoading(true)
+    try {
+      const result = await deleteAllCoupons(user.token)
+
+      if (!result.ok) {
+        onToast(result.message || t.bettingAllCouponsDeleteFailed, 'error')
+        return
+      }
+
+      setCoupons([])
+      setIsClearAllModalOpen(false)
+      onToast(t.bettingAllCouponsDeleted, 'success')
+    } catch {
+      onToast(t.bettingAllCouponsDeleteFailed, 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const openManualSearch = async () => {
     setIsManualSearchOpen(true)
     if (allCandidates.length > 0) {
@@ -251,6 +273,7 @@ export function BettingPanel({
             pendingCoupons={pendingCoupons}
             t={t}
             onCreate={onCreate}
+            onClearAll={() => setIsClearAllModalOpen(true)}
             onDeleteCoupon={deleteCoupon}
             onDetailsCoupon={setDetailsCoupon}
           />
@@ -302,6 +325,16 @@ export function BettingPanel({
             onClose={() => setDetailsCoupon(null)}
           />
         )}
+
+        {isClearAllModalOpen && (
+          <ClearAllSlipsModal
+            isProcessing={isLoading}
+            slipCount={coupons.length}
+            t={t}
+            onCancel={() => setIsClearAllModalOpen(false)}
+            onConfirm={clearAllCoupons}
+          />
+        )}
       </div>
     </section>
   )
@@ -312,6 +345,7 @@ function BettingListView({
   pendingCoupons,
   t,
   onCreate,
+  onClearAll,
   onDeleteCoupon,
   onDetailsCoupon,
 }: {
@@ -319,14 +353,20 @@ function BettingListView({
   pendingCoupons: BettingCoupon[]
   t: BettingTranslation
   onCreate: BettingNavigationHandler
+  onClearAll: BettingNavigationHandler
   onDeleteCoupon: (couponId: number) => void
   onDetailsCoupon: (coupon: BettingCoupon) => void
 }) {
+  const hasCoupons = pendingCoupons.length + closedCoupons.length > 0
+
   return (
     <>
       <div className="details-top-actions rating-top-actions">
         <button type="button" className="positive-action-button" onClick={onCreate}>
           {t.bettingCreateCoupon}
+        </button>
+        <button type="button" className="danger-action-button" disabled={!hasCoupons} onClick={onClearAll}>
+          {t.bettingClearAllCoupons}
         </button>
       </div>
       <BettingCouponTable
@@ -345,6 +385,45 @@ function BettingListView({
         onDetails={onDetailsCoupon}
       />
     </>
+  )
+}
+
+function ClearAllSlipsModal({
+  isProcessing,
+  slipCount,
+  t,
+  onCancel,
+  onConfirm,
+}: {
+  isProcessing: boolean
+  slipCount: number
+  t: BettingTranslation
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <ModalShell className="delete-modal" isLocked={isProcessing} onCancel={onCancel}>
+      <div className="delete-modal-icon">
+        <MenuIcon name="trash" />
+      </div>
+      <div className="delete-modal-copy">
+        <p className="eyebrow">{t.bettingClearAllCouponsConfirm}</p>
+        <h2>{t.bettingClearAllCouponsTitle}</h2>
+        <p>{t.bettingClearAllCouponsCopy}</p>
+      </div>
+      <div className="delete-modal-target">
+        <strong>{t.bettingClearAllCouponsTarget}</strong>
+        <span>{slipCount} {t.bettingClearAllCouponsCountLabel}</span>
+      </div>
+      <div className="delete-modal-actions">
+        <button type="button" disabled={isProcessing} onClick={onCancel}>
+          {t.cancel}
+        </button>
+        <button className="danger" type="button" disabled={isProcessing} onClick={onConfirm}>
+          {isProcessing ? '...' : t.bettingClearAllCouponsConfirm}
+        </button>
+      </div>
+    </ModalShell>
   )
 }
 

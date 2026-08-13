@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { MenuIcon } from '../../../shared/components/Icons'
+import { ModalShell } from '../../../shared/components/Modal/ModalShell'
 import { FullPageProcessingOverlay } from '../../../shared/components/Spinner'
 import type { TournamentSummary } from '../../../shared/types'
 import { bettingTournamentOptions, bettingTournamentParticipants } from '../model/socialBettingModel'
@@ -7,6 +8,7 @@ import { fetchSourceTournaments } from '../services/socialBettingService'
 import type { SocialBettingTournamentFormProps } from '../types'
 
 type BetPoolMode = 'fixed' | 'credits'
+type ExactScoreBonusMode = 'fixed' | 'oddsMultiplier'
 
 export function SocialBettingTournamentFormPage({
   tournamentId,
@@ -24,6 +26,9 @@ export function SocialBettingTournamentFormPage({
   const [sourceTournamentId, setSourceTournamentId] = useState('')
   const [name, setName] = useState(editedTournament?.name ?? '')
   const [allowExactScoreBonus, setAllowExactScoreBonus] = useState(true)
+  const [exactScoreBonusMode, setExactScoreBonusMode] = useState<ExactScoreBonusMode>('fixed')
+  const [exactScoreBonusValue, setExactScoreBonusValue] = useState('5')
+  const [exactScoreOddsMultiplier, setExactScoreOddsMultiplier] = useState('1.5')
   const [allowQualifierPick, setAllowQualifierPick] = useState(false)
   const [applyMissingBetPenalty, setApplyMissingBetPenalty] = useState(true)
   const [missingBetPenalty, setMissingBetPenalty] = useState('-1')
@@ -31,8 +36,30 @@ export function SocialBettingTournamentFormPage({
   const [baseBetAmount, setBaseBetAmount] = useState('1')
   const [startingCredits, setStartingCredits] = useState('1000')
   const [maxBetPerGame, setMaxBetPerGame] = useState('5')
+  const [participants, setParticipants] = useState(bettingTournamentParticipants)
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+
+  function applyCreditPoolDefaults(baseAmount: string) {
+    const base = Math.max(1, Number(baseAmount) || 1)
+    setStartingCredits(String(base * 100))
+    setMaxBetPerGame(String(base * 10))
+  }
+
+  function changePoolMode(nextMode: BetPoolMode) {
+    setPoolMode(nextMode)
+    if (nextMode === 'credits') {
+      applyCreditPoolDefaults(baseBetAmount)
+    }
+  }
+
+  function changeBaseBetAmount(value: string) {
+    setBaseBetAmount(value)
+    if (poolMode === 'credits') {
+      applyCreditPoolDefaults(value)
+    }
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -93,6 +120,26 @@ export function SocialBettingTournamentFormPage({
     }, 650)
   }
 
+  function addParticipant(email: string, displayName: string) {
+    const normalizedEmail = email.trim()
+    if (!normalizedEmail) {
+      onToast('User email is required.', 'error')
+      return
+    }
+
+    setParticipants((current) => [
+      ...current,
+      {
+        id: Math.max(0, ...current.map((participant) => participant.id)) + 1,
+        name: displayName.trim() || normalizedEmail,
+        email: normalizedEmail,
+        status: 'Pending',
+      },
+    ])
+    setIsAddUserModalOpen(false)
+    onToast('User invitation added.', 'success')
+  }
+
   return (
     <section className="admin-dashboard social-betting-page">
       {(isLoading || isSaving) && (
@@ -109,9 +156,9 @@ export function SocialBettingTournamentFormPage({
         </div>
 
         <div className="details-top-actions rating-top-actions">
-          <button type="button" onClick={onBack}>
+          <button type="button" className="positive-action-button" onClick={onBack}>
             <MenuIcon name="arrow-left" />
-            Back to Social Betting
+            Back
           </button>
         </div>
 
@@ -159,30 +206,81 @@ export function SocialBettingTournamentFormPage({
               description="Award extra points when the exact regular-time score is predicted."
               label="Exact score bonus"
               onChange={setAllowExactScoreBonus}
-            />
+            >
+              {allowExactScoreBonus && (
+                <div className="social-betting-setting-body">
+                  <div className="social-betting-mode-switch compact">
+                    <button
+                      className={exactScoreBonusMode === 'fixed' ? 'active' : ''}
+                      type="button"
+                      onClick={() => setExactScoreBonusMode('fixed')}
+                    >
+                      Fixed value
+                    </button>
+                    <button
+                      className={exactScoreBonusMode === 'oddsMultiplier' ? 'active' : ''}
+                      type="button"
+                      onClick={() => setExactScoreBonusMode('oddsMultiplier')}
+                    >
+                      Odds multiplier
+                    </button>
+                  </div>
+                  {exactScoreBonusMode === 'fixed' ? (
+                    <label className="social-betting-inline-field">
+                      <span>Bonus points</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={exactScoreBonusValue}
+                        onChange={(event) => setExactScoreBonusValue(event.target.value)}
+                      />
+                    </label>
+                  ) : (
+                    <label className="social-betting-inline-field">
+                      <span>1X2 odds multiplier</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={exactScoreOddsMultiplier}
+                        onChange={(event) => setExactScoreOddsMultiplier(event.target.value)}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+            </SettingToggle>
             <SettingToggle
               checked={allowQualifierPick}
               description="Allow knockout-phase picks for the team that qualifies to the next round."
               label="Qualification pick"
               onChange={setAllowQualifierPick}
-            />
+            >
+              <div className="social-betting-setting-body muted">
+                <span>Applied automatically in knockout stages</span>
+              </div>
+            </SettingToggle>
             <SettingToggle
               checked={applyMissingBetPenalty}
               description="Subtract points when a participant misses a required prediction."
               label="Missing bet penalty"
               onChange={setApplyMissingBetPenalty}
-            />
-            <label className="social-betting-number-field">
-              <span>Penalty points</span>
-              <input
-                type="number"
-                min="-10"
-                max="-1"
-                disabled={!applyMissingBetPenalty}
-                value={missingBetPenalty}
-                onChange={(event) => setMissingBetPenalty(event.target.value)}
-              />
-            </label>
+            >
+              {applyMissingBetPenalty && (
+                <div className="social-betting-setting-body">
+                  <label className="social-betting-inline-field">
+                    <span>Penalty value</span>
+                    <input
+                      type="number"
+                      min="-10"
+                      max="-1"
+                      value={missingBetPenalty}
+                      onChange={(event) => setMissingBetPenalty(event.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+            </SettingToggle>
           </div>
         </section>
 
@@ -192,17 +290,17 @@ export function SocialBettingTournamentFormPage({
             <h2>Bet amount mode</h2>
           </div>
           <div className="social-betting-mode-switch">
-            <button className={poolMode === 'fixed' ? 'active' : ''} type="button" onClick={() => setPoolMode('fixed')}>
+            <button className={poolMode === 'fixed' ? 'active' : ''} type="button" onClick={() => changePoolMode('fixed')}>
               Fixed base amount
             </button>
-            <button className={poolMode === 'credits' ? 'active' : ''} type="button" onClick={() => setPoolMode('credits')}>
+            <button className={poolMode === 'credits' ? 'active' : ''} type="button" onClick={() => changePoolMode('credits')}>
               Player credit pool
             </button>
           </div>
           <div className="social-betting-form-grid three-columns">
             <label>
               <span>Base amount per bet</span>
-              <input type="number" min="1" value={baseBetAmount} onChange={(event) => setBaseBetAmount(event.target.value)} />
+              <input type="number" min="1" value={baseBetAmount} onChange={(event) => changeBaseBetAmount(event.target.value)} />
             </label>
             <label>
               <span>Starting credits</span>
@@ -226,16 +324,27 @@ export function SocialBettingTournamentFormPage({
               />
             </label>
           </div>
-          <p className="social-betting-lock-note">
-            In fixed mode every pick uses the same base amount. In credit pool mode players can risk earned points, but
-            a minimum base bet remains available if they run out of credits.
-          </p>
+          <div className="social-betting-note-grid">
+            <p className="social-betting-lock-note">
+              Suggested credit pool multipliers: starting credits = base amount x 100, max bet per game = base amount x 10.
+              These values are proposed automatically but can be adjusted.
+            </p>
+            <p className="social-betting-lock-note">
+              If a player loses all credits, they can still place a minimal base bet and rebuild their balance from future
+              successful picks.
+            </p>
+          </div>
         </section>
 
         <section className="details-panel social-betting-form-card">
-          <div className="details-panel-heading">
-            <MenuIcon name="teams" />
-            <h2>Participants</h2>
+          <div className="details-panel-heading spread">
+            <span>
+              <MenuIcon name="teams" />
+              <h2>Participants</h2>
+            </span>
+            <button type="button" className="positive-action-button social-betting-add-user-button" onClick={() => setIsAddUserModalOpen(true)}>
+              Add user
+            </button>
           </div>
           <div className="tournament-table-shell compact-table-shell">
             <table className="tournament-table social-betting-participants-table">
@@ -248,7 +357,7 @@ export function SocialBettingTournamentFormPage({
                 </tr>
               </thead>
               <tbody>
-                {bettingTournamentParticipants.map((participant) => (
+                {participants.map((participant) => (
                   <tr key={participant.id}>
                     <td><strong>{participant.name}</strong></td>
                     <td>{participant.email}</td>
@@ -276,29 +385,79 @@ export function SocialBettingTournamentFormPage({
             {isEditMode ? 'Save tournament' : 'Create tournament'}
           </button>
         </div>
+
+        {isAddUserModalOpen && (
+          <AddParticipantModal
+            onCancel={() => setIsAddUserModalOpen(false)}
+            onConfirm={addParticipant}
+          />
+        )}
       </div>
     </section>
   )
 }
 
+function AddParticipantModal({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void
+  onConfirm: (email: string, displayName: string) => void
+}) {
+  const [email, setEmail] = useState('')
+  const [displayName, setDisplayName] = useState('')
+
+  return (
+    <ModalShell className="delete-modal edit-team-modal" onCancel={onCancel}>
+      <div className="delete-modal-icon">
+        <MenuIcon name="teams" />
+      </div>
+      <div className="delete-modal-copy">
+        <p className="eyebrow">Participant</p>
+        <h2>Add user.</h2>
+        <p>Invite a user to join this betting tournament. The invitation flow will be wired to the backend later.</p>
+      </div>
+      <div className="edit-team-fields">
+        <label className="social-betting-inline-field">
+          <span>Email</span>
+          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="user@example.com" />
+        </label>
+        <label className="social-betting-inline-field">
+          <span>Display name</span>
+          <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Optional nickname" />
+        </label>
+      </div>
+      <div className="delete-modal-actions">
+        <button type="button" onClick={onCancel}>Cancel</button>
+        <button type="button" onClick={() => onConfirm(email, displayName)}>Add user</button>
+      </div>
+    </ModalShell>
+  )
+}
+
 function SettingToggle({
   checked,
+  children,
   description,
   label,
   onChange,
 }: {
   checked: boolean
+  children?: ReactNode
   description: string
   label: string
   onChange: (value: boolean) => void
 }) {
   return (
-    <label className="social-betting-setting-toggle">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span>
-        <strong>{label}</strong>
-        <small>{description}</small>
-      </span>
-    </label>
+    <div className="social-betting-setting-toggle">
+      <label>
+        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+        <span>
+          <strong>{label}</strong>
+          <small>{description}</small>
+        </span>
+      </label>
+      {children}
+    </div>
   )
 }

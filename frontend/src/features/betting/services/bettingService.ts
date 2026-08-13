@@ -37,6 +37,12 @@ export function deleteCoupon(token: string, couponId: number) {
   })
 }
 
+export function deleteAllCoupons(token: string) {
+  return authorizedRequest(token, '/api/betting/coupons', {
+    method: 'DELETE',
+  })
+}
+
 export function fetchTournaments(token: string) {
   return authorizedRequest<TournamentSummary[]>(token, '/api/tournaments')
 }
