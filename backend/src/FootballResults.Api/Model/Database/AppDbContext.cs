@@ -34,6 +34,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<DataQualityAcceptedIssue> DataQualityAcceptedIssues => Set<DataQualityAcceptedIssue>();
     public DbSet<BettingCoupon> BettingCoupons => Set<BettingCoupon>();
     public DbSet<BettingCouponBet> BettingCouponBets => Set<BettingCouponBet>();
+    public DbSet<SocialBettingTournament> SocialBettingTournaments => Set<SocialBettingTournament>();
+    public DbSet<SocialBettingParticipant> SocialBettingParticipants => Set<SocialBettingParticipant>();
+    public DbSet<SocialBettingPick> SocialBettingPicks => Set<SocialBettingPick>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -148,6 +151,89 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasOne(bet => bet.Match)
                 .WithMany()
                 .HasForeignKey(bet => bet.MatchId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SocialBettingTournament>(entity =>
+        {
+            entity.HasIndex(tournament => new { tournament.CreatedByUserId, tournament.CreatedAtUtc });
+            entity.HasIndex(tournament => tournament.SourceTournamentId);
+
+            entity.Property(tournament => tournament.CreatedByUserId).HasMaxLength(450);
+            entity.Property(tournament => tournament.Name).HasMaxLength(200);
+            entity.Property(tournament => tournament.ExactScoreBonusMode).HasConversion<string>().HasMaxLength(32);
+            entity.Property(tournament => tournament.PoolMode).HasConversion<string>().HasMaxLength(32);
+            entity.Property(tournament => tournament.ExactScoreBonusValue).HasPrecision(18, 2);
+            entity.Property(tournament => tournament.ExactScoreOddsMultiplier).HasPrecision(18, 4);
+            entity.Property(tournament => tournament.MissingBetPenalty).HasPrecision(18, 2);
+            entity.Property(tournament => tournament.BaseBetAmount).HasPrecision(18, 2);
+            entity.Property(tournament => tournament.StartingCredits).HasPrecision(18, 2);
+            entity.Property(tournament => tournament.MaxBetPerGame).HasPrecision(18, 2);
+
+            entity.HasOne(tournament => tournament.SourceTournament)
+                .WithMany()
+                .HasForeignKey(tournament => tournament.SourceTournamentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(tournament => tournament.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(tournament => tournament.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SocialBettingParticipant>(entity =>
+        {
+            entity.HasIndex(participant => new { participant.SocialBettingTournamentId, participant.UserId }).IsUnique();
+            entity.HasIndex(participant => new { participant.UserId, participant.Status });
+            entity.HasIndex(participant => participant.Email);
+
+            entity.Property(participant => participant.UserId).HasMaxLength(450);
+            entity.Property(participant => participant.Email).HasMaxLength(256);
+            entity.Property(participant => participant.Nickname).HasMaxLength(120);
+            entity.Property(participant => participant.Role).HasConversion<string>().HasMaxLength(32);
+            entity.Property(participant => participant.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(participant => participant.InvitationTokenHash).HasMaxLength(128);
+
+            entity.HasOne(participant => participant.SocialBettingTournament)
+                .WithMany(tournament => tournament.Participants)
+                .HasForeignKey(participant => participant.SocialBettingTournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(participant => participant.User)
+                .WithMany()
+                .HasForeignKey(participant => participant.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SocialBettingPick>(entity =>
+        {
+            entity.HasIndex(pick => new { pick.ParticipantId, pick.MatchId }).IsUnique();
+            entity.HasIndex(pick => new { pick.SocialBettingTournamentId, pick.MatchId });
+
+            entity.Property(pick => pick.Stake).HasPrecision(18, 2);
+            entity.Property(pick => pick.HomeOddsAtPlacement).HasPrecision(18, 4);
+            entity.Property(pick => pick.DrawOddsAtPlacement).HasPrecision(18, 4);
+            entity.Property(pick => pick.AwayOddsAtPlacement).HasPrecision(18, 4);
+            entity.Property(pick => pick.PointsAwarded).HasPrecision(18, 2);
+
+            entity.HasOne(pick => pick.SocialBettingTournament)
+                .WithMany()
+                .HasForeignKey(pick => pick.SocialBettingTournamentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pick => pick.Participant)
+                .WithMany()
+                .HasForeignKey(pick => pick.ParticipantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(pick => pick.Match)
+                .WithMany()
+                .HasForeignKey(pick => pick.MatchId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(pick => pick.QualifierTeam)
+                .WithMany()
+                .HasForeignKey(pick => pick.QualifierTeamId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

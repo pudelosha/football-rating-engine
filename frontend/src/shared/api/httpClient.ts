@@ -18,10 +18,16 @@ export async function authorizedRequest<T>(
   const data = hasBody ? await response.json().catch(() => null) : null
 
   if (!response.ok) {
+    const validationMessages = data?.errors && typeof data.errors === 'object'
+      ? Object.values(data.errors).flat().filter((message): message is string => typeof message === 'string')
+      : []
+
     return {
       ok: false,
       status: response.status,
-      message: typeof data?.message === 'string' ? data.message : response.statusText,
+      message: typeof data?.message === 'string'
+        ? data.message
+        : validationMessages[0] ?? response.statusText,
     }
   }
 
@@ -31,4 +37,3 @@ export async function authorizedRequest<T>(
     data: data as T,
   }
 }
-

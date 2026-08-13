@@ -8,6 +8,7 @@ export const routes: Record<View, string> = {
   'resend-activation': '/resend-activation',
   'confirm-email': '/confirm-email',
   'reset-password': '/reset-password',
+  'betting-invite': '/betting/invite',
   terms: '/terms',
   home: '/home',
   dashboard: '/dashboard',
@@ -75,6 +76,10 @@ export function getViewFromPath(pathname: string): View {
 
   if (pathname === '/betting/new' || /^\/betting\/\d+\/edit$/.test(pathname)) {
     return 'betting-tournament-form'
+  }
+
+  if (pathname === routes['betting-invite']) {
+    return 'betting-invite'
   }
 
   if (/^\/admin\/squads\/\d+$/.test(pathname)) {

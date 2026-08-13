@@ -29,3 +29,12 @@ export function confirmEmailAddress(userId: string, token: string, language: Lan
 export function setNewPassword(userId: string, token: string, password: string, language: Language) {
   return resetPassword(userId, token, password, language)
 }
+
+export function acceptBettingInvitation(participantId: number, token: string, password: string, language: Language) {
+  return postAuth('/api/social-betting/invitations/accept', {
+    participantId,
+    token,
+    password,
+    language,
+  })
+}

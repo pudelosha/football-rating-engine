@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MenuIcon } from '../../../shared/components/Icons'
+import { FullPageProcessingOverlay } from '../../../shared/components/Spinner'
 import { BettingChartsTile } from '../components/BettingChartsTile'
 import { BettingMatchListTile } from '../components/BettingMatchListTile'
 import { BettingTournamentResultsTile } from '../components/BettingTournamentResultsTile'
@@ -17,16 +18,19 @@ import {
   outstandingBets,
   pointsGrowthSeries,
 } from '../model/socialBettingModel'
+import { fetchSocialBettingTournaments } from '../services/socialBettingService'
 import type { SocialBettingProps } from '../types'
 
 type SocialBettingSection = 'results' | 'insights' | 'my-bets'
 
-export function SocialBettingPage({ user, onCreateTournament, onEditTournament }: SocialBettingProps) {
+export function SocialBettingPage({ user, onCreateTournament, onEditTournament, onToast }: SocialBettingProps) {
   const [selectedTournamentId, setSelectedTournamentId] = useState(0)
   const [activeSection, setActiveSection] = useState<SocialBettingSection>('results')
+  const [tournaments, setTournaments] = useState(bettingTournamentOptions)
+  const [isLoading, setIsLoading] = useState(true)
   const selectedTournament = useMemo(
-    () => bettingTournamentOptions.find((tournament) => tournament.id === selectedTournamentId),
-    [selectedTournamentId],
+    () => tournaments.find((tournament) => tournament.id === selectedTournamentId),
+    [selectedTournamentId, tournaments],
   )
   const insightStages = useMemo(
     () => Array.from(new Set(matchInsights.map((match) => match.stage))),
@@ -34,8 +38,34 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament }
   )
   const hasSelectedTournament = Boolean(selectedTournament)
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadTournaments() {
+      setIsLoading(true)
+      const result = await fetchSocialBettingTournaments(user.token)
+      if (!isMounted) {
+        return
+      }
+
+      if (result.ok && result.data) {
+        setTournaments(result.data)
+      } else {
+        onToast(result.message || 'Could not load betting tournaments.', 'error')
+      }
+      setIsLoading(false)
+    }
+
+    loadTournaments()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, user.token])
+
   return (
     <section className="admin-dashboard social-betting-page">
+      {isLoading && <FullPageProcessingOverlay label="Loading betting tournaments." />}
       <div className="admin-dashboard-content social-betting-layout">
         <div className="admin-dashboard-hero">
           <p className="eyebrow">Betting</p>
@@ -53,7 +83,7 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament }
         </div>
 
         <BettingTournamentToolbar
-          tournaments={bettingTournamentOptions}
+          tournaments={tournaments}
           selectedTournamentId={selectedTournamentId}
           selectedTournament={selectedTournament}
           playerName={user.displayName || user.email}

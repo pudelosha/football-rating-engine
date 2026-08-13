@@ -23,17 +23,54 @@ export type SocialBettingTournamentFormProps = {
 
 export type BettingTournamentOption = {
   id: number
+  sourceTournamentId?: number
   name: string
   linkedTournament: string
+  season?: string
   role: 'Admin' | 'Player'
   participants: number
+  isActive?: boolean
 }
 
 export type BettingTournamentParticipant = {
   id: number
+  userId?: string
   name: string
   email: string
-  status: 'Accepted' | 'Pending'
+  role?: 'Admin' | 'Player'
+  status: 'Accepted' | 'Pending' | 'Removed'
+}
+
+export type SocialBettingExactScoreBonusMode = 'FixedValue' | 'OddsMultiplier'
+export type SocialBettingPoolMode = 'FixedBaseAmount' | 'PlayerCredits'
+
+export type SocialBettingSettings = {
+  allowExactScoreBonus: boolean
+  exactScoreBonusMode: SocialBettingExactScoreBonusMode
+  exactScoreBonusValue: number
+  exactScoreOddsMultiplier: number
+  allowQualificationPick: boolean
+  applyMissingBetPenalty: boolean
+  missingBetPenalty: number
+  poolMode: SocialBettingPoolMode
+  baseBetAmount: number
+  startingCredits: number
+  maxBetPerGame: number
+}
+
+export type SocialBettingTournamentDetails = BettingTournamentOption & {
+  sourceTournamentId: number
+  participantsCount: number
+  settings: SocialBettingSettings
+  participants: BettingTournamentParticipant[]
+}
+
+export type SaveSocialBettingTournamentPayload = {
+  sourceTournamentId?: number
+  name: string
+  settings: SocialBettingSettings
+  participants: Array<{ email: string; nickname?: string }>
+  language?: string
 }
 
 export type BettingStandingRow = {

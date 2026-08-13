@@ -8,6 +8,7 @@ export type View =
   | 'resend-activation'
   | 'confirm-email'
   | 'reset-password'
+  | 'betting-invite'
   | 'terms'
   | 'home'
   | 'dashboard'

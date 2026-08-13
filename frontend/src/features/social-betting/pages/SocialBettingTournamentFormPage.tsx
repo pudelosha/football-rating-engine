@@ -1,11 +1,16 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { MenuIcon } from '../../../shared/components/Icons'
 import { ModalShell } from '../../../shared/components/Modal/ModalShell'
 import { FullPageProcessingOverlay } from '../../../shared/components/Spinner'
 import type { TournamentSummary } from '../../../shared/types'
-import { bettingTournamentOptions, bettingTournamentParticipants } from '../model/socialBettingModel'
-import { fetchSourceTournaments } from '../services/socialBettingService'
-import type { SocialBettingTournamentFormProps } from '../types'
+import {
+  createSocialBettingTournament,
+  fetchSocialBettingTournament,
+  fetchSourceTournaments,
+  resendSocialBettingInvite,
+  updateSocialBettingTournament,
+} from '../services/socialBettingService'
+import type { BettingTournamentParticipant, SaveSocialBettingTournamentPayload, SocialBettingTournamentFormProps } from '../types'
 
 type BetPoolMode = 'fixed' | 'credits'
 type ExactScoreBonusMode = 'fixed' | 'oddsMultiplier'
@@ -18,26 +23,23 @@ export function SocialBettingTournamentFormPage({
   onToast,
 }: SocialBettingTournamentFormProps) {
   const isEditMode = Boolean(tournamentId)
-  const editedTournament = useMemo(
-    () => bettingTournamentOptions.find((tournament) => tournament.id === tournamentId),
-    [tournamentId],
-  )
   const [sourceTournaments, setSourceTournaments] = useState<TournamentSummary[]>([])
   const [sourceTournamentId, setSourceTournamentId] = useState('')
-  const [name, setName] = useState(editedTournament?.name ?? '')
+  const [name, setName] = useState('')
   const [allowExactScoreBonus, setAllowExactScoreBonus] = useState(true)
   const [exactScoreBonusMode, setExactScoreBonusMode] = useState<ExactScoreBonusMode>('fixed')
   const [exactScoreBonusValue, setExactScoreBonusValue] = useState('5')
   const [exactScoreOddsMultiplier, setExactScoreOddsMultiplier] = useState('1.5')
   const [allowQualifierPick, setAllowQualifierPick] = useState(false)
-  const [applyMissingBetPenalty, setApplyMissingBetPenalty] = useState(true)
+  const [applyMissingBetPenalty, setApplyMissingBetPenalty] = useState(false)
   const [missingBetPenalty, setMissingBetPenalty] = useState('-1')
   const [poolMode, setPoolMode] = useState<BetPoolMode>('fixed')
   const [baseBetAmount, setBaseBetAmount] = useState('1')
   const [startingCredits, setStartingCredits] = useState('1000')
   const [maxBetPerGame, setMaxBetPerGame] = useState('5')
-  const [participants, setParticipants] = useState(bettingTournamentParticipants)
+  const [participants, setParticipants] = useState<BettingTournamentParticipant[]>([])
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
+  const [participantToExclude, setParticipantToExclude] = useState<BettingTournamentParticipant | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -67,21 +69,38 @@ export function SocialBettingTournamentFormPage({
     async function loadSourceTournaments() {
       setIsLoading(true)
       try {
-        const result = await fetchSourceTournaments(user.token)
+        const [sourceResult, detailsResult] = await Promise.all([
+          fetchSourceTournaments(user.token),
+          isEditMode && tournamentId ? fetchSocialBettingTournament(user.token, tournamentId) : Promise.resolve(null),
+        ])
         if (!isMounted) {
           return
         }
 
-        if (!result.ok || !result.data) {
-          onToast(result.message || 'Could not load source tournaments.', 'error')
+        if (!sourceResult.ok || !sourceResult.data) {
+          onToast(sourceResult.message || 'Could not load source tournaments.', 'error')
           return
         }
 
-        setSourceTournaments(result.data)
-        if (isEditMode) {
-          const source = result.data.find((tournament) =>
-            `${tournament.name} ${tournament.season}` === editedTournament?.linkedTournament)
-          setSourceTournamentId(source ? String(source.id) : '')
+        setSourceTournaments(sourceResult.data)
+        if (detailsResult && detailsResult.ok && detailsResult.data) {
+          const details = detailsResult.data
+          setSourceTournamentId(String(details.sourceTournamentId))
+          setName(details.name)
+          setAllowExactScoreBonus(details.settings.allowExactScoreBonus)
+          setExactScoreBonusMode(details.settings.exactScoreBonusMode === 'OddsMultiplier' ? 'oddsMultiplier' : 'fixed')
+          setExactScoreBonusValue(String(details.settings.exactScoreBonusValue))
+          setExactScoreOddsMultiplier(String(details.settings.exactScoreOddsMultiplier))
+          setAllowQualifierPick(details.settings.allowQualificationPick)
+          setApplyMissingBetPenalty(details.settings.applyMissingBetPenalty)
+          setMissingBetPenalty(String(details.settings.missingBetPenalty))
+          setPoolMode(details.settings.poolMode === 'PlayerCredits' ? 'credits' : 'fixed')
+          setBaseBetAmount(String(details.settings.baseBetAmount))
+          setStartingCredits(String(details.settings.startingCredits))
+          setMaxBetPerGame(String(details.settings.maxBetPerGame))
+          setParticipants(details.participants)
+        } else if (detailsResult && !detailsResult.ok) {
+          onToast(detailsResult.message || 'Could not load betting tournament.', 'error')
         }
       } catch {
         if (isMounted) {
@@ -99,9 +118,9 @@ export function SocialBettingTournamentFormPage({
     return () => {
       isMounted = false
     }
-  }, [editedTournament?.linkedTournament, isEditMode, onToast, user.token])
+  }, [isEditMode, onToast, tournamentId, user.token])
 
-  function saveTournament() {
+  async function saveTournament() {
     if (!name.trim()) {
       onToast('Tournament name is required.', 'error')
       return
@@ -113,11 +132,67 @@ export function SocialBettingTournamentFormPage({
     }
 
     setIsSaving(true)
-    window.setTimeout(() => {
-      setIsSaving(false)
-      onToast(isEditMode ? 'Betting tournament updated.' : 'Betting tournament created.', 'success')
-      onSaved()
-    }, 650)
+    const payload: SaveSocialBettingTournamentPayload = {
+      sourceTournamentId: Number(sourceTournamentId),
+      name: name.trim(),
+      settings: {
+        allowExactScoreBonus,
+        exactScoreBonusMode: exactScoreBonusMode === 'oddsMultiplier' ? 'OddsMultiplier' : 'FixedValue',
+        exactScoreBonusValue: Number(exactScoreBonusValue) || 0,
+        exactScoreOddsMultiplier: Number(exactScoreOddsMultiplier) || 0,
+        allowQualificationPick: allowQualifierPick,
+        applyMissingBetPenalty,
+        missingBetPenalty: Number(missingBetPenalty) || 0,
+        poolMode: poolMode === 'credits' ? 'PlayerCredits' : 'FixedBaseAmount',
+        baseBetAmount: Number(baseBetAmount) || 1,
+        startingCredits: Number(startingCredits) || 1,
+        maxBetPerGame: Number(maxBetPerGame) || 1,
+      },
+      participants: participants
+        .filter((participant) => participant.status !== 'Accepted' || participant.role !== 'Admin')
+        .map((participant) => ({ email: participant.email, nickname: participant.name })),
+      language: 'en',
+    }
+
+    const result = isEditMode && tournamentId
+      ? await updateSocialBettingTournament(user.token, tournamentId, payload)
+      : await createSocialBettingTournament(user.token, payload)
+    setIsSaving(false)
+
+    if (!result.ok) {
+      onToast(result.message || 'Could not save betting tournament.', 'error')
+      return
+    }
+
+    onToast(isEditMode ? 'Betting tournament updated.' : 'Betting tournament created.', 'success')
+    onSaved()
+  }
+
+  async function resendInvite(participantId: number) {
+    if (!isEditMode || !tournamentId) {
+      return
+    }
+
+    setIsSaving(true)
+    const result = await resendSocialBettingInvite(user.token, tournamentId, participantId)
+    setIsSaving(false)
+
+    if (!result.ok) {
+      onToast(result.message || 'Could not resend invitation.', 'error')
+      return
+    }
+
+    onToast('Invitation resent.', 'success')
+  }
+
+  function confirmExcludeParticipant() {
+    if (!participantToExclude) {
+      return
+    }
+
+    setParticipants((current) => current.filter((participant) => participant.id !== participantToExclude.id))
+    setParticipantToExclude(null)
+    onToast(isEditMode ? 'Participant will be removed when you save changes.' : 'Participant removed.', 'success')
   }
 
   function addParticipant(email: string, displayName: string) {
@@ -347,35 +422,49 @@ export function SocialBettingTournamentFormPage({
             </button>
           </div>
           <div className="tournament-table-shell compact-table-shell">
-            <table className="tournament-table social-betting-participants-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {participants.map((participant) => (
-                  <tr key={participant.id}>
-                    <td><strong>{participant.name}</strong></td>
-                    <td>{participant.email}</td>
-                    <td>
-                      <span className={`social-betting-status-pill ${participant.status.toLowerCase()}`}>
-                        {participant.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="social-betting-participant-actions">
-                        <button type="button">Resend invite</button>
-                        <button className="danger" type="button">Exclude</button>
-                      </div>
-                    </td>
+            {participants.length === 0 ? (
+              <div className="social-betting-empty-participants">
+                Add participants to send invitations. You can create the tournament now and invite users from this panel.
+              </div>
+            ) : (
+              <table className="tournament-table social-betting-participants-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {participants.map((participant) => (
+                    <tr key={participant.id}>
+                      <td><strong>{participant.name}</strong></td>
+                      <td>{participant.email}</td>
+                      <td>
+                        <span className={`social-betting-status-pill ${participant.status.toLowerCase()}`}>
+                          {participant.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="social-betting-participant-actions">
+                          {isEditMode && (
+                            <button type="button" onClick={() => resendInvite(participant.id)}>
+                              Resend invite
+                            </button>
+                          )}
+                          {participant.role !== 'Admin' && (
+                            <button className="danger" type="button" onClick={() => setParticipantToExclude(participant)}>
+                              Exclude
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
 
@@ -392,8 +481,54 @@ export function SocialBettingTournamentFormPage({
             onConfirm={addParticipant}
           />
         )}
+
+        {participantToExclude && (
+          <ExcludeParticipantModal
+            isEditMode={isEditMode}
+            participant={participantToExclude}
+            onCancel={() => setParticipantToExclude(null)}
+            onConfirm={confirmExcludeParticipant}
+          />
+        )}
       </div>
     </section>
+  )
+}
+
+function ExcludeParticipantModal({
+  isEditMode,
+  onCancel,
+  onConfirm,
+  participant,
+}: {
+  isEditMode: boolean
+  onCancel: () => void
+  onConfirm: () => void
+  participant: BettingTournamentParticipant
+}) {
+  return (
+    <ModalShell className="delete-modal edit-team-modal" onCancel={onCancel}>
+      <div className="delete-modal-icon">
+        <MenuIcon name="teams" />
+      </div>
+      <div className="delete-modal-copy">
+        <p className="eyebrow">Participant</p>
+        <h2>Exclude participant.</h2>
+        <p>
+          {isEditMode
+            ? 'This removes the participant from the visible list now. The backend tournament will be updated only when you save changes.'
+            : 'This removes the participant from the invitation list before the tournament is created.'}
+        </p>
+      </div>
+      <div className="delete-modal-summary">
+        <strong>{participant.name}</strong>
+        <span>{participant.email}</span>
+      </div>
+      <div className="delete-modal-actions">
+        <button type="button" onClick={onCancel}>Cancel</button>
+        <button className="danger" type="button" onClick={onConfirm}>Exclude</button>
+      </div>
+    </ModalShell>
   )
 }
 

@@ -48,6 +48,7 @@ public static class ServiceExtensions
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserAccountService, UserAccountService>();
+        services.AddScoped<ISocialBettingService, SocialBettingService>();
 
         services.AddHostedService<TournamentScheduleSyncHostedService>();
         services.AddHostedService<LiveMatchSyncHostedService>();

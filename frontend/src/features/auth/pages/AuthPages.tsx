@@ -1,4 +1,5 @@
 export { AuthPage } from './AuthPage'
+export { BettingInvitePage } from './BettingInvitePage'
 export { ConfirmEmailPage } from './ConfirmEmailPage'
 export { EmailActionPage } from './EmailActionPage'
 export { ResetPasswordPage } from './ResetPasswordPage'

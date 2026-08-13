@@ -18,7 +18,7 @@ import {
   UsersAccessPanel,
 } from './features/admin/pages/AdminPages'
 import { ApiPage } from './features/api/pages/ApiPage'
-import { AuthPage, ConfirmEmailPage, EmailActionPage, ResetPasswordPage } from './features/auth/pages/AuthPages'
+import { AuthPage, BettingInvitePage, ConfirmEmailPage, EmailActionPage, ResetPasswordPage } from './features/auth/pages/AuthPages'
 import { BettingPanel } from './features/betting/pages/BettingPanel'
 import { DashboardPage } from './features/dashboard/pages/DashboardPage'
 import { HomePage } from './features/home/pages/HomePage'
@@ -255,6 +255,16 @@ function App() {
 
       {view === 'reset-password' && (
         <ResetPasswordPage
+          t={t}
+          language={requestLanguage}
+          search={location.search}
+          onBackLogin={() => navigate('login')}
+          onToast={showToast}
+        />
+      )}
+
+      {view === 'betting-invite' && (
+        <BettingInvitePage
           t={t}
           language={requestLanguage}
           search={location.search}

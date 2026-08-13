@@ -63,6 +63,38 @@ public sealed class EmailService(
                 lang));
     }
 
+    public async Task SendSocialBettingInvitationEmailAsync(
+        ApplicationUser user,
+        string tournamentName,
+        int participantId,
+        string token,
+        bool requiresPasswordSetup,
+        string? language)
+    {
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            return;
+        }
+
+        var lang = AuthText.Language(language);
+        var copy = SocialBettingInvitationCopy(lang, tournamentName, requiresPasswordSetup);
+        var encodedToken = IdentityTokenUrlDecoder.Encode(token);
+        var inviteLink = BuildFrontendUrl(
+            $"/betting/invite?participantId={participantId}&token={Uri.EscapeDataString(encodedToken)}&language={lang}");
+
+        await SendEmailAsync(
+            user.Email,
+            copy.Subject,
+            BuildEmailBody(
+                copy.Title,
+                copy.Body,
+                copy.ActionText,
+                inviteLink,
+                copy.SecondaryText,
+                copy.FallbackText,
+                lang));
+    }
+
     private async Task SendEmailAsync(string to, string subject, string body)
     {
         if (!configuration.GetValue<bool>("EmailSettings:EnableSending"))
@@ -207,6 +239,36 @@ public sealed class EmailService(
                 "Reset Password",
                 "If you did not request a password reset, you can ignore this email.",
                 "If the button does not work, open this link:");
+    }
+
+    private static EmailCopy SocialBettingInvitationCopy(string language, string tournamentName, bool requiresPasswordSetup)
+    {
+        if (language == "pl")
+        {
+            var body = requiresPasswordSetup
+                ? $"Zaproszono Cię do typowania w turnieju {tournamentName}. Ustaw hasło, aby aktywować konto i dołączyć do zabawy."
+                : $"Zaproszono Cię do typowania w turnieju {tournamentName}. Otwórz link, aby zaakceptować zaproszenie.";
+
+            return new EmailCopy(
+                "Zaproszenie do typowania",
+                "Zaproszenie do typowania",
+                body,
+                requiresPasswordSetup ? "Ustaw hasło i dołącz" : "Akceptuj zaproszenie",
+                "Jeśli nie spodziewasz się zaproszenia, możesz zignorować tę wiadomość.",
+                "Jeśli przycisk nie działa, otwórz ten link:");
+        }
+
+        var englishBody = requiresPasswordSetup
+            ? $"You have been invited to the {tournamentName} prediction tournament. Set your password to activate your account and join."
+            : $"You have been invited to the {tournamentName} prediction tournament. Open the link to accept the invitation.";
+
+        return new EmailCopy(
+            "Prediction tournament invitation",
+            "Prediction tournament invitation",
+            englishBody,
+            requiresPasswordSetup ? "Set password and join" : "Accept invitation",
+            "If you did not expect this invitation, you can ignore this email.",
+            "If the button does not work, open this link:");
     }
 
     private sealed record EmailCopy(
