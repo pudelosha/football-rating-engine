@@ -88,6 +88,69 @@ export type BettingStandingRow = {
   }
 }
 
+export type SocialBettingResults = {
+  standings: BettingStandingRow[]
+  pointsGrowth: BettingPointsGrowthSeries[]
+}
+
+export type SocialBettingOutstandingBet = BettingMatchPick & {
+  kickoffUtc?: string
+  status?: string
+  homeWinProbability: number
+  drawProbability: number
+  awayWinProbability: number
+  homeWinOdds?: number
+  drawOdds?: number
+  awayWinOdds?: number
+}
+
+export type SocialBettingPick = {
+  id: number
+  matchId: number
+  homeScorePrediction: number
+  awayScorePrediction: number
+  qualifierTeamId?: number
+  stake: number
+  homeOddsAtPlacement?: number
+  drawOddsAtPlacement?: number
+  awayOddsAtPlacement?: number
+  placedAtUtc: string
+  updatedAtUtc: string
+}
+
+export type SocialBettingMatchSummary = {
+  matchId: number
+  homeTeam: string
+  awayTeam: string
+  kickoffUtc?: string
+  kickoff: string
+  status: string
+  hasStarted: boolean
+  homeScore?: number
+  awayScore?: number
+  participantCount: number
+  placedBetCount: number
+  homeWinPercentage: number
+  drawPercentage: number
+  awayWinPercentage: number
+  averageHomeGoals: number
+  averageAwayGoals: number
+  homeWinOdds?: number
+  drawOdds?: number
+  awayWinOdds?: number
+  userBets: SocialBettingUserBetSummary[]
+}
+
+export type SocialBettingUserBetSummary = {
+  playerName: string
+  bet: string
+  homeWin: boolean
+  draw: boolean
+  awayWin: boolean
+  outcomeMatched?: boolean
+  points?: number
+}
+
 export type BettingMatchPick = {
   id: number
   stage?: string
@@ -100,6 +163,12 @@ export type BettingMatchPick = {
   score?: string
   result?: 'won' | 'lost' | 'pending'
   points?: number
+  homeWinProbability?: number
+  drawProbability?: number
+  awayWinProbability?: number
+  homeWinOdds?: number
+  drawOdds?: number
+  awayWinOdds?: number
 }
 
 export type BettingMatchInsightBet = {

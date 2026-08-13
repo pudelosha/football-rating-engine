@@ -36,10 +36,11 @@ function pointPosition(point: number, index: number, count: number, min: number,
 
 export function PointsGrowthChartTile({ series }: { series: BettingPointsGrowthSeries[] }) {
   const allPoints = series.flatMap((item) => item.points)
-  const min = Math.min(...allPoints)
-  const max = Math.max(...allPoints)
+  const hasSeries = allPoints.length > 0
+  const min = hasSeries ? Math.min(...allPoints) : 0
+  const max = hasSeries ? Math.max(...allPoints) : 0
   const ticks = [max, Math.round((max + min) / 2), min]
-  const gameCount = Math.max(...series.map((item) => item.points.length))
+  const gameCount = hasSeries ? Math.max(...series.map((item) => item.points.length)) : 0
 
   return (
     <section className="details-panel social-betting-tile social-betting-growth-tile">
@@ -67,6 +68,9 @@ export function PointsGrowthChartTile({ series }: { series: BettingPointsGrowthS
       </div>
 
       <div className="social-betting-growth-plot">
+        {!hasSeries ? (
+          <div className="social-betting-empty-list">No points history yet.</div>
+        ) : (
         <svg viewBox="0 0 720 280" role="img" aria-label="Points growth chart">
           {ticks.map((tick) => {
             const y = pointPosition(tick, 0, 1, min, max).y
@@ -101,6 +105,7 @@ export function PointsGrowthChartTile({ series }: { series: BettingPointsGrowthS
             </g>
           ))}
         </svg>
+        )}
       </div>
     </section>
   )

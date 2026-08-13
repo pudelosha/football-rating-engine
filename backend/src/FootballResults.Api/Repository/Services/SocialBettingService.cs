@@ -14,6 +14,7 @@ public sealed class SocialBettingService(
     UserManager<ApplicationUser> userManager,
     IApiKeyService apiKeyService,
     IEmailService emailService,
+    IMatchPredictionSnapshotService matchPredictionSnapshotService,
     ILogger<SocialBettingService> logger) : ISocialBettingService
 {
     private static readonly TimeSpan InvitationLifetime = TimeSpan.FromDays(14);
@@ -59,6 +60,384 @@ public sealed class SocialBettingService(
         }
 
         return ToDto(tournament, userId);
+    }
+
+    public async Task<SocialBettingResultsDto?> GetResultsAsync(
+        int id,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var tournament = await LoadTournamentAsync(id, cancellationToken);
+        if (tournament is null || !CanView(tournament, userId))
+        {
+            return null;
+        }
+
+        var acceptedParticipants = tournament.Participants
+            .Where(participant => participant.Status == SocialBettingParticipantStatus.Accepted)
+            .OrderBy(participant => participant.Nickname ?? participant.Email)
+            .ToList();
+        var participantIds = acceptedParticipants.Select(participant => participant.Id).ToList();
+        var finishedMatches = await dbContext.Matches
+            .AsNoTracking()
+            .Where(match =>
+                match.TournamentId == tournament.SourceTournamentId &&
+                match.Status == MatchStatus.Finished &&
+                match.RegularTimeHomeScore.HasValue &&
+                match.RegularTimeAwayScore.HasValue)
+            .OrderBy(match => match.KickoffUtc)
+            .ThenBy(match => match.Id)
+            .Select(match => new SocialBettingFinishedMatch(
+                match.Id,
+                match.KickoffUtc,
+                match.RegularTimeHomeScore!.Value,
+                match.RegularTimeAwayScore!.Value))
+            .ToListAsync(cancellationToken);
+        var finishedMatchIds = finishedMatches.Select(match => match.Id).ToList();
+        var picks = await dbContext.SocialBettingPicks
+            .AsNoTracking()
+            .Where(pick =>
+                pick.SocialBettingTournamentId == id &&
+                participantIds.Contains(pick.ParticipantId) &&
+                finishedMatchIds.Contains(pick.MatchId))
+            .ToListAsync(cancellationToken);
+        var picksByParticipant = picks
+            .GroupBy(pick => pick.ParticipantId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+        var matchById = finishedMatches.ToDictionary(match => match.Id);
+
+        var rawRows = acceptedParticipants.Select(participant =>
+        {
+            picksByParticipant.TryGetValue(participant.Id, out var participantPicks);
+            participantPicks ??= [];
+            var settledPicks = participantPicks
+                .Where(pick => pick.HomeScorePrediction.HasValue && pick.AwayScorePrediction.HasValue)
+                .ToList();
+            var wonPicks = 0;
+            var drawPicks = 0;
+            var failedPicks = 0;
+            var points = 0m;
+
+            foreach (var pick in settledPicks)
+            {
+                var match = matchById[pick.MatchId];
+                var outcomeMatched = Outcome(match.HomeScore, match.AwayScore) ==
+                    Outcome(pick.HomeScorePrediction!.Value, pick.AwayScorePrediction!.Value);
+                var exactScoreMatched = pick.HomeScorePrediction == match.HomeScore && pick.AwayScorePrediction == match.AwayScore;
+
+                if (!outcomeMatched)
+                {
+                    failedPicks++;
+                    continue;
+                }
+
+                if (match.HomeScore == match.AwayScore)
+                {
+                    drawPicks++;
+                }
+                else
+                {
+                    wonPicks++;
+                }
+
+                points += pick.PointsAwarded ?? CalculatePickPoints(tournament, pick, match, exactScoreMatched);
+            }
+
+            var missedFinishedMatches = finishedMatches.Count - settledPicks.Select(pick => pick.MatchId).Distinct().Count();
+            failedPicks += missedFinishedMatches;
+            if (tournament.ApplyMissingBetPenalty)
+            {
+                points += missedFinishedMatches * tournament.MissingBetPenalty;
+            }
+
+            var placed = settledPicks.Count + missedFinishedMatches;
+            return new SocialBettingResultsRow(
+                participant.Nickname ?? participant.User.DisplayName ?? participant.Email,
+                placed == 0 ? 0 : decimal.Round((decimal)(wonPicks + drawPicks) / placed * 100m, 0),
+                wonPicks + drawPicks,
+                decimal.Round(points, 2),
+                Percentage(wonPicks, placed),
+                Percentage(drawPicks, placed),
+                Percentage(failedPicks, placed),
+                PointsGrowth(participantPicks, finishedMatches, tournament));
+        }).ToList();
+
+        var orderedRows = rawRows
+            .OrderByDescending(row => row.Result)
+            .ThenByDescending(row => row.Accuracy)
+            .ThenBy(row => row.UserName)
+            .ToList();
+        var standings = orderedRows
+            .Select((row, index) => new SocialBettingStandingRowDto(
+                index + 1,
+                row.UserName,
+                row.Accuracy,
+                row.SuccessfulBets,
+                row.Result,
+                "stable",
+                new SocialBettingPointsSplitDto(row.WinSplit, row.DrawSplit, row.FailedSplit)))
+            .ToList();
+        var growth = orderedRows
+            .Select(row => new SocialBettingPointsGrowthSeriesDto(row.UserName, row.PointsGrowth))
+            .ToList();
+
+        return new SocialBettingResultsDto(standings, growth);
+    }
+
+    public async Task<IReadOnlyList<SocialBettingOutstandingBetDto>?> GetOutstandingBetsAsync(
+        int id,
+        string userId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var tournament = await LoadTournamentAsync(id, cancellationToken);
+        if (tournament is null || !CanView(tournament, userId))
+        {
+            return null;
+        }
+
+        var participant = tournament.Participants.FirstOrDefault(participant =>
+            participant.UserId == userId &&
+            participant.Status == SocialBettingParticipantStatus.Accepted);
+        if (participant is null)
+        {
+            return [];
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var cappedLimit = Math.Clamp(limit <= 0 ? 5 : limit, 1, 20);
+
+        var placedMatchIds = await dbContext.SocialBettingPicks
+            .AsNoTracking()
+            .Where(pick =>
+                pick.SocialBettingTournamentId == id &&
+                pick.ParticipantId == participant.Id)
+            .Select(pick => pick.MatchId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var matches = await dbContext.Matches
+            .AsNoTracking()
+            .Include(match => match.Stage)
+            .Include(match => match.Tournament)
+            .Include(match => match.PredictionSnapshot)
+            .Where(match =>
+                match.TournamentId == tournament.SourceTournamentId &&
+                match.Status == MatchStatus.Upcoming &&
+                match.KickoffUtc.HasValue &&
+                match.KickoffUtc > now &&
+                !placedMatchIds.Contains(match.Id))
+            .OrderBy(match => match.KickoffUtc)
+            .ThenBy(match => match.Id)
+            .Take(cappedLimit)
+            .Select(match => new SocialBettingOutstandingMatch(
+                match.Id,
+                match.KickoffUtc,
+                match.HomeTeamNameSnapshot,
+                match.AwayTeamNameSnapshot,
+                match.Tournament.Name,
+                match.Tournament.Season,
+                match.Stage != null ? match.Stage.Name : match.RoundInfo,
+                match.Status,
+                match.PredictionSnapshot != null ? match.PredictionSnapshot.HomeWinProbability : 0,
+                match.PredictionSnapshot != null ? match.PredictionSnapshot.DrawProbability : 0,
+                match.PredictionSnapshot != null ? match.PredictionSnapshot.AwayWinProbability : 0,
+                match.PredictionSnapshot != null ? match.PredictionSnapshot.HomeFairOdds : null,
+                match.PredictionSnapshot != null ? match.PredictionSnapshot.DrawFairOdds : null,
+                match.PredictionSnapshot != null ? match.PredictionSnapshot.AwayFairOdds : null))
+            .ToListAsync(cancellationToken);
+
+        var outstandingBets = new List<SocialBettingOutstandingBetDto>();
+        foreach (var match in matches)
+        {
+            var prediction = await matchPredictionSnapshotService.PreviewMatchPredictionAsync(
+                tournament.SourceTournamentId,
+                match.Id,
+                cancellationToken);
+
+            outstandingBets.Add(new SocialBettingOutstandingBetDto(
+                match.Id,
+                FormatKickoff(match.KickoffUtc),
+                match.KickoffUtc,
+                match.HomeTeam,
+                match.AwayTeam,
+                $"{match.TournamentName} {match.Season}".Trim(),
+                match.Stage,
+                match.Status.ToString(),
+                prediction?.HomeWinProbability ?? match.HomeWinProbability,
+                prediction?.DrawProbability ?? match.DrawProbability,
+                prediction?.AwayWinProbability ?? match.AwayWinProbability,
+                prediction?.HomeFairOdds ?? match.HomeWinOdds,
+                prediction?.DrawFairOdds ?? match.DrawOdds,
+                prediction?.AwayFairOdds ?? match.AwayWinOdds));
+        }
+
+        return outstandingBets;
+    }
+
+    public async Task<SocialBettingMatchSummaryDto?> GetMatchSummaryAsync(
+        int id,
+        int matchId,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var tournament = await LoadTournamentAsync(id, cancellationToken);
+        if (tournament is null || !CanView(tournament, userId))
+        {
+            return null;
+        }
+
+        var match = await dbContext.Matches
+            .AsNoTracking()
+            .Include(match => match.PredictionSnapshot)
+            .FirstOrDefaultAsync(match => match.Id == matchId && match.TournamentId == tournament.SourceTournamentId, cancellationToken);
+        if (match is null)
+        {
+            return null;
+        }
+
+        var acceptedParticipants = tournament.Participants
+            .Where(participant => participant.Status == SocialBettingParticipantStatus.Accepted)
+            .OrderBy(participant => participant.Nickname ?? participant.Email)
+            .ToList();
+        var participantIds = acceptedParticipants.Select(participant => participant.Id).ToList();
+        var picks = await dbContext.SocialBettingPicks
+            .AsNoTracking()
+            .Where(pick =>
+                pick.SocialBettingTournamentId == id &&
+                pick.MatchId == matchId &&
+                participantIds.Contains(pick.ParticipantId))
+            .ToListAsync(cancellationToken);
+        var picksByParticipant = picks
+            .GroupBy(pick => pick.ParticipantId)
+            .ToDictionary(group => group.Key, group => group.First());
+        var completedPickCount = picks.Count(pick => pick.HomeScorePrediction.HasValue && pick.AwayScorePrediction.HasValue);
+        var homeWinCount = 0;
+        var drawCount = 0;
+        var awayWinCount = 0;
+        var totalHomeGoals = 0;
+        var totalAwayGoals = 0;
+
+        foreach (var pick in picks.Where(pick => pick.HomeScorePrediction.HasValue && pick.AwayScorePrediction.HasValue))
+        {
+            totalHomeGoals += pick.HomeScorePrediction!.Value;
+            totalAwayGoals += pick.AwayScorePrediction!.Value;
+
+            switch (Outcome(pick.HomeScorePrediction.Value, pick.AwayScorePrediction.Value))
+            {
+                case SocialBettingOutcome.HomeWin:
+                    homeWinCount++;
+                    break;
+                case SocialBettingOutcome.Draw:
+                    drawCount++;
+                    break;
+                case SocialBettingOutcome.AwayWin:
+                    awayWinCount++;
+                    break;
+            }
+        }
+
+        var hasStarted = match.KickoffUtc.HasValue && match.KickoffUtc <= DateTimeOffset.UtcNow || match.Status != MatchStatus.Upcoming;
+        var userBets = hasStarted
+            ? acceptedParticipants.Select(participant =>
+            {
+                picksByParticipant.TryGetValue(participant.Id, out var pick);
+                return ToUserBetSummary(participant, pick, match, tournament);
+            }).ToList()
+            : [];
+
+        return new SocialBettingMatchSummaryDto(
+            match.Id,
+            match.HomeTeamNameSnapshot,
+            match.AwayTeamNameSnapshot,
+            match.KickoffUtc,
+            FormatKickoff(match.KickoffUtc),
+            match.Status.ToString(),
+            hasStarted,
+            match.RegularTimeHomeScore ?? match.HomeScore,
+            match.RegularTimeAwayScore ?? match.AwayScore,
+            acceptedParticipants.Count,
+            completedPickCount,
+            Percentage(homeWinCount, completedPickCount),
+            Percentage(drawCount, completedPickCount),
+            Percentage(awayWinCount, completedPickCount),
+            completedPickCount == 0 ? 0 : decimal.Round((decimal)totalHomeGoals / completedPickCount, 2),
+            completedPickCount == 0 ? 0 : decimal.Round((decimal)totalAwayGoals / completedPickCount, 2),
+            match.PredictionSnapshot?.HomeFairOdds,
+            match.PredictionSnapshot?.DrawFairOdds,
+            match.PredictionSnapshot?.AwayFairOdds,
+            userBets);
+    }
+
+    public async Task<SocialBettingPickDto?> UpsertPickAsync(
+        int id,
+        int matchId,
+        string userId,
+        UpsertSocialBettingPickRequest request,
+        CancellationToken cancellationToken)
+    {
+        var tournament = await LoadTournamentAsync(id, cancellationToken);
+        if (tournament is null || !CanView(tournament, userId))
+        {
+            return null;
+        }
+
+        var participant = tournament.Participants.FirstOrDefault(participant =>
+            participant.UserId == userId &&
+            participant.Status == SocialBettingParticipantStatus.Accepted);
+        if (participant is null)
+        {
+            return null;
+        }
+
+        var match = await dbContext.Matches
+            .Include(match => match.PredictionSnapshot)
+            .FirstOrDefaultAsync(match => match.Id == matchId && match.TournamentId == tournament.SourceTournamentId, cancellationToken);
+        if (match is null)
+        {
+            return null;
+        }
+
+        if (match.Status != MatchStatus.Upcoming || !match.KickoffUtc.HasValue || match.KickoffUtc <= DateTimeOffset.UtcNow)
+        {
+            throw new InvalidOperationException("Betting for this match is already locked.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var pick = await dbContext.SocialBettingPicks
+            .FirstOrDefaultAsync(pick =>
+                pick.SocialBettingTournamentId == id &&
+                pick.ParticipantId == participant.Id &&
+                pick.MatchId == matchId,
+                cancellationToken);
+
+        if (pick is null)
+        {
+            pick = new SocialBettingPick
+            {
+                SocialBettingTournamentId = id,
+                ParticipantId = participant.Id,
+                MatchId = matchId,
+                PlacedAtUtc = now
+            };
+            dbContext.SocialBettingPicks.Add(pick);
+        }
+
+        pick.HomeScorePrediction = request.HomeScorePrediction;
+        pick.AwayScorePrediction = request.AwayScorePrediction;
+        pick.QualifierTeamId = request.QualifierTeamId;
+        pick.Stake = decimal.Round(Math.Max(tournament.BaseBetAmount, request.Stake ?? tournament.BaseBetAmount), 2);
+        var prediction = match.PredictionSnapshot is null
+            ? await matchPredictionSnapshotService.PreviewMatchPredictionAsync(id, matchId, cancellationToken)
+            : null;
+
+        pick.HomeOddsAtPlacement = match.PredictionSnapshot?.HomeFairOdds ?? prediction?.HomeFairOdds;
+        pick.DrawOddsAtPlacement = match.PredictionSnapshot?.DrawFairOdds ?? prediction?.DrawFairOdds;
+        pick.AwayOddsAtPlacement = match.PredictionSnapshot?.AwayFairOdds ?? prediction?.AwayFairOdds;
+        pick.UpdatedAtUtc = now;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToPickDto(pick);
     }
 
     public async Task<SocialBettingTournamentDto> CreateTournamentAsync(
@@ -501,6 +880,153 @@ public sealed class SocialBettingService(
             participant.AcceptedAtUtc);
     }
 
+    private static decimal CalculatePickPoints(
+        SocialBettingTournament tournament,
+        SocialBettingPick pick,
+        SocialBettingFinishedMatch match,
+        bool exactScoreMatched)
+    {
+        var outcome = Outcome(match.HomeScore, match.AwayScore);
+        var odds = outcome switch
+        {
+            SocialBettingOutcome.HomeWin => pick.HomeOddsAtPlacement,
+            SocialBettingOutcome.Draw => pick.DrawOddsAtPlacement,
+            SocialBettingOutcome.AwayWin => pick.AwayOddsAtPlacement,
+            _ => null
+        };
+        var points = pick.Stake * Math.Max(odds ?? tournament.BaseBetAmount, tournament.BaseBetAmount);
+
+        if (exactScoreMatched && tournament.AllowExactScoreBonus)
+        {
+            points += tournament.ExactScoreBonusMode == SocialBettingExactScoreBonusMode.OddsMultiplier
+                ? points * tournament.ExactScoreOddsMultiplier
+                : tournament.ExactScoreBonusValue;
+        }
+
+        return decimal.Round(points, 2);
+    }
+
+    private static SocialBettingPickDto ToPickDto(SocialBettingPick pick)
+    {
+        return new SocialBettingPickDto(
+            pick.Id,
+            pick.MatchId,
+            pick.HomeScorePrediction ?? 0,
+            pick.AwayScorePrediction ?? 0,
+            pick.QualifierTeamId,
+            pick.Stake,
+            pick.HomeOddsAtPlacement,
+            pick.DrawOddsAtPlacement,
+            pick.AwayOddsAtPlacement,
+            pick.PlacedAtUtc,
+            pick.UpdatedAtUtc);
+    }
+
+    private static SocialBettingUserBetSummaryDto ToUserBetSummary(
+        SocialBettingParticipant participant,
+        SocialBettingPick? pick,
+        Match match,
+        SocialBettingTournament tournament)
+    {
+        if (pick is null || !pick.HomeScorePrediction.HasValue || !pick.AwayScorePrediction.HasValue)
+        {
+            return new SocialBettingUserBetSummaryDto(
+                participant.Nickname ?? participant.User.DisplayName ?? participant.Email,
+                "-",
+                false,
+                false,
+                false,
+                null,
+                null);
+        }
+
+        var pickOutcome = Outcome(pick.HomeScorePrediction.Value, pick.AwayScorePrediction.Value);
+        bool? matched = null;
+        decimal? points = null;
+        var homeScore = match.RegularTimeHomeScore ?? match.HomeScore;
+        var awayScore = match.RegularTimeAwayScore ?? match.AwayScore;
+        if (homeScore.HasValue && awayScore.HasValue)
+        {
+            matched = Outcome(homeScore.Value, awayScore.Value) == pickOutcome;
+            if (matched.Value)
+            {
+                var exactScoreMatched = pick.HomeScorePrediction == homeScore && pick.AwayScorePrediction == awayScore;
+                points = pick.PointsAwarded ?? CalculatePickPoints(
+                    tournament,
+                    pick,
+                    new SocialBettingFinishedMatch(match.Id, match.KickoffUtc, homeScore.Value, awayScore.Value),
+                    exactScoreMatched);
+            }
+            else
+            {
+                points = 0;
+            }
+        }
+
+        return new SocialBettingUserBetSummaryDto(
+            participant.Nickname ?? participant.User.DisplayName ?? participant.Email,
+            $"{pick.HomeScorePrediction}:{pick.AwayScorePrediction}",
+            pickOutcome == SocialBettingOutcome.HomeWin,
+            pickOutcome == SocialBettingOutcome.Draw,
+            pickOutcome == SocialBettingOutcome.AwayWin,
+            matched,
+            points);
+    }
+
+    private static IReadOnlyList<decimal> PointsGrowth(
+        IReadOnlyList<SocialBettingPick> participantPicks,
+        IReadOnlyList<SocialBettingFinishedMatch> finishedMatches,
+        SocialBettingTournament tournament)
+    {
+        var pickByMatchId = participantPicks
+            .Where(pick => pick.HomeScorePrediction.HasValue && pick.AwayScorePrediction.HasValue)
+            .GroupBy(pick => pick.MatchId)
+            .ToDictionary(group => group.Key, group => group.First());
+        var points = 0m;
+        var series = new List<decimal>();
+
+        foreach (var match in finishedMatches)
+        {
+            if (pickByMatchId.TryGetValue(match.Id, out var pick))
+            {
+                var outcomeMatched = Outcome(match.HomeScore, match.AwayScore) ==
+                    Outcome(pick.HomeScorePrediction!.Value, pick.AwayScorePrediction!.Value);
+                if (outcomeMatched)
+                {
+                    var exactScoreMatched = pick.HomeScorePrediction == match.HomeScore && pick.AwayScorePrediction == match.AwayScore;
+                    points += pick.PointsAwarded ?? CalculatePickPoints(tournament, pick, match, exactScoreMatched);
+                }
+            }
+            else if (tournament.ApplyMissingBetPenalty)
+            {
+                points += tournament.MissingBetPenalty;
+            }
+
+            series.Add(decimal.Round(points, 2));
+        }
+
+        return series.Count == 0 ? [0m] : series;
+    }
+
+    private static decimal Percentage(int count, int total)
+    {
+        return total == 0 ? 0 : decimal.Round((decimal)count / total * 100m, 0);
+    }
+
+    private static SocialBettingOutcome Outcome(int homeScore, int awayScore)
+    {
+        return homeScore > awayScore
+            ? SocialBettingOutcome.HomeWin
+            : homeScore < awayScore
+                ? SocialBettingOutcome.AwayWin
+                : SocialBettingOutcome.Draw;
+    }
+
+    private static string FormatKickoff(DateTimeOffset? kickoff)
+    {
+        return kickoff.HasValue ? kickoff.Value.ToString("dd.MM.yyyy, HH:mm") : "-";
+    }
+
     private static string CreateInviteToken()
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
@@ -510,5 +1036,44 @@ public sealed class SocialBettingService(
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(bytes);
+    }
+
+    private sealed record SocialBettingFinishedMatch(
+        int Id,
+        DateTimeOffset? KickoffUtc,
+        int HomeScore,
+        int AwayScore);
+
+    private sealed record SocialBettingOutstandingMatch(
+        int Id,
+        DateTimeOffset? KickoffUtc,
+        string HomeTeam,
+        string AwayTeam,
+        string TournamentName,
+        string Season,
+        string? Stage,
+        MatchStatus Status,
+        decimal HomeWinProbability,
+        decimal DrawProbability,
+        decimal AwayWinProbability,
+        decimal? HomeWinOdds,
+        decimal? DrawOdds,
+        decimal? AwayWinOdds);
+
+    private sealed record SocialBettingResultsRow(
+        string UserName,
+        decimal Accuracy,
+        int SuccessfulBets,
+        decimal Result,
+        decimal WinSplit,
+        decimal DrawSplit,
+        decimal FailedSplit,
+        IReadOnlyList<decimal> PointsGrowth);
+
+    private enum SocialBettingOutcome
+    {
+        HomeWin,
+        Draw,
+        AwayWin
     }
 }

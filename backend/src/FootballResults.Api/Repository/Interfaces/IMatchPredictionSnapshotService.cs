@@ -14,4 +14,9 @@ public interface IMatchPredictionSnapshotService
         int tournamentId,
         int matchId,
         CancellationToken cancellationToken);
+
+    Task<MatchPredictionSnapshotDto?> PreviewMatchPredictionAsync(
+        int tournamentId,
+        int matchId,
+        CancellationToken cancellationToken);
 }

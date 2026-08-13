@@ -17,15 +17,17 @@ export function BettingChartsTile({ rows, type }: { rows: BettingStandingRow[]; 
       </div>
 
       <div className={`social-betting-chart-list ${type}`}>
-        {sortedRows.map((row) => (
+        {sortedRows.length === 0 ? (
+          <div className="social-betting-empty-list">No settled picks yet.</div>
+        ) : sortedRows.map((row) => (
           <div className="social-betting-chart-row" key={`${type}-${row.userName}`}>
             <strong>{row.userName}</strong>
             {type === 'points' ? (
               <>
                 <div className="social-betting-stacked-bar" aria-label={`${row.userName} points split`}>
-                  <span className="win" style={{ width: `${row.pointsSplit.win}%` }}>W</span>
-                  <span className="draw" style={{ width: `${row.pointsSplit.draw}%` }}>Q</span>
-                  <span className="failed" style={{ width: `${row.pointsSplit.failed}%` }}>P</span>
+                  {row.pointsSplit.win > 0 && <span className="win" style={{ width: `${row.pointsSplit.win}%` }}>W</span>}
+                  {row.pointsSplit.draw > 0 && <span className="draw" style={{ width: `${row.pointsSplit.draw}%` }}>Q</span>}
+                  {row.pointsSplit.failed > 0 && <span className="failed" style={{ width: `${row.pointsSplit.failed}%` }}>P</span>}
                 </div>
                 <b>{row.result.toFixed(2)}</b>
               </>

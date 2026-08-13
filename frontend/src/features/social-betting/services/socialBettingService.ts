@@ -4,6 +4,10 @@ import type {
   SaveSocialBettingTournamentPayload,
   SocialBettingTournamentDetails,
   BettingTournamentOption,
+  SocialBettingMatchSummary,
+  SocialBettingOutstandingBet,
+  SocialBettingPick,
+  SocialBettingResults,
 } from '../types'
 
 export function fetchSourceTournaments(token: string) {
@@ -16,6 +20,36 @@ export function fetchSocialBettingTournaments(token: string) {
 
 export function fetchSocialBettingTournament(token: string, id: number) {
   return authorizedRequest<SocialBettingTournamentDetails>(token, `/api/social-betting/tournaments/${id}`)
+}
+
+export function fetchSocialBettingResults(token: string, id: number) {
+  return authorizedRequest<SocialBettingResults>(token, `/api/social-betting/tournaments/${id}/results`)
+}
+
+export function fetchSocialBettingOutstandingBets(token: string, id: number, limit = 5) {
+  return authorizedRequest<SocialBettingOutstandingBet[]>(
+    token,
+    `/api/social-betting/tournaments/${id}/outstanding-bets?limit=${limit}`,
+  )
+}
+
+export function fetchSocialBettingMatchSummary(token: string, id: number, matchId: number) {
+  return authorizedRequest<SocialBettingMatchSummary>(
+    token,
+    `/api/social-betting/tournaments/${id}/matches/${matchId}/summary`,
+  )
+}
+
+export function upsertSocialBettingPick(
+  token: string,
+  id: number,
+  matchId: number,
+  payload: { homeScorePrediction: number; awayScorePrediction: number; qualifierTeamId?: number; stake?: number },
+) {
+  return authorizedRequest<SocialBettingPick>(token, `/api/social-betting/tournaments/${id}/matches/${matchId}/pick`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
 }
 
 export function createSocialBettingTournament(token: string, payload: SaveSocialBettingTournamentPayload) {

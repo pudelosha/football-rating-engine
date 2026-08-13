@@ -38,6 +38,47 @@ public sealed class MatchPredictionSnapshotService(
         return snapshot is null ? null : DtoMapper.ToMatchPredictionSnapshotDto(snapshot);
     }
 
+    public async Task<MatchPredictionSnapshotDto?> PreviewMatchPredictionAsync(
+        int tournamentId,
+        int matchId,
+        CancellationToken cancellationToken)
+    {
+        var existingSnapshot = await GetMatchPredictionSnapshotAsync(tournamentId, matchId, cancellationToken);
+        if (existingSnapshot is not null)
+        {
+            return existingSnapshot;
+        }
+
+        var match = await dbContext.Matches
+            .AsNoTracking()
+            .Include(match => match.Tournament)
+            .FirstOrDefaultAsync(
+                match =>
+                    match.TournamentId == tournamentId &&
+                    match.Id == matchId &&
+                    match.HomeTeamId.HasValue &&
+                    match.AwayTeamId.HasValue,
+                cancellationToken);
+
+        if (match is null || !match.HomeTeamId.HasValue || !match.AwayTeamId.HasValue)
+        {
+            return null;
+        }
+
+        var ratings = await combinedRatingService.GetTournamentTeamRatingsAsync(tournamentId, null, null, cancellationToken);
+        var homeRating = ratings.Teams.FirstOrDefault(rating => rating.TeamId == match.HomeTeamId.Value);
+        var awayRating = ratings.Teams.FirstOrDefault(rating => rating.TeamId == match.AwayTeamId.Value);
+        if (homeRating is null || awayRating is null)
+        {
+            return null;
+        }
+
+        var prediction = CalculatePrediction(homeRating, awayRating, match.Tournament.ApplyHomeAdvantage);
+        var snapshot = BuildSnapshot(match, ratings.RunContext, homeRating, awayRating, prediction);
+
+        return DtoMapper.ToMatchPredictionSnapshotDto(snapshot);
+    }
+
     private async Task<int> CaptureMissingFinishedMatchSnapshotsCoreAsync(
         int? tournamentId,
         CancellationToken cancellationToken)

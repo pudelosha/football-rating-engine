@@ -9,30 +9,34 @@ export function BettingTournamentResultsTile({ rows }: { rows: BettingStandingRo
         <h2>Tournament results</h2>
       </div>
       <div className="tournament-table-shell compact-table-shell">
-        <table className="tournament-table social-betting-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>+/-</th>
-              <th>Player</th>
-              <th>%</th>
-              <th>W</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.userName}>
-                <td>{row.position}</td>
-                <td><span className={`social-betting-rank ${row.direction}`}>{row.direction === 'up' ? '+' : row.direction === 'down' ? '-' : '-'}</span></td>
-                <td><strong>{row.userName}</strong></td>
-                <td>{row.accuracy}%</td>
-                <td>{row.successfulBets}</td>
-                <td><strong className="social-betting-score">{row.result.toFixed(2)}</strong></td>
+        {rows.length === 0 ? (
+          <div className="social-betting-empty-list">No accepted participants or settled picks yet.</div>
+        ) : (
+          <table className="tournament-table social-betting-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>+/-</th>
+                <th>Player</th>
+                <th>%</th>
+                <th>W</th>
+                <th>Result</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.userName}>
+                  <td>{row.position}</td>
+                  <td><span className={`social-betting-rank ${row.direction}`}>{row.direction === 'up' ? '+' : row.direction === 'down' ? '-' : '-'}</span></td>
+                  <td><strong>{row.userName}</strong></td>
+                  <td>{row.accuracy}%</td>
+                  <td>{row.successfulBets}</td>
+                  <td><strong className="social-betting-score">{row.result.toFixed(2)}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </section>
   )

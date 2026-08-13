@@ -65,6 +65,94 @@ public sealed record SocialBettingParticipantDto(
     DateTimeOffset InvitedAtUtc,
     DateTimeOffset? AcceptedAtUtc);
 
+public sealed record SocialBettingResultsDto(
+    IReadOnlyList<SocialBettingStandingRowDto> Standings,
+    IReadOnlyList<SocialBettingPointsGrowthSeriesDto> PointsGrowth);
+
+public sealed record SocialBettingOutstandingBetDto(
+    int Id,
+    string Kickoff,
+    DateTimeOffset? KickoffUtc,
+    string HomeTeam,
+    string AwayTeam,
+    string LinkedTournament,
+    string? Stage,
+    string Status,
+    decimal HomeWinProbability,
+    decimal DrawProbability,
+    decimal AwayWinProbability,
+    decimal? HomeWinOdds,
+    decimal? DrawOdds,
+    decimal? AwayWinOdds);
+
+public sealed record UpsertSocialBettingPickRequest(
+    int HomeScorePrediction,
+    int AwayScorePrediction,
+    int? QualifierTeamId = null,
+    decimal? Stake = null);
+
+public sealed record SocialBettingPickDto(
+    int Id,
+    int MatchId,
+    int HomeScorePrediction,
+    int AwayScorePrediction,
+    int? QualifierTeamId,
+    decimal Stake,
+    decimal? HomeOddsAtPlacement,
+    decimal? DrawOddsAtPlacement,
+    decimal? AwayOddsAtPlacement,
+    DateTimeOffset PlacedAtUtc,
+    DateTimeOffset UpdatedAtUtc);
+
+public sealed record SocialBettingMatchSummaryDto(
+    int MatchId,
+    string HomeTeam,
+    string AwayTeam,
+    DateTimeOffset? KickoffUtc,
+    string Kickoff,
+    string Status,
+    bool HasStarted,
+    int? HomeScore,
+    int? AwayScore,
+    int ParticipantCount,
+    int PlacedBetCount,
+    decimal HomeWinPercentage,
+    decimal DrawPercentage,
+    decimal AwayWinPercentage,
+    decimal AverageHomeGoals,
+    decimal AverageAwayGoals,
+    decimal? HomeWinOdds,
+    decimal? DrawOdds,
+    decimal? AwayWinOdds,
+    IReadOnlyList<SocialBettingUserBetSummaryDto> UserBets);
+
+public sealed record SocialBettingUserBetSummaryDto(
+    string PlayerName,
+    string Bet,
+    bool HomeWin,
+    bool Draw,
+    bool AwayWin,
+    bool? OutcomeMatched,
+    decimal? Points);
+
+public sealed record SocialBettingStandingRowDto(
+    int Position,
+    string UserName,
+    decimal Accuracy,
+    int SuccessfulBets,
+    decimal Result,
+    string Direction,
+    SocialBettingPointsSplitDto PointsSplit);
+
+public sealed record SocialBettingPointsSplitDto(
+    decimal Win,
+    decimal Draw,
+    decimal Failed);
+
+public sealed record SocialBettingPointsGrowthSeriesDto(
+    string PlayerName,
+    IReadOnlyList<decimal> Points);
+
 public sealed record AddSocialBettingParticipantRequest(
     string Email,
     string? Nickname = null,

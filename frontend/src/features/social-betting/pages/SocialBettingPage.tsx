@@ -8,6 +8,8 @@ import { BettingTournamentToolbar } from '../components/BettingTournamentToolbar
 import { MatchInsightsTile } from '../components/MatchInsightsTile'
 import { MyBetsTile } from '../components/MyBetsTile'
 import { PointsGrowthChartTile } from '../components/PointsGrowthChartTile'
+import { SocialBettingMatchSummaryModal } from '../components/SocialBettingMatchSummaryModal'
+import { SocialBettingPickModal } from '../components/SocialBettingPickModal'
 import {
   bettingStandings,
   bettingTournamentOptions,
@@ -15,11 +17,24 @@ import {
   myFinishedStageBets,
   myOutstandingStageBets,
   myPlacedStageBets,
-  outstandingBets,
   pointsGrowthSeries,
 } from '../model/socialBettingModel'
-import { confirmSocialBettingParticipation, fetchSocialBettingTournaments } from '../services/socialBettingService'
-import type { SocialBettingProps } from '../types'
+import {
+  confirmSocialBettingParticipation,
+  fetchSocialBettingMatchSummary,
+  fetchSocialBettingOutstandingBets,
+  fetchSocialBettingResults,
+  fetchSocialBettingTournaments,
+  upsertSocialBettingPick,
+} from '../services/socialBettingService'
+import type {
+  BettingMatchPick,
+  BettingPointsGrowthSeries,
+  BettingStandingRow,
+  SocialBettingMatchSummary,
+  SocialBettingOutstandingBet,
+  SocialBettingProps,
+} from '../types'
 
 type SocialBettingSection = 'results' | 'insights' | 'my-bets'
 
@@ -27,7 +42,16 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
   const [selectedTournamentId, setSelectedTournamentId] = useState(0)
   const [activeSection, setActiveSection] = useState<SocialBettingSection>('results')
   const [tournaments, setTournaments] = useState(bettingTournamentOptions)
+  const [resultsRows, setResultsRows] = useState<BettingStandingRow[]>(bettingStandings)
+  const [resultsGrowth, setResultsGrowth] = useState<BettingPointsGrowthSeries[]>(pointsGrowthSeries)
+  const [resultsOutstandingBets, setResultsOutstandingBets] = useState<SocialBettingOutstandingBet[]>([])
+  const [selectedPickMatch, setSelectedPickMatch] = useState<BettingMatchPick | null>(null)
+  const [summaryMatch, setSummaryMatch] = useState<BettingMatchPick | null>(null)
+  const [matchSummary, setMatchSummary] = useState<SocialBettingMatchSummary | undefined>()
   const [isLoading, setIsLoading] = useState(true)
+  const [isResultsLoading, setIsResultsLoading] = useState(false)
+  const [isPickSaving, setIsPickSaving] = useState(false)
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false)
   const selectableTournaments = useMemo(
     () => tournaments.filter((tournament) => tournament.participantStatus !== 'Pending'),
     [tournaments],
@@ -71,6 +95,47 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
     }
   }, [onToast, user.token])
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadResults() {
+      if (!selectedTournament) {
+        return
+      }
+
+      setIsResultsLoading(true)
+      const [resultsResult, outstandingResult] = await Promise.all([
+        fetchSocialBettingResults(user.token, selectedTournament.id),
+        fetchSocialBettingOutstandingBets(user.token, selectedTournament.id, 5),
+      ])
+      if (!isMounted) {
+        return
+      }
+
+      if (resultsResult.ok && resultsResult.data) {
+        setResultsRows(resultsResult.data.standings)
+        setResultsGrowth(resultsResult.data.pointsGrowth)
+      } else {
+        onToast(resultsResult.message || 'Could not load tournament results.', 'error')
+        setResultsRows([])
+        setResultsGrowth([])
+      }
+      if (outstandingResult.ok && outstandingResult.data) {
+        setResultsOutstandingBets(outstandingResult.data)
+      } else {
+        onToast(outstandingResult.message || 'Could not load outstanding bets.', 'error')
+        setResultsOutstandingBets([])
+      }
+      setIsResultsLoading(false)
+    }
+
+    loadResults()
+
+    return () => {
+      isMounted = false
+    }
+  }, [onToast, selectedTournament, user.token])
+
   async function confirmParticipation(tournamentId: number) {
     setIsLoading(true)
     const result = await confirmSocialBettingParticipation(user.token, tournamentId)
@@ -86,6 +151,59 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
     setSelectedTournamentId(result.data.id)
     onToast('Tournament participation confirmed.', 'success')
     setIsLoading(false)
+  }
+
+  async function openMatchSummary(match: BettingMatchPick) {
+    if (!selectedTournament) {
+      return
+    }
+
+    setSummaryMatch(match)
+    setMatchSummary(undefined)
+    setIsSummaryLoading(true)
+    const result = await fetchSocialBettingMatchSummary(user.token, selectedTournament.id, match.id)
+    if (result.ok && result.data) {
+      setMatchSummary(result.data)
+    } else {
+      onToast(result.message || 'Could not load match summary.', 'error')
+      setSummaryMatch(null)
+    }
+    setIsSummaryLoading(false)
+  }
+
+  async function placePick(homeScore: number, awayScore: number) {
+    if (!selectedTournament || !selectedPickMatch) {
+      return
+    }
+
+    setIsPickSaving(true)
+    const result = await upsertSocialBettingPick(user.token, selectedTournament.id, selectedPickMatch.id, {
+      homeScorePrediction: homeScore,
+      awayScorePrediction: awayScore,
+    })
+
+    if (!result.ok) {
+      onToast(result.message || 'Could not place bet.', 'error')
+      setIsPickSaving(false)
+      return
+    }
+
+    const [resultsResult, outstandingResult] = await Promise.all([
+      fetchSocialBettingResults(user.token, selectedTournament.id),
+      fetchSocialBettingOutstandingBets(user.token, selectedTournament.id, 5),
+    ])
+
+    if (resultsResult.ok && resultsResult.data) {
+      setResultsRows(resultsResult.data.standings)
+      setResultsGrowth(resultsResult.data.pointsGrowth)
+    }
+    if (outstandingResult.ok && outstandingResult.data) {
+      setResultsOutstandingBets(outstandingResult.data)
+    }
+
+    onToast('Bet placed.', 'success')
+    setSelectedPickMatch(null)
+    setIsPickSaving(false)
   }
 
   return (
@@ -180,17 +298,20 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
           <div className="social-betting-grid">
             {activeSection === 'results' && (
             <>
-              <BettingTournamentResultsTile rows={bettingStandings} />
+              {isResultsLoading && <FullPageProcessingOverlay label="Loading tournament results." />}
+              <BettingTournamentResultsTile rows={resultsRows} />
               <BettingMatchListTile
                 title="Outstanding bets"
                 icon="matches"
-                items={outstandingBets}
+                items={resultsOutstandingBets}
                 actionLabel="Place bet"
                 compact
+                onAction={setSelectedPickMatch}
+                onPreview={openMatchSummary}
               />
-              <BettingChartsTile rows={bettingStandings} type="points" />
-              <BettingChartsTile rows={bettingStandings} type="accuracy" />
-              <PointsGrowthChartTile series={pointsGrowthSeries} />
+              <BettingChartsTile rows={resultsRows} type="points" />
+              <BettingChartsTile rows={resultsRows} type="accuracy" />
+              <PointsGrowthChartTile series={resultsGrowth} />
             </>
             )}
 
@@ -207,6 +328,24 @@ export function SocialBettingPage({ user, onCreateTournament, onEditTournament, 
               />
             )}
           </div>
+        )}
+        {selectedPickMatch && (
+          <SocialBettingPickModal
+            isSaving={isPickSaving}
+            match={selectedPickMatch}
+            onCancel={() => !isPickSaving && setSelectedPickMatch(null)}
+            onConfirm={placePick}
+          />
+        )}
+        {summaryMatch && (
+          <SocialBettingMatchSummaryModal
+            isLoading={isSummaryLoading}
+            summary={matchSummary}
+            onCancel={() => {
+              setSummaryMatch(null)
+              setMatchSummary(undefined)
+            }}
+          />
         )}
       </div>
     </section>

@@ -17,6 +17,8 @@ export function BettingMatchListTile({
   compact = false,
   icon,
   items,
+  onAction,
+  onPreview,
   title,
   variant = 'default',
 }: {
@@ -24,6 +26,8 @@ export function BettingMatchListTile({
   compact?: boolean
   icon: MenuIconName
   items: BettingMatchPick[]
+  onAction?: (item: BettingMatchPick) => void
+  onPreview?: (item: BettingMatchPick) => void
   title: string
   variant?: 'default' | 'results'
 }) {
@@ -34,6 +38,9 @@ export function BettingMatchListTile({
         <h2>{title}</h2>
       </div>
       <div className="social-betting-match-list">
+        {items.length === 0 && (
+          <div className="social-betting-empty-list">No outstanding bets right now.</div>
+        )}
         {items.map((item) => {
           const predictedScore = splitPrediction(item.prediction)
           const outcomeText = item.result === 'won' ? 'Matched' : 'Not matched / failed'
@@ -62,7 +69,7 @@ export function BettingMatchListTile({
                   <span>{splitKickoff(item.kickoff).date}</span>
                   <span>{splitKickoff(item.kickoff).time}</span>
                 </time>
-                <button className="social-betting-icon-button" type="button" aria-label="Preview match">
+                <button className="social-betting-icon-button" type="button" aria-label="Preview match" onClick={() => onPreview?.(item)}>
                   <MenuIcon name="search" />
                 </button>
               </>
@@ -75,7 +82,7 @@ export function BettingMatchListTile({
             )}
             {variant !== 'results' && (
               <div className="social-betting-pick">
-                {actionLabel && <button type="button">{actionLabel}</button>}
+                {actionLabel && <button type="button" onClick={() => onAction?.(item)}>{actionLabel}</button>}
               </div>
             )}
           </article>

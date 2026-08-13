@@ -44,6 +44,92 @@ public sealed class SocialBettingController(
         return tournament is null ? NotFound() : Ok(tournament);
     }
 
+    [HttpGet("{id:int}/results")]
+    [ProducesResponseType(typeof(SocialBettingResultsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SocialBettingResultsDto>> GetResults(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var results = await socialBettingService.GetResultsAsync(id, userId, cancellationToken);
+        return results is null ? NotFound() : Ok(results);
+    }
+
+    [HttpGet("{id:int}/outstanding-bets")]
+    [ProducesResponseType(typeof(IReadOnlyList<SocialBettingOutstandingBetDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<SocialBettingOutstandingBetDto>>> GetOutstandingBets(
+        int id,
+        [FromQuery] int limit,
+        CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var bets = await socialBettingService.GetOutstandingBetsAsync(id, userId, limit, cancellationToken);
+        return bets is null ? NotFound() : Ok(bets);
+    }
+
+    [HttpGet("{id:int}/matches/{matchId:int}/summary")]
+    [ProducesResponseType(typeof(SocialBettingMatchSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SocialBettingMatchSummaryDto>> GetMatchSummary(
+        int id,
+        int matchId,
+        CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var summary = await socialBettingService.GetMatchSummaryAsync(id, matchId, userId, cancellationToken);
+        return summary is null ? NotFound() : Ok(summary);
+    }
+
+    [HttpPut("{id:int}/matches/{matchId:int}/pick")]
+    [ProducesResponseType(typeof(SocialBettingPickDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<SocialBettingPickDto>> UpsertPick(
+        int id,
+        int matchId,
+        UpsertSocialBettingPickRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = userAccountService.GetUserId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        if (request.HomeScorePrediction < 0 || request.AwayScorePrediction < 0)
+        {
+            return BadRequest(new { message = "Score predictions cannot be negative." });
+        }
+
+        try
+        {
+            var pick = await socialBettingService.UpsertPickAsync(id, matchId, userId, request, cancellationToken);
+            return pick is null ? NotFound() : Ok(pick);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(SocialBettingTournamentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
